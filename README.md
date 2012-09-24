@@ -13,7 +13,9 @@ Usage
 -----
 ### start-event-loop
 Start the event loop, giving a function that will be run inside the event loop
-once started:
+once started. This function blocks the main thread until the event loop returns,
+which doesn't happen until the loop is empty *or* `(event-loop-exit)` is called
+inside the loop.
 
     ;; definition:
     (start-event-loop start-fn)
@@ -113,6 +115,34 @@ the event loop.
     ;; definition
     (event-loop-exit)
 
+### Package nicknames
+You can use cl-async with the prefixes `cl-async:` or `as:`.
+
+Examples
+--------
+Some limited examples are outlined above, but I learn by example, not reading
+function definitions and specifications. So here's some more to get you going.
+
+A simple echo server:
+
+    (defun my-echo-server ()
+      (format t "Starting server.~%")
+      (as:tcp-async-server nil 9003  ; nil is "0.0.0.0"
+                           (lambda (socket data)
+                             "our read-cb, called when data is received from the client"
+                             ;; convert the data into a string
+                             (let ((str (flexi-streams:octets-to-string data :external-format :utf8)))
+                               (when (search "QUIT" str)
+                                 ;; sent "QUIT" so close the socket and exit
+                                 (as:close-socket bev)
+                                 (as:event-loop-exit)))
+                             ;; echo the data back into the socket
+                             (as:write-socket-data bev data))
+                           (lambda () nil)))  ; error handler that does nothing
+    (as:start-event-loop #'my-echo-server)
+
+This echos anything back to the client that was sent, until "QUIT" is recieved,
+which closes the socket and ends the event loop, returning to the main thread.
 
 Implementation notes
 --------------------
