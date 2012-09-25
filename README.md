@@ -137,10 +137,10 @@ A simple echo server:
                              (let ((str (flexi-streams:octets-to-string data :external-format :utf8)))
                                (when (search "QUIT" str)
                                  ;; sent "QUIT" so close the socket and exit
-                                 (as:close-socket bev)
+                                 (as:close-socket socket)
                                  (as:event-loop-exit)))
                              ;; echo the data back into the socket
-                             (as:write-socket-data bev data))
+                             (as:write-socket-data socket data))
                            (lambda () nil)))  ; error handler that does nothing
     (as:start-event-loop #'my-echo-server)
 
