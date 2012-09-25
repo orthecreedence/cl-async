@@ -70,10 +70,10 @@
    timeouts on the bufferevent."
   (multiple-value-bind (read-sec read-usec) (split-usec-time read-sec)
     (multiple-value-bind (write-sec write-usec) (split-usec-time write-sec)
-      (make-foreign-type (read-to '(:struct le::timeval))
+      (make-foreign-type (read-to (le::cffi-type le::timeval))
                          (('le::tv-sec read-sec)
                           ('le::tv-usec read-usec))
-        (make-foreign-type (write-to '(:struct le::timeval))
+        (make-foreign-type (write-to (le::cffi-type le::timeval))
                            (('le::tv-sec write-sec)
                             ('le::tv-usec write-usec))
           (let ((read-to (if (numberp read-sec) read-to (cffi:null-pointer)))
@@ -191,7 +191,7 @@
    event loop must be running for this to work."
   (check-event-loop-running)
   (multiple-value-bind (time-sec time-usec) (split-usec-time time-s)
-    (make-foreign-type (time-c '(:struct le::timeval))
+    (make-foreign-type (time-c (le::cffi-type le::timeval))
                        (('le::tv-sec time-sec)
                         ('le::tv-usec time-usec))
       (let* ((pointer (cffi:foreign-alloc :char :count 0))
@@ -212,13 +212,13 @@
     (save-callbacks bev :read-cb read-cb :fail-cb fail-cb)
     (write-socket-data bev data)
     (set-socket-timeouts bev read-timeout write-timeout)
-    ;(make-foreign-type (sockaddr '(:struct le::sockaddr-in) :initial #x0)
+    ;(make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
     ;                   (('le::sin-family le::+af-inet+)
     ;                    ('le::sin-port (cffi:foreign-funcall "htons" :int port :unsigned-short))
     ;                    ('le::sin-addr (cffi:foreign-funcall "inet_addr" :string "127.0.0.1" :unsigned-long)))
     ;  (le::bufferevent-socket-connect bev
     ;                                  sockaddr
-    ;                                  (cffi:foreign-type-size '(:struct le::sockaddr-in))))
+    ;                                  (cffi:foreign-type-size (le::cffi-type le::sockaddr-in))))
     (unless bev-exists-p
       (let ((dns-base (le::evdns-base-new *event-base* 1)))
         (le::bufferevent-socket-connect-hostname bev dns-base le::+af-unspec+ host port)
@@ -228,7 +228,7 @@
 (defun tcp-async-server (bind-address port read-cb fail-cb)
   "Start a TCP listener on the current event loop."
   (check-event-loop-running)
-  (make-foreign-type (sockaddr '(:struct le::sockaddr-in) :initial #x0)
+  (make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
                      (('le::sin-family le::+af-inet+)
                       ('le::sin-port (cffi:foreign-funcall "htons" :int port :unsigned-short))
                       ('le::sin-addr (if bind-address
@@ -240,7 +240,7 @@
                                                   (logior le::+lev-opt-reuseable+ le::+lev-opt-close-on-free+)
                                                   -1
                                                   sockaddr
-                                                  (cffi:foreign-type-size '(:struct le::sockaddr-in)))))
+                                                  (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))))
       (when (and (not (cffi:pointerp listener)) (zerop listener))
         (error "Couldn't create listener: ~a~%" listener))
       ;(le::evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))

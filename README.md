@@ -9,6 +9,10 @@ I decided to write a wrapper around [Libevent2](http://libevent.org/) that is,
 above all, easy to use and understand. The concepts are similar to other libs,
 but work much like how I'd want an asynchronous I/O library to work.
 
+*Please note that at the moment, I consider this library ALPHA and very likely
+to change...a lot. Please rely on it at your own risk, until things solidify a
+bit.*
+
 Usage
 -----
 ### start-event-loop

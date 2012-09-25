@@ -40,3 +40,13 @@
                  (t ""))))
       (intern (concatenate 'string fix (nreverse (helper (concatenate 'list (strip-prefix "cp" name)) nil nil)) fix)
         package))))
+
+(defun version<= (str-version str-cmp)
+  ;; fuck it
+  t)
+
+(defmacro cffi-type (type)
+  (let ((version (asdf:component-version (asdf:find-system :cffi))))
+    (if (version<= version "0.10.7.1")
+        `(quote ,type)
+        ``(:struct ,,type))))
