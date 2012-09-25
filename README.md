@@ -15,6 +15,8 @@ bit.*
 
 Usage
 -----
+You can use cl-async with the prefixes `cl-async:` or `as:`.
+
 ### start-event-loop
 Start the event loop, giving a function that will be run inside the event loop
 once started. This function blocks the main thread until the event loop returns,
@@ -119,9 +121,6 @@ the event loop.
     ;; definition
     (event-loop-exit)
 
-### Package nicknames
-You can use cl-async with the prefixes `cl-async:` or `as:`.
-
 Examples
 --------
 Some limited examples are outlined above, but I learn by example, not reading
@@ -184,7 +183,7 @@ Drivers
 -------
 I plan on building and releasing a number of drivers on top of this library. The
 first one is going to be an [asynchronous beanstalkd driver](https://github.com/orthecreedence/beanstalk-async).
-Then an HTTP driver, and a MongoDB driver.
+Then an HTTP driver, and a MongoDB driver. And then every driver ever.
 
 The biggest problem with asynchronous IO in lisp is that there are no drivers
 that use asynchronous IO. I'm hoping to get enough drive behind this to make
