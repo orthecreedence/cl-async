@@ -18,6 +18,8 @@
 (defvar *event-loop-end-functions* nil
   "Functions to call when the event loop closes")
 
+(defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
+
 (defmacro make-foreign-type ((var type &key initial) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."
@@ -212,18 +214,19 @@
     (save-callbacks bev :read-cb read-cb :fail-cb fail-cb)
     (write-socket-data bev data)
     (set-socket-timeouts bev read-timeout write-timeout)
-    ;(make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
-    ;                   (('le::sin-family le::+af-inet+)
-    ;                    ('le::sin-port (cffi:foreign-funcall "htons" :int port :unsigned-short))
-    ;                    ('le::sin-addr (cffi:foreign-funcall "inet_addr" :string "127.0.0.1" :unsigned-long)))
-    ;  (le::bufferevent-socket-connect bev
-    ;                                  sockaddr
-    ;                                  (cffi:foreign-type-size (le::cffi-type le::sockaddr-in))))
     (unless bev-exists-p
+      (let ((socket (le::bufferevent-getfd bev)))
+        (le::evutil-make-socket-nonblocking socket))
       (let ((dns-base (le::evdns-base-new *event-base* 1)))
-        (le::bufferevent-socket-connect-hostname bev dns-base le::+af-unspec+ host port)
-        (let ((socket (le::bufferevent-getfd bev)))
-          (le::evutil-make-socket-nonblocking socket))))))
+        (le::bufferevent-socket-connect-hostname bev dns-base le::+af-unspec+ host port))
+      ;(make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
+      ;                   (('le::sin-family le::+af-inet+)
+      ;                    ('le::sin-port (cffi:foreign-funcall "htons" :int port :unsigned-short))
+      ;                    ('le::sin-addr (cffi:foreign-funcall "inet_addr" :string host :unsigned-long)))
+      ;  (le::bufferevent-socket-connect bev
+      ;                                  sockaddr
+      ;                                  +sockaddr-size+))
+    )))
 
 (defun tcp-async-server (bind-address port read-cb fail-cb)
   "Start a TCP listener on the current event loop."
@@ -240,7 +243,7 @@
                                                   (logior le::+lev-opt-reuseable+ le::+lev-opt-close-on-free+)
                                                   -1
                                                   sockaddr
-                                                  (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))))
+                                                  +sockaddr-size+)))
       (when (and (not (cffi:pointerp listener)) (zerop listener))
         (error "Couldn't create listener: ~a~%" listener))
       ;(le::evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
