@@ -70,7 +70,7 @@ The callbacks are as follows:
 
 ### write-socket-data
 Write data to an existing socket (such as one passed into a read-cb). Data can
-be a byte array or string (converted to a byte array via flexi-streams).
+be a byte array or string (converted to a byte array via babel).
 
     ;; definition
     (write-socket-data socket data)
@@ -134,7 +134,7 @@ A simple echo server:
                            (lambda (socket data)
                              "our read-cb, called when data is received from the client"
                              ;; convert the data into a string
-                             (let ((str (flexi-streams:octets-to-string data :external-format :utf8)))
+                             (let ((str (babel:octets-to-string data :encoding :utf-8)))
                                (when (search "QUIT" str)
                                  ;; sent "QUIT" so close the socket and exit
                                  (as:close-socket socket)
@@ -178,6 +178,12 @@ Libevent was chosen for a few reasons:
  it just slipped out). Libevent can be compiled on windows just fine, and
  with a bit of work, I'm assuming this wrapper could be programmed to use the
  IOCP parts of libevent (I think for now it uses select())
+ - It comes with asynchronous HTTP client/server implementations. These are not
+ trivial, and if libevent makes it easier to have an asynchronous CL webserver
+ or client, then hell let's use it.
+
+ Note that I haven't wrapped the HTTP client/server yet, but plan to in the
+ immediate future!
 
 Drivers
 -------

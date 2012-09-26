@@ -18,7 +18,11 @@
 (defvar *event-loop-end-functions* nil
   "Functions to call when the event loop closes")
 
-(defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
+(defparameter *buffer-size* 16384
+  "The amount of data we'll pull from the evbuffers when doing reading/writing.")
+
+(defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in))
+  "Really no sense in computing this OVER AND OVER.")
 
 (defmacro make-foreign-type ((var type &key initial) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
@@ -30,19 +34,18 @@
          `(setf (cffi:foreign-slot-value ,var ,type ,(car binding)) ,(cadr binding)))
      ,@body))
 
-(defun save-callbacks (pointer &key read-cb write-cb fail-cb timer-cb)
+(defun save-callbacks (pointer callbacks)
   "Save a set of callbacks, keyed by the given object (pointer)."
   (unless *fn-registry*
     (setf *fn-registry* (make-hash-table :test #'eql)))
-  (setf (gethash pointer *fn-registry*) (list :read-cb read-cb
-                                              :write-cb write-cb
-                                              :fail-cb fail-cb
-                                              :timer-cb timer-cb)))
+  (setf (gethash pointer *fn-registry*) (if (listp callbacks)
+                                            callbacks
+                                            (list callbacks))))
 
 (defun get-callbacks (pointer)
   "Get all callbacks for the given object (pointer)."
   (when *fn-registry*
-    (prog1 (gethash pointer *fn-registry*))))
+    (gethash pointer *fn-registry*)))
 
 (defun clear-callbacks (pointer)
   "Clear out all callbacks for the given object (pointer)."
@@ -85,7 +88,7 @@
 (defun write-socket-data (socket data)
   "Write data into libevent socket (bufferevent)."
   (let ((data (if (stringp data)
-                  (flexi-streams:string-to-octets data :external-format :utf8)
+                  (babel:string-to-octets data :encoding :utf-8)
                   data)))
     (cffi:with-foreign-object (data-c :unsigned-char (length data))
       (dotimes (i (length data))
@@ -102,23 +105,26 @@
     (funcall fn))
   (setf *event-loop-end-functions* nil))
 
+(cffi:defcallback signal-cb :void ((fd :pointer) (what :pointer) (data :pointer))
+  "Callback for when system signals are triggered."
+  (declare (ignore fd what))
+  (let ((cb (car (get-callbacks data))))
+    (when cb (funcall cb))))
+
 (cffi:defcallback timer-cb :void ((fd :pointer) (what :pointer) (data :pointer))
   "Callback used by the async timer system to find and run user-specified
    callbacks on timer events."
   (declare (ignore fd what))
-  (let* ((callbacks (get-callbacks data))
-         (timer-cb (getf callbacks :timer-cb)))
-    (when timer-cb
-      (funcall timer-cb))))
+  (let ((cb (car (get-callbacks data))))
+    (when cb (funcall cb))))
 
 (cffi:defcallback tcp-read-cb :void ((bev :pointer) (event-base :pointer))
   "Called whenever a read event happens on a TCP socket. Ties into the anonymous
    callback system to run user-specified anonymous callbacks on read events."
   (declare (ignore event-base))
-  (let* ((callbacks (get-callbacks bev))
-         (read-cb (getf callbacks :read-cb)))
+  (let ((read-cb (getf (get-callbacks bev) :read-cb)))
     (if read-cb
-        (let ((bufsize 1024))
+        (let ((bufsize *buffer-size*))
           (cffi:with-foreign-object (buffer :unsigned-char bufsize)
             (let ((input (le::bufferevent-get-input bev))
                   (lbuf (make-array bufsize :element-type '(unsigned-byte 8))))
@@ -127,7 +133,8 @@
                 (dotimes (i n)
                   (setf (aref lbuf i) (cffi:mem-aref buffer :char i)))
                 (funcall read-cb bev (subseq lbuf 0 n))))))
-        (le::evbuffer-drain (le::bufferevent-get-input bev) 1024))))
+        ;; no callback associated, so just drain the buffer so it doesn't pile up
+        (le::evbuffer-drain (le::bufferevent-get-input bev) *buffer-size*))))
   
 (cffi:defcallback tcp-event-cb :void ((bev :pointer) (events :short) (event-base :pointer))
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
@@ -152,9 +159,8 @@
      (le::event-base-loopexit event-base (cffi:null-pointer))
      (when (< 0 (logand events (logior le::+bev-event-error+
                                        le::+bev-event-timeout+)))
-       (let* ((callbacks (get-callbacks bev))
-              (fail-cb (getf callbacks :fail-cb))
-              (errors nil))
+       (let ((fail-cb (getf (get-callbacks bev) :fail-cb))
+             (errors nil))
          (when fail-cb
            (dolist (err (list (cons le::+bev-event-error+ :err)
                               (cons le::+bev-event-timeout+ :timeout)))
@@ -163,22 +169,26 @@
            (funcall fail-cb bev errors)))))))
 
 (cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (ctx :pointer))
+  "Called when a connection is accepted. Creates a bufferevent for the socket
+   and sets up the callbacks onto that socket."
   (declare (ignore ctx socklen addr))
   (let* ((event-base (le::evconnlistener-get-base listener))
          (bev (le::bufferevent-socket-new event-base
                                           fd
                                           (cffi:foreign-enum-value 'le::bufferevent-options :+bev-opt-close-on-free+)))
          (callbacks (get-callbacks listener)))
-    ;(set-socket-timeouts bev 5 5)
-    (apply #'save-callbacks `(,bev ,@callbacks))
+    ;; save the callbacks given to the listener onto each socket individually
+    (save-callbacks bev callbacks)
     (le::bufferevent-setcb bev
                            (cffi:callback tcp-read-cb)
                            (cffi:null-pointer)
                            (cffi:callback tcp-event-cb)
                            (cffi:null-pointer))
+    ;(set-socket-timeouts bev 5 5)
     (le::bufferevent-enable bev (logior le::+ev-read+ le::+ev-write+))))
 
 (cffi:defcallback tcp-accept-err-cb :void ((listener :pointer) (ctx :pointer))
+  "Called when an error occurs accepting a connection."
   (declare (ignore ctx))
   (let* ((event-base (le::evconnlistener-get-base listener)))
     (format t "There was an error and I don't know how to get the code.~%")
@@ -198,7 +208,7 @@
                         ('le::tv-usec time-usec))
       (let* ((pointer (cffi:foreign-alloc :char :count 0))
              (ev (le::event-new *event-base* -1 0 (cffi:callback timer-cb) pointer)))
-        (save-callbacks pointer :timer-cb callback)
+        (save-callbacks pointer callback)
         (le::event-add ev time-c)))))
 
 (defun tcp-async-send (host port data read-cb fail-cb &key ((:socket bev)) (read-timeout 30) (write-timeout 30))
@@ -211,12 +221,16 @@
                   (le::bufferevent-socket-new *event-base* -1 (cffi:foreign-enum-value 'le::bufferevent-options :+bev-opt-close-on-free+)))))
     (le::bufferevent-setcb bev (cffi:callback tcp-read-cb) (cffi:null-pointer) (cffi:callback tcp-event-cb) *event-base*)
     (le::bufferevent-enable bev (logior le::+ev-read+ le::+ev-write+))
-    (save-callbacks bev :read-cb read-cb :fail-cb fail-cb)
+    (save-callbacks bev (list :read-cb read-cb :fail-cb fail-cb))
     (write-socket-data bev data)
     (set-socket-timeouts bev read-timeout write-timeout)
     (unless bev-exists-p
-      (let ((socket (le::bufferevent-getfd bev)))
-        (le::evutil-make-socket-nonblocking socket))
+      ;; make the socket non-blocking
+      (let ((nonblock (le::evutil-make-socket-nonblocking (le::bufferevent-getfd bev))))
+        (unless (zerop nonblock)
+          (error "Failed to make socket non-blocking: ~a~%" nonblock)))
+      ;; TODO: detect IP vs hostname here and connect accordingly. there is some
+      ;; overhead associated with evdns that could be avoided
       (let ((dns-base (le::evdns-base-new *event-base* 1)))
         (le::bufferevent-socket-connect-hostname bev dns-base le::+af-unspec+ host port))
       ;(make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
@@ -247,7 +261,7 @@
       (when (and (not (cffi:pointerp listener)) (zerop listener))
         (error "Couldn't create listener: ~a~%" listener))
       ;(le::evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
-      (save-callbacks listener :read-cb read-cb :fail-cb fail-cb)
+      (save-callbacks listener (list :read-cb read-cb :fail-cb fail-cb))
       (add-event-loop-exit-callback (lambda () (free-listener listener))))))
 
 (defun start-event-loop (start-fn)
