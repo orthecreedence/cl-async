@@ -16,10 +16,9 @@ sed -i 's|(cl:- "2.0.20" "stable")|"2.0.20-stable"|' bindings.lisp
 # ------------------------------------------------------------------------------
 echo -ne "(in-package :libevent2)\n\n" > exports.lisp
 cat bindings.lisp | \
-    grep '(cffi:' | \
+    grep -e '^(cffi:' | \
     grep -v 'defcstruct' | \
-    grep -v 'classname' | \
-    sed 's|.*\(#.(lispify[^)]\+)\).*|\1|' | \
+    sed 's|.*" \(#.(lispify[^)]\+)\).*|\1|' | \
     sed 's|^\(.*\)$|(export '"'"'\1)|' \
     >> exports.lisp
 
