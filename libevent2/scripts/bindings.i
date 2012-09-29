@@ -36,10 +36,30 @@ struct sockaddr_in {
     char sin_zero_7;
 };
 
+struct evkeyval {
+    struct {
+        struct evkeyval *tqe_next;
+        struct evkeyval **tqe_prev;
+    } next;
+
+    char* key;
+    char* value;
+};
+
+struct evkeyvalq {
+    struct evkeyval *thq_first;
+    struct evkeyval **thq_last;
+};
+
 %include "/usr/local/libevent/include/event2/event-config.h"
 %include "/usr/local/libevent/include/event2/util.h"
+
+typedef unsigned int ev_uint16_t;
+
 %include "/usr/local/libevent/include/event2/event.h"
 %include "/usr/local/libevent/include/event2/dns.h"
 %include "/usr/local/libevent/include/event2/bufferevent.h"
 %include "/usr/local/libevent/include/event2/buffer.h"
 %include "/usr/local/libevent/include/event2/listener.h"
+%include "/usr/local/libevent/include/event2/http.h"
+

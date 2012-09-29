@@ -19,7 +19,7 @@
 	(#.(lispify "tv_usec" 'slotname) :long))
 
 (cffi:defcstruct #.(lispify "sockaddr_in" 'classname)
-	(#.(lispify "sin_family" 'slotname) :unsigned-short)
+	(#.(lispify "sin_family" 'slotname) :short)
 	(#.(lispify "sin_port" 'slotname) :unsigned-short)
 	(#.(lispify "sin_addr" 'slotname) :unsigned-long)
 	(#.(lispify "sin_zero_0" 'slotname) :char)
@@ -30,6 +30,19 @@
 	(#.(lispify "sin_zero_5" 'slotname) :char)
 	(#.(lispify "sin_zero_6" 'slotname) :char)
 	(#.(lispify "sin_zero_7" 'slotname) :char))
+
+(cffi:defcstruct #.(lispify "evkeyval" 'classname)
+	(#.(lispify "key" 'slotname) :string)
+	(#.(lispify "value" 'slotname) :string)
+	(#.(lispify "next" 'slotname) :pointer))
+
+(cffi:defcstruct #.(lispify "evkeyval_next" 'classname)
+	(#.(lispify "tqe_next" 'slotname) :pointer)
+	(#.(lispify "tqe_prev" 'slotname) :pointer))
+
+(cffi:defcstruct #.(lispify "evkeyvalq" 'classname)
+	(#.(lispify "thq_first" 'slotname) :pointer)
+	(#.(lispify "thq_last" 'slotname) :pointer))
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_FCNTL_H" 'constant) 1)
 
@@ -1244,5 +1257,375 @@
 (cffi:defcfun ("evconnlistener_set_error_cb" #.(lispify "evconnlistener_set_error_cb" 'function)) :void
   (lev :pointer)
   (errorcb :pointer))
+
+(cl:defconstant #.(lispify "HTTP_OK" 'constant) 200)
+
+(cl:defconstant #.(lispify "HTTP_NOCONTENT" 'constant) 204)
+
+(cl:defconstant #.(lispify "HTTP_MOVEPERM" 'constant) 301)
+
+(cl:defconstant #.(lispify "HTTP_MOVETEMP" 'constant) 302)
+
+(cl:defconstant #.(lispify "HTTP_NOTMODIFIED" 'constant) 304)
+
+(cl:defconstant #.(lispify "HTTP_BADREQUEST" 'constant) 400)
+
+(cl:defconstant #.(lispify "HTTP_NOTFOUND" 'constant) 404)
+
+(cl:defconstant #.(lispify "HTTP_BADMETHOD" 'constant) 405)
+
+(cl:defconstant #.(lispify "HTTP_ENTITYTOOLARGE" 'constant) 413)
+
+(cl:defconstant #.(lispify "HTTP_EXPECTATIONFAILED" 'constant) 417)
+
+(cl:defconstant #.(lispify "HTTP_INTERNAL" 'constant) 500)
+
+(cl:defconstant #.(lispify "HTTP_NOTIMPLEMENTED" 'constant) 501)
+
+(cl:defconstant #.(lispify "HTTP_SERVUNAVAIL" 'constant) 503)
+
+(cffi:defcfun ("evhttp_new" #.(lispify "evhttp_new" 'function)) :pointer
+  (base :pointer))
+
+(cffi:defcfun ("evhttp_bind_socket" #.(lispify "evhttp_bind_socket" 'function)) :int
+  (http :pointer)
+  (address :string)
+  (port :unsigned-int))
+
+(cffi:defcfun ("evhttp_bind_socket_with_handle" #.(lispify "evhttp_bind_socket_with_handle" 'function)) :pointer
+  (http :pointer)
+  (address :string)
+  (port :unsigned-int))
+
+(cffi:defcfun ("evhttp_accept_socket" #.(lispify "evhttp_accept_socket" 'function)) :int
+  (http :pointer)
+  (fd :int))
+
+(cffi:defcfun ("evhttp_accept_socket_with_handle" #.(lispify "evhttp_accept_socket_with_handle" 'function)) :pointer
+  (http :pointer)
+  (fd :int))
+
+(cffi:defcfun ("evhttp_bind_listener" #.(lispify "evhttp_bind_listener" 'function)) :pointer
+  (http :pointer)
+  (listener :pointer))
+
+(cffi:defcfun ("evhttp_bound_socket_get_listener" #.(lispify "evhttp_bound_socket_get_listener" 'function)) :pointer
+  (bound :pointer))
+
+(cffi:defcfun ("evhttp_del_accept_socket" #.(lispify "evhttp_del_accept_socket" 'function)) :void
+  (http :pointer)
+  (bound_socket :pointer))
+
+(cffi:defcfun ("evhttp_bound_socket_get_fd" #.(lispify "evhttp_bound_socket_get_fd" 'function)) :int
+  (bound_socket :pointer))
+
+(cffi:defcfun ("evhttp_free" #.(lispify "evhttp_free" 'function)) :void
+  (http :pointer))
+
+(cffi:defcfun ("evhttp_set_max_headers_size" #.(lispify "evhttp_set_max_headers_size" 'function)) :void
+  (http :pointer)
+  (max_headers_size :pointer))
+
+(cffi:defcfun ("evhttp_set_max_body_size" #.(lispify "evhttp_set_max_body_size" 'function)) :void
+  (http :pointer)
+  (max_body_size :pointer))
+
+(cffi:defcfun ("evhttp_set_allowed_methods" #.(lispify "evhttp_set_allowed_methods" 'function)) :void
+  (http :pointer)
+  (methods :unsigned-int))
+
+(cffi:defcfun ("evhttp_set_cb" #.(lispify "evhttp_set_cb" 'function)) :int
+  (http :pointer)
+  (path :string)
+  (cb :pointer)
+  (cb_arg :pointer))
+
+(cffi:defcfun ("evhttp_del_cb" #.(lispify "evhttp_del_cb" 'function)) :int
+  (arg0 :pointer)
+  (arg1 :string))
+
+(cffi:defcfun ("evhttp_set_gencb" #.(lispify "evhttp_set_gencb" 'function)) :void
+  (http :pointer)
+  (cb :pointer)
+  (arg :pointer))
+
+(cffi:defcfun ("evhttp_add_virtual_host" #.(lispify "evhttp_add_virtual_host" 'function)) :int
+  (http :pointer)
+  (pattern :string)
+  (vhost :pointer))
+
+(cffi:defcfun ("evhttp_remove_virtual_host" #.(lispify "evhttp_remove_virtual_host" 'function)) :int
+  (http :pointer)
+  (vhost :pointer))
+
+(cffi:defcfun ("evhttp_add_server_alias" #.(lispify "evhttp_add_server_alias" 'function)) :int
+  (http :pointer)
+  (alias :string))
+
+(cffi:defcfun ("evhttp_remove_server_alias" #.(lispify "evhttp_remove_server_alias" 'function)) :int
+  (http :pointer)
+  (alias :string))
+
+(cffi:defcfun ("evhttp_set_timeout" #.(lispify "evhttp_set_timeout" 'function)) :void
+  (http :pointer)
+  (timeout_in_secs :int))
+
+(cffi:defcfun ("evhttp_send_error" #.(lispify "evhttp_send_error" 'function)) :void
+  (req :pointer)
+  (error :int)
+  (reason :string))
+
+(cffi:defcfun ("evhttp_send_reply" #.(lispify "evhttp_send_reply" 'function)) :void
+  (req :pointer)
+  (code :int)
+  (reason :string)
+  (databuf :pointer))
+
+(cffi:defcfun ("evhttp_send_reply_start" #.(lispify "evhttp_send_reply_start" 'function)) :void
+  (req :pointer)
+  (code :int)
+  (reason :string))
+
+(cffi:defcfun ("evhttp_send_reply_chunk" #.(lispify "evhttp_send_reply_chunk" 'function)) :void
+  (req :pointer)
+  (databuf :pointer))
+
+(cffi:defcfun ("evhttp_send_reply_end" #.(lispify "evhttp_send_reply_end" 'function)) :void
+  (req :pointer))
+
+(cffi:defcenum #.(lispify "evhttp_cmd_type" 'enumname)
+	(#.(lispify "EVHTTP_REQ_GET" 'enumvalue :keyword) #.(cl:ash 1 0))
+	(#.(lispify "EVHTTP_REQ_POST" 'enumvalue :keyword) #.(cl:ash 1 1))
+	(#.(lispify "EVHTTP_REQ_HEAD" 'enumvalue :keyword) #.(cl:ash 1 2))
+	(#.(lispify "EVHTTP_REQ_PUT" 'enumvalue :keyword) #.(cl:ash 1 3))
+	(#.(lispify "EVHTTP_REQ_DELETE" 'enumvalue :keyword) #.(cl:ash 1 4))
+	(#.(lispify "EVHTTP_REQ_OPTIONS" 'enumvalue :keyword) #.(cl:ash 1 5))
+	(#.(lispify "EVHTTP_REQ_TRACE" 'enumvalue :keyword) #.(cl:ash 1 6))
+	(#.(lispify "EVHTTP_REQ_CONNECT" 'enumvalue :keyword) #.(cl:ash 1 7))
+	(#.(lispify "EVHTTP_REQ_PATCH" 'enumvalue :keyword) #.(cl:ash 1 8)))
+
+(cffi:defcenum #.(lispify "evhttp_request_kind" 'enumname)
+	#.(lispify "EVHTTP_REQUEST" 'enumvalue :keyword)
+	#.(lispify "EVHTTP_RESPONSE" 'enumvalue :keyword))
+
+(cffi:defcfun ("evhttp_request_new" #.(lispify "evhttp_request_new" 'function)) :pointer
+  (cb :pointer)
+  (arg :pointer))
+
+(cffi:defcfun ("evhttp_request_set_chunked_cb" #.(lispify "evhttp_request_set_chunked_cb" 'function)) :void
+  (arg0 :pointer)
+  (cb :pointer))
+
+(cffi:defcfun ("evhttp_request_free" #.(lispify "evhttp_request_free" 'function)) :void
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_connection_base_new" #.(lispify "evhttp_connection_base_new" 'function)) :pointer
+  (base :pointer)
+  (dnsbase :pointer)
+  (address :string)
+  (port :unsigned-short))
+
+(cffi:defcfun ("evhttp_connection_get_bufferevent" #.(lispify "evhttp_connection_get_bufferevent" 'function)) :pointer
+  (evcon :pointer))
+
+(cffi:defcfun ("evhttp_request_own" #.(lispify "evhttp_request_own" 'function)) :void
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_is_owned" #.(lispify "evhttp_request_is_owned" 'function)) :int
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_get_connection" #.(lispify "evhttp_request_get_connection" 'function)) :pointer
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_connection_get_base" #.(lispify "evhttp_connection_get_base" 'function)) :pointer
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_connection_set_max_headers_size" #.(lispify "evhttp_connection_set_max_headers_size" 'function)) :void
+  (evcon :pointer)
+  (new_max_headers_size :pointer))
+
+(cffi:defcfun ("evhttp_connection_set_max_body_size" #.(lispify "evhttp_connection_set_max_body_size" 'function)) :void
+  (evcon :pointer)
+  (new_max_body_size :pointer))
+
+(cffi:defcfun ("evhttp_connection_free" #.(lispify "evhttp_connection_free" 'function)) :void
+  (evcon :pointer))
+
+(cffi:defcfun ("evhttp_connection_set_local_address" #.(lispify "evhttp_connection_set_local_address" 'function)) :void
+  (evcon :pointer)
+  (address :string))
+
+(cffi:defcfun ("evhttp_connection_set_local_port" #.(lispify "evhttp_connection_set_local_port" 'function)) :void
+  (evcon :pointer)
+  (port :unsigned-int))
+
+(cffi:defcfun ("evhttp_connection_set_timeout" #.(lispify "evhttp_connection_set_timeout" 'function)) :void
+  (evcon :pointer)
+  (timeout_in_secs :int))
+
+(cffi:defcfun ("evhttp_connection_set_retries" #.(lispify "evhttp_connection_set_retries" 'function)) :void
+  (evcon :pointer)
+  (retry_max :int))
+
+(cffi:defcfun ("evhttp_connection_set_closecb" #.(lispify "evhttp_connection_set_closecb" 'function)) :void
+  (evcon :pointer)
+  (arg1 :pointer)
+  (arg2 :pointer))
+
+(cffi:defcfun ("evhttp_connection_get_peer" #.(lispify "evhttp_connection_get_peer" 'function)) :void
+  (evcon :pointer)
+  (address :pointer)
+  (port :pointer))
+
+(cffi:defcfun ("evhttp_make_request" #.(lispify "evhttp_make_request" 'function)) :int
+  (evcon :pointer)
+  (req :pointer)
+  (type #.(lispify "evhttp_cmd_type" 'enumname))
+  (uri :string))
+
+(cffi:defcfun ("evhttp_cancel_request" #.(lispify "evhttp_cancel_request" 'function)) :void
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_get_uri" #.(lispify "evhttp_request_get_uri" 'function)) :string
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_get_evhttp_uri" #.(lispify "evhttp_request_get_evhttp_uri" 'function)) :pointer
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_get_command" #.(lispify "evhttp_request_get_command" 'function)) #.(lispify "evhttp_cmd_type" 'enumname)
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_get_response_code" #.(lispify "evhttp_request_get_response_code" 'function)) :int
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_get_input_headers" #.(lispify "evhttp_request_get_input_headers" 'function)) :pointer
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_get_output_headers" #.(lispify "evhttp_request_get_output_headers" 'function)) :pointer
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_get_input_buffer" #.(lispify "evhttp_request_get_input_buffer" 'function)) :pointer
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_get_output_buffer" #.(lispify "evhttp_request_get_output_buffer" 'function)) :pointer
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_request_get_host" #.(lispify "evhttp_request_get_host" 'function)) :string
+  (req :pointer))
+
+(cffi:defcfun ("evhttp_find_header" #.(lispify "evhttp_find_header" 'function)) :string
+  (headers :pointer)
+  (key :string))
+
+(cffi:defcfun ("evhttp_remove_header" #.(lispify "evhttp_remove_header" 'function)) :int
+  (headers :pointer)
+  (key :string))
+
+(cffi:defcfun ("evhttp_add_header" #.(lispify "evhttp_add_header" 'function)) :int
+  (headers :pointer)
+  (key :string)
+  (value :string))
+
+(cffi:defcfun ("evhttp_clear_headers" #.(lispify "evhttp_clear_headers" 'function)) :void
+  (headers :pointer))
+
+(cffi:defcfun ("evhttp_encode_uri" #.(lispify "evhttp_encode_uri" 'function)) :string
+  (str :string))
+
+(cffi:defcfun ("evhttp_uriencode" #.(lispify "evhttp_uriencode" 'function)) :string
+  (str :string)
+  (size :pointer)
+  (space_to_plus :int))
+
+(cffi:defcfun ("evhttp_decode_uri" #.(lispify "evhttp_decode_uri" 'function)) :string
+  (uri :string))
+
+(cffi:defcfun ("evhttp_uridecode" #.(lispify "evhttp_uridecode" 'function)) :string
+  (uri :string)
+  (decode_plus :int)
+  (size_out :pointer))
+
+(cffi:defcfun ("evhttp_parse_query" #.(lispify "evhttp_parse_query" 'function)) :int
+  (uri :string)
+  (headers :pointer))
+
+(cffi:defcfun ("evhttp_parse_query_str" #.(lispify "evhttp_parse_query_str" 'function)) :int
+  (uri :string)
+  (headers :pointer))
+
+(cffi:defcfun ("evhttp_htmlescape" #.(lispify "evhttp_htmlescape" 'function)) :string
+  (html :string))
+
+(cffi:defcfun ("evhttp_uri_new" #.(lispify "evhttp_uri_new" 'function)) :pointer)
+
+(cffi:defcfun ("evhttp_uri_set_flags" #.(lispify "evhttp_uri_set_flags" 'function)) :void
+  (uri :pointer)
+  (flags :unsigned-int))
+
+(cffi:defcfun ("evhttp_uri_get_scheme" #.(lispify "evhttp_uri_get_scheme" 'function)) :string
+  (uri :pointer))
+
+(cffi:defcfun ("evhttp_uri_get_userinfo" #.(lispify "evhttp_uri_get_userinfo" 'function)) :string
+  (uri :pointer))
+
+(cffi:defcfun ("evhttp_uri_get_host" #.(lispify "evhttp_uri_get_host" 'function)) :string
+  (uri :pointer))
+
+(cffi:defcfun ("evhttp_uri_get_port" #.(lispify "evhttp_uri_get_port" 'function)) :int
+  (uri :pointer))
+
+(cffi:defcfun ("evhttp_uri_get_path" #.(lispify "evhttp_uri_get_path" 'function)) :string
+  (uri :pointer))
+
+(cffi:defcfun ("evhttp_uri_get_query" #.(lispify "evhttp_uri_get_query" 'function)) :string
+  (uri :pointer))
+
+(cffi:defcfun ("evhttp_uri_get_fragment" #.(lispify "evhttp_uri_get_fragment" 'function)) :string
+  (uri :pointer))
+
+(cffi:defcfun ("evhttp_uri_set_scheme" #.(lispify "evhttp_uri_set_scheme" 'function)) :int
+  (uri :pointer)
+  (scheme :string))
+
+(cffi:defcfun ("evhttp_uri_set_userinfo" #.(lispify "evhttp_uri_set_userinfo" 'function)) :int
+  (uri :pointer)
+  (userinfo :string))
+
+(cffi:defcfun ("evhttp_uri_set_host" #.(lispify "evhttp_uri_set_host" 'function)) :int
+  (uri :pointer)
+  (host :string))
+
+(cffi:defcfun ("evhttp_uri_set_port" #.(lispify "evhttp_uri_set_port" 'function)) :int
+  (uri :pointer)
+  (port :int))
+
+(cffi:defcfun ("evhttp_uri_set_path" #.(lispify "evhttp_uri_set_path" 'function)) :int
+  (uri :pointer)
+  (path :string))
+
+(cffi:defcfun ("evhttp_uri_set_query" #.(lispify "evhttp_uri_set_query" 'function)) :int
+  (uri :pointer)
+  (query :string))
+
+(cffi:defcfun ("evhttp_uri_set_fragment" #.(lispify "evhttp_uri_set_fragment" 'function)) :int
+  (uri :pointer)
+  (fragment :string))
+
+(cffi:defcfun ("evhttp_uri_parse_with_flags" #.(lispify "evhttp_uri_parse_with_flags" 'function)) :pointer
+  (source_uri :string)
+  (flags :unsigned-int))
+
+(cl:defconstant #.(lispify "EVHTTP_URI_NONCONFORMANT" 'constant) #x01)
+
+(cffi:defcfun ("evhttp_uri_parse" #.(lispify "evhttp_uri_parse" 'function)) :pointer
+  (source_uri :string))
+
+(cffi:defcfun ("evhttp_uri_free" #.(lispify "evhttp_uri_free" 'function)) :void
+  (uri :pointer))
+
+(cffi:defcfun ("evhttp_uri_join" #.(lispify "evhttp_uri_join" 'function)) :string
+  (uri :pointer)
+  (buf :string)
+  (limit :unsigned-int))
 
 
