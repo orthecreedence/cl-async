@@ -7,7 +7,7 @@
                                                       "-"
                                                       (symbol-name slot-name)))
              append (list `(defmacro ,accessor-name (ptr)
-                             (list 'foreign-slot-value ptr '',c-struct '',slot-name))
+                             (list 'foreign-slot-value ptr '',(intern (string c-struct) :libevent2) '',slot-name))
                           `(export ',accessor-name :libevent2.accessors)))))
 
 (make-accessors #.(libevent2::lispify "timeval" 'classname))

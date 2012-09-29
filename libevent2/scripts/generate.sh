@@ -18,7 +18,8 @@ echo -ne "(in-package :libevent2)\n\n" > exports.lisp
 cat bindings.lisp | \
     grep -e '^(cffi:' | \
     grep -v 'defcstruct' | \
-    sed 's|.*" \(#.(lispify[^)]\+)\).*|\1|' | \
+    sed 's|^(cffi:defcfun.*" \(#.(lispify[^)]\+)\).*|\1|' | \
+    sed 's|^(cffi:defcenum.*\(#.(lispify[^)]\+)\).*|\1|' | \
     sed 's|^\(.*\)$|(export '"'"'\1)|' \
     >> exports.lisp
 
@@ -35,7 +36,7 @@ cat <<-EOFMAC > accessors.lisp
                                                       "-"
                                                       (symbol-name slot-name)))
              append (list \`(defmacro ,accessor-name (ptr)
-                             (list 'foreign-slot-value ptr '',c-struct '',slot-name))
+                             (list 'foreign-slot-value ptr '',(intern (string c-struct) :libevent2) '',slot-name))
                           \`(export ',accessor-name :libevent2.accessors)))))
 
 EOFMAC
