@@ -1,13 +1,48 @@
+;;; This file wraps around a lot of the libevent2 evhttp_* functions, providing
+;;; an asynchronous HTTP server that you can build your application on top of.
+;;; Each request is put into an `http-request` class, which is sent off to your
+;;; app.
+;;;
+;;; Once the app is finished processing the request, it passes the request
+;;; object into the http-response function and the response will be send and all
+;;; data cleaned up.
+
 (in-package :cl-async)
 
 (defclass http-request ()
-  ((req-obj :accessor http-request-c :initarg :c :initform nil)
-   (method :accessor http-request-method :initarg :method :initform nil)
-   (uri :accessor http-request-uri :initarg :uri :initform nil)
-   (resource :accessor http-request-resouce :initarg :resource :initform nil)
-   (querystring :accessor http-request-querystring :initarg :querystring :initform nil)
-   (headers :accessor http-request-headers :initarg :headers :initform nil)
-   (body :accessor http-request-body :initarg :body :initform nil)))
+  ((req-obj :accessor http-request-c :initarg :c :initform nil :documentation
+     "Holds the libevent evhttp request foreign pointer. Can be used to get more
+      information from the request if needed via the libevent evhttp_* functions
+      if needed, but for the most part it is just used to send the response back
+      to the client asynchronously after the app is done processing the request.")
+   (method :accessor http-request-method :initarg :method :initform nil :documentation
+     "Hold the HTTP request method (GET, POST, PUT, DELETE, etc etc etc)")
+   (uri :accessor http-request-uri :initarg :uri :initform nil :documentation
+     "Holds the entire URI from the client request (decoded)")
+   (resource :accessor http-request-resouce :initarg :resource :initform nil :documentation
+     "The (string) resource the request is accessing. So if the client asked for
+          /documents/doc-18?pretty-print=1&format=json
+      the resource would be
+          /documents/doc-18
+      Note the lack of querystring. The resource is derived from uri, so it is
+      decoded.")
+   (querystring :accessor http-request-querystring :initarg :querystring :initform nil :documentation
+     "Holds the (string) entire querystring from the request, unparsed. It is
+      derived from uri, so it's decoded.")
+   (headers :accessor http-request-headers :initarg :headers :initform nil :documentation
+     "An alist of headers:
+          '((\"Content-Type\" . \"text/html\")
+            (\"Accept\" . \"*/*\"))
+      Headers are passed directly from libevent to the app without any extra
+      processing")
+   (body :accessor http-request-body :initarg :body :initform nil :documentation
+     "The body grabbed from the request. This can be form data, a posted file,
+      etc. It is not processed in any way and the application must be able to
+      deal with the different request body types that come through."))
+  (:documentation
+    "When any request comes in to the HTTP listener, it is parsed into the slots
+     of this class, which is then handed directly to the application's request
+     callback."))
 
 (defmethod print-object ((request http-request) s)
   (format s "HTTP request~%------------~%")
@@ -164,6 +199,58 @@
     (599 "Network Connect Timeout Error")
     (t "Unknown Status")))
 
+(defparameter *url-scanner*
+  (cl-ppcre:create-scanner
+    "^([a-z]+)://(([a-z0-9-]+):([a-z0-9-]+)@)?([^/:]+)(:([0-9]+))?(/.*)$"
+    :case-insensitive-mode t)
+  "Scanner that splits URLs into their multiple parts. A bit sloppy abd general,
+   but works great for it's purpose.")
+
+(defun parse-uri (uri)
+  "Given a full URI:
+     http://andrew:mypass@myhost.lol.com:9000/resource?query=string
+   Parse it into a plist:
+     '(:protocol \"http\"
+       :user \"andrew\"
+       :password \"mypass\"
+       :host \"myhost.lol.com\"
+       :port 9000
+       :resource \"/resource?query=string\")"
+  (let ((parts (cadr (multiple-value-list (cl-ppcre:scan-to-strings *url-scanner* uri)))))
+    (when (and parts
+               (not (stringp parts)))
+      (let ((protocol (aref parts 0))
+            (user (aref parts 2))
+            (pass (aref parts 3))
+            (host (aref parts 4))
+            (port (aref parts 6))
+            (resource (aref parts 7)))
+        (list :protocol protocol
+              :user user
+              :password pass
+              :host host
+              :port (if port (read-from-string port) 80)
+              :resource resource)))))
+
+(defun http-client (uri &key (method "GET") headers body)
+  (check-event-loop-running)
+  (let ((dns-base (le:evdns-base-new *event-base* 1)))
+  (let ((request (le:evhttp-connection-base-new *event-base* 
+
+(defun http-server (bind port request-cb fail-cb)
+  "Start an HTTP server. If `bind` is nil, it bind to 0.0.0.0."
+  (check-event-loop-running)
+  (let ((http-base (le:evhttp-new *event-base*)))
+    (when (eq http-base 0)
+      (error "Error creating HTTP listener"))
+    (add-event-loop-exit-callback (lambda () (free-http-base http-base)))
+    (le:evhttp-set-gencb http-base (cffi:callback http-request-cb) http-base)
+    (save-callbacks http-base (list :request-cb request-cb :fail-cb fail-cb))
+    (let* ((bind (if bind bind "0.0.0.0"))
+           (handle (le:evhttp-bind-socket-with-handle http-base bind port)))
+      (when (eq handle 0)
+        (error "Couldn't bind HTTP listener to ~a:~a" bind port)))))
+
 (defun http-response (http-request &key (status 200) headers (body ""))
   "Called by the server when a request has been finished and a response is ready
    to be sent to the client.
@@ -190,20 +277,4 @@
         (le:evhttp-send-reply req-c status (lookup-status-text status) evbuffer)
         (le:evhttp-send-error req-c status (lookup-status-text status)))
     (le:evbuffer-free evbuffer)))
-
-(defun http-client (method uri &key data headers))
-
-(defun http-server (bind port request-cb fail-cb)
-  "Start an HTTP server. If `bind` is nil, it bind to 0.0.0.0."
-  (check-event-loop-running)
-  (let ((http-base (le:evhttp-new *event-base*)))
-    (when (eq http-base 0)
-      (error "Error creating HTTP listener"))
-    (add-event-loop-exit-callback (lambda () (free-http-base http-base)))
-    (le:evhttp-set-gencb http-base (cffi:callback http-request-cb) http-base)
-    (save-callbacks http-base (list :request-cb request-cb :fail-cb fail-cb))
-    (let* ((bind (if bind bind "0.0.0.0"))
-           (handle (le:evhttp-bind-socket-with-handle http-base bind port)))
-      (when (eq handle 0)
-        (error "Couldn't bind HTTP listener to ~a:~a" bind port)))))
 
