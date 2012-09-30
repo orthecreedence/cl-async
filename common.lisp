@@ -76,10 +76,13 @@
       (error "Event loop already started. Please wait for it to exit.")
       (let ((*event-base* (le::event-base-new)))
         (timer 0.0 start-fn)
-        (le::event-base-dispatch *event-base*)
-        (process-event-loop-exit-callbacks)
-        (le::event-base-free *event-base*)
-        (setf *event-base* nil))))
+        (unwind-protect
+          (progn
+            ;; this will block until all events are processed
+            (le::event-base-dispatch *event-base*))
+          (process-event-loop-exit-callbacks)
+          (le::event-base-free *event-base*)
+          (setf *event-base* nil)))))
 
 (defun event-loop-exit ()
   "Exit the event loop if running."
