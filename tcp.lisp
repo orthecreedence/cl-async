@@ -1,22 +1,4 @@
-(defpackage :cl-async
-  (:use :cl)
-  (:export #:close-socket
-           #:set-socket-timeouts
-           #:write-socket-data
-           #:timer
-           #:tcp-async-send
-           #:tcp-async-server
-           #:start-event-loop
-           #:event-loop-exit)
-  (:nicknames :as))
 (in-package :cl-async)
-
-(defvar *event-base* nil
-  "THE event base (libevent) used to process all async operations.")
-(defvar *fn-registry* nil
-  "Function registry, allows the CFFI callbacks to run anonymous functions.")
-(defvar *event-loop-end-functions* nil
-  "Functions to call when the event loop closes")
 
 (defparameter *buffer-size* 16384
   "The amount of data we'll pull from the evbuffers when doing reading/writing.")
@@ -24,45 +6,10 @@
 (defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in))
   "Really no sense in computing this OVER AND OVER.")
 
-(defmacro make-foreign-type ((var type &key initial) bindings &body body)
-  "Convenience macro, makes creation and initialization of CFFI types easier.
-   Emphasis on initialization."
-  `(cffi:with-foreign-object (,var ,type)
-     (when ,initial
-       (cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char (cffi:foreign-type-size ,type)))
-     ,@(loop for binding in bindings collect
-         `(setf (cffi:foreign-slot-value ,var ,type ,(car binding)) ,(cadr binding)))
-     ,@body))
-
-(defun save-callbacks (pointer callbacks)
-  "Save a set of callbacks, keyed by the given object (pointer)."
-  (unless *fn-registry*
-    (setf *fn-registry* (make-hash-table :test #'eql)))
-  (setf (gethash pointer *fn-registry*) (if (listp callbacks)
-                                            callbacks
-                                            (list callbacks))))
-
-(defun get-callbacks (pointer)
-  "Get all callbacks for the given object (pointer)."
-  (when *fn-registry*
-    (gethash pointer *fn-registry*)))
-
-(defun clear-callbacks (pointer)
-  "Clear out all callbacks for the given object (pointer)."
-  (when *fn-registry*
-    (remhash pointer *fn-registry*)))
-
-(defun split-usec-time (time-s)
-  "Given a second value, ie 3.67, return the number of seconds as the first
-   value and the number of usecs for the second value."
-  (if (numberp time-s)
-      (multiple-value-bind (time-sec time-frac) (floor time-s)
-        (values time-sec (floor (* 1000000 time-frac))))
-      nil))
-
 (defun close-socket (bev)
   "Free a socket and clear out all associated data."
   (clear-callbacks bev)
+  (le::evutil-closesocket (le::bufferevent-getfd bev))
   (le::bufferevent-free bev))
 
 (defun free-listener (listener)
@@ -85,38 +32,32 @@
                 (write-to (if (numberp write-sec) write-to (cffi:null-pointer))))
           (le::bufferevent-set-timeouts socket read-to write-to)))))))
 
-(defun write-socket-data (socket data)
+(defun read-socket-data (socket data-cb &key socket-is-evbuffer)
+  "Read the data out of a bufferevent (or directly, an evbuffer)."
+  (let ((bufsize *buffer-size*))
+    (cffi:with-foreign-object (buffer :unsigned-char bufsize)
+      (let ((input (if socket-is-evbuffer
+                       socket
+                       (le::bufferevent-get-input socket)))
+            (lbuf (make-array bufsize :element-type '(unsigned-byte 8))))
+        (loop for n = (le::evbuffer-remove input buffer bufsize)
+              while (< 0 n) do
+          (dotimes (i n)
+            (setf (aref lbuf i) (cffi:mem-aref buffer :char i)))
+          (funcall data-cb (subseq lbuf 0 n)))))))
+
+(defun write-socket-data (socket data &key socket-is-evbuffer)
   "Write data into libevent socket (bufferevent)."
   (let ((data (if (stringp data)
                   (babel:string-to-octets data :encoding :utf-8)
-                  data)))
+                  data))
+        (evbuffer (if socket-is-evbuffer
+                      socket
+                      (le:bufferevent-get-output socket))))
     (cffi:with-foreign-object (data-c :unsigned-char (length data))
       (dotimes (i (length data))
         (setf (cffi:mem-aref data-c :unsigned-char i) (aref data i)))
-      (le::evbuffer-add (le::bufferevent-get-output socket) data-c (length data)))))
-
-(defun add-event-loop-exit-callback (fn)
-  "Add a function to be run when the event loop exits."
-  (push fn *event-loop-end-functions*))
-
-(defun process-event-loop-exit-callbacks ()
-  "run and clear out all event loop exit functions."
-  (dolist (fn *event-loop-end-functions*)
-    (funcall fn))
-  (setf *event-loop-end-functions* nil))
-
-(cffi:defcallback signal-cb :void ((fd :pointer) (what :pointer) (data :pointer))
-  "Callback for when system signals are triggered."
-  (declare (ignore fd what))
-  (let ((cb (car (get-callbacks data))))
-    (when cb (funcall cb))))
-
-(cffi:defcallback timer-cb :void ((fd :pointer) (what :pointer) (data :pointer))
-  "Callback used by the async timer system to find and run user-specified
-   callbacks on timer events."
-  (declare (ignore fd what))
-  (let ((cb (car (get-callbacks data))))
-    (when cb (funcall cb))))
+      (le::evbuffer-add evbuffer data-c (length data)))))
 
 (cffi:defcallback tcp-read-cb :void ((bev :pointer) (event-base :pointer))
   "Called whenever a read event happens on a TCP socket. Ties into the anonymous
@@ -124,15 +65,8 @@
   (declare (ignore event-base))
   (let ((read-cb (getf (get-callbacks bev) :read-cb)))
     (if read-cb
-        (let ((bufsize *buffer-size*))
-          (cffi:with-foreign-object (buffer :unsigned-char bufsize)
-            (let ((input (le::bufferevent-get-input bev))
-                  (lbuf (make-array bufsize :element-type '(unsigned-byte 8))))
-              (loop for n = (le::evbuffer-remove input buffer bufsize)
-                    while (< 0 n) do
-                (dotimes (i n)
-                  (setf (aref lbuf i) (cffi:mem-aref buffer :char i)))
-                (funcall read-cb bev (subseq lbuf 0 n))))))
+        ;; we have a callback, so grab the data form the socket and send it in
+        (read-socket-data bev (lambda (data) (funcall read-cb bev data)))
         ;; no callback associated, so just drain the buffer so it doesn't pile up
         (le::evbuffer-drain (le::bufferevent-get-input bev) *buffer-size*))))
   
@@ -177,6 +111,11 @@
                                           fd
                                           (cffi:foreign-enum-value 'le::bufferevent-options :+bev-opt-close-on-free+)))
          (callbacks (get-callbacks listener)))
+    ;; make sure the socket is non-blocking
+    (let ((nonblock (le::evutil-make-socket-nonblocking (le::bufferevent-getfd bev))))
+      (unless (zerop nonblock)
+        (error "Failed to make socket non-blocking: ~a~%" nonblock)))
+
     ;; save the callbacks given to the listener onto each socket individually
     (save-callbacks bev callbacks)
     (le::bufferevent-setcb bev
@@ -194,24 +133,12 @@
     (format t "There was an error and I don't know how to get the code.~%")
     (le::event-base-loopexit event-base (cffi:null-pointer))))
 
-(defun check-event-loop-running ()
-  (unless *event-base*
-    (error "Event loop not running. Start with function start-event-loop.")))
+(defun is-hostname (host)
+  "Determine if the given host is an IP or a hostname."
+  ;; TODO: implement
+  t)
 
-(defun timer (time-s callback)
-  "Run a function, asynchronously, after the specified amount of seconds. An
-   event loop must be running for this to work."
-  (check-event-loop-running)
-  (multiple-value-bind (time-sec time-usec) (split-usec-time time-s)
-    (make-foreign-type (time-c (le::cffi-type le::timeval))
-                       (('le::tv-sec time-sec)
-                        ('le::tv-usec time-usec))
-      (let* ((pointer (cffi:foreign-alloc :char :count 0))
-             (ev (le::event-new *event-base* -1 0 (cffi:callback timer-cb) pointer)))
-        (save-callbacks pointer callback)
-        (le::event-add ev time-c)))))
-
-(defun tcp-async-send (host port data read-cb fail-cb &key ((:socket bev)) (read-timeout 30) (write-timeout 30))
+(defun tcp-send (host port data read-cb fail-cb &key ((:socket bev)) (read-timeout 30) (write-timeout 30))
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
   (check-event-loop-running)
@@ -224,25 +151,25 @@
     (save-callbacks bev (list :read-cb read-cb :fail-cb fail-cb))
     (write-socket-data bev data)
     (set-socket-timeouts bev read-timeout write-timeout)
-    (unless bev-exists-p
-      ;; make the socket non-blocking
-      (let ((nonblock (le::evutil-make-socket-nonblocking (le::bufferevent-getfd bev))))
-        (unless (zerop nonblock)
-          (error "Failed to make socket non-blocking: ~a~%" nonblock)))
-      ;; TODO: detect IP vs hostname here and connect accordingly. there is some
-      ;; overhead associated with evdns that could be avoided
-      (let ((dns-base (le::evdns-base-new *event-base* 1)))
-        (le::bufferevent-socket-connect-hostname bev dns-base le::+af-unspec+ host port))
-      ;(make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
-      ;                   (('le::sin-family le::+af-inet+)
-      ;                    ('le::sin-port (cffi:foreign-funcall "htons" :int port :unsigned-short))
-      ;                    ('le::sin-addr (cffi:foreign-funcall "inet_addr" :string host :unsigned-long)))
-      ;  (le::bufferevent-socket-connect bev
-      ;                                  sockaddr
-      ;                                  +sockaddr-size+))
-    )))
 
-(defun tcp-async-server (bind-address port read-cb fail-cb)
+    (format t "socket: ~s~%" (le::bufferevent-getfd bev))
+    (unless bev-exists-p
+      ;; connect the socket
+      (if (is-hostname host)
+          ;; spawn a DNS base and do an async lookup
+          (let ((dns-base (le::evdns-base-new *event-base* 1)))
+            (le::bufferevent-socket-connect-hostname bev dns-base le::+af-unspec+ host port))
+
+          ;; got an IP so just connect directly
+          (make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
+                             (('le::sin-family le::+af-inet+)
+                              ('le::sin-port (cffi:foreign-funcall "htons" :int port :unsigned-short))
+                              ('le::sin-addr (cffi:foreign-funcall "inet_addr" :string host :unsigned-long)))
+            (le::bufferevent-socket-connect bev
+                                            sockaddr
+                                            +sockaddr-size+))))))
+
+(defun tcp-server (bind-address port read-cb fail-cb)
   "Start a TCP listener on the current event loop."
   (check-event-loop-running)
   (make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
@@ -258,27 +185,9 @@
                                                   -1
                                                   sockaddr
                                                   +sockaddr-size+)))
+      (add-event-loop-exit-callback (lambda () (free-listener listener)))
       (when (and (not (cffi:pointerp listener)) (zerop listener))
         (error "Couldn't create listener: ~a~%" listener))
       ;(le::evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
-      (save-callbacks listener (list :read-cb read-cb :fail-cb fail-cb))
-      (add-event-loop-exit-callback (lambda () (free-listener listener))))))
-
-(defun start-event-loop (start-fn)
-  "Simple wrapper function that starts an event loop which runs the given
-   callback, most likely to init your server/client."
-  (if *event-base*
-      (error "Event loop already started. Please wait for it to exit.")
-      (let ((*event-base* (le::event-base-new)))
-        (timer 0.0 start-fn)
-        (le::event-base-dispatch *event-base*)
-        (process-event-loop-exit-callbacks)
-        (le::event-base-free *event-base*)
-        (setf *event-base* nil))))
-
-(defun event-loop-exit ()
-  "Exit the event loop if running."
-  (if *event-base*
-      (le::event-base-loopexit *event-base* (cffi:null-pointer))
-      nil))
+      (save-callbacks listener (list :read-cb read-cb :fail-cb fail-cb)))))
 
