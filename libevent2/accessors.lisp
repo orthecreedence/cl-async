@@ -13,7 +13,6 @@
 (make-accessors #.(libevent2::lispify "timeval" 'classname))
 (make-accessors #.(libevent2::lispify "sockaddr_in" 'classname))
 (make-accessors #.(libevent2::lispify "evkeyval" 'classname))
-(make-accessors #.(libevent2::lispify "evkeyval_next" 'classname))
 (make-accessors #.(libevent2::lispify "evkeyvalq" 'classname))
 (make-accessors #.(libevent2::lispify "evbuffer_ptr" 'classname))
 (make-accessors #.(libevent2::lispify "evbuffer_ptr__internal" 'classname))

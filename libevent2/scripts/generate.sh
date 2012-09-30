@@ -16,10 +16,11 @@ sed -i 's|(cl:- "2.0.20" "stable")|"2.0.20-stable"|' bindings.lisp
 # ------------------------------------------------------------------------------
 echo -ne "(in-package :libevent2)\n\n" > exports.lisp
 cat bindings.lisp | \
-    grep -e '^(cffi:' | \
+    grep -e '^(\(cffi\|cl\):' | \
     grep -v 'defcstruct' | \
     sed 's|^(cffi:defcfun.*" \(#.(lispify[^)]\+)\).*|\1|' | \
     sed 's|^(cffi:defcenum.*\(#.(lispify[^)]\+)\).*|\1|' | \
+    sed 's|^(cl:defconstant.*\(#.(lispify[^)]\+)\).*|\1|' | \
     sed 's|^\(.*\)$|(export '"'"'\1)|' \
     >> exports.lisp
 

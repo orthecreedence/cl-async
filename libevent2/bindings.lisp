@@ -32,13 +32,10 @@
 	(#.(lispify "sin_zero_7" 'slotname) :char))
 
 (cffi:defcstruct #.(lispify "evkeyval" 'classname)
+	(#.(lispify "next" 'slotname) :pointer)
+	(#.(lispify "prev" 'slotname) :pointer)
 	(#.(lispify "key" 'slotname) :string)
-	(#.(lispify "value" 'slotname) :string)
-	(#.(lispify "next" 'slotname) :pointer))
-
-(cffi:defcstruct #.(lispify "evkeyval_next" 'classname)
-	(#.(lispify "tqe_next" 'slotname) :pointer)
-	(#.(lispify "tqe_prev" 'slotname) :pointer))
+	(#.(lispify "value" 'slotname) :string))
 
 (cffi:defcstruct #.(lispify "evkeyvalq" 'classname)
 	(#.(lispify "thq_first" 'slotname) :pointer)

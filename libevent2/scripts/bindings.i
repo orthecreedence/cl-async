@@ -37,10 +37,8 @@ struct sockaddr_in {
 };
 
 struct evkeyval {
-    struct {
-        struct evkeyval *tqe_next;
-        struct evkeyval **tqe_prev;
-    } next;
+    struct evkeyval *next;
+    struct evkeyval **prev;
 
     char* key;
     char* value;
