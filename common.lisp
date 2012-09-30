@@ -21,19 +21,19 @@
   "Save a set of callbacks, keyed by the given object (pointer)."
   (unless *fn-registry*
     (setf *fn-registry* (make-hash-table :test #'eql)))
-  (setf (gethash pointer *fn-registry*) (if (listp callbacks)
+  (setf (gethash (cffi:pointer-address pointer) *fn-registry*) (if (listp callbacks)
                                             callbacks
                                             (list callbacks))))
 
 (defun get-callbacks (pointer)
   "Get all callbacks for the given object (pointer)."
   (when *fn-registry*
-    (gethash pointer *fn-registry*)))
+    (gethash (cffi:pointer-address pointer) *fn-registry*)))
 
 (defun clear-callbacks (pointer)
   "Clear out all callbacks for the given object (pointer)."
   (when *fn-registry*
-    (remhash pointer *fn-registry*)))
+    (remhash (cffi:pointer-address pointer) *fn-registry*)))
 
 (defun split-usec-time (time-s)
   "Given a second value, ie 3.67, return the number of seconds as the first
