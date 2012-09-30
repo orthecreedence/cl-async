@@ -1,5 +1,5 @@
 (asdf:defsystem cl-async
-  :depends-on (#:cffi #:libevent2 #:babel)
+  :depends-on (#:cffi #:libevent2 #:babel #:cl-ppcre)
   :components
   ((:file "package")
    (:file "common" :depends-on ("package"))
