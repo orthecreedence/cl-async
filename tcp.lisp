@@ -59,6 +59,15 @@
         (setf (cffi:mem-aref data-c :unsigned-char i) (aref data i)))
       (le::evbuffer-add evbuffer data-c (length data)))))
 
+(defun drain-evbuffer (evbuffer)
+  "Grab all data in an evbuffer and put it into a byte array (returned)."
+  (let ((body (make-array 0 :element-type '(unsigned-byte 8))))
+    (read-socket-data evbuffer
+                      (lambda (data)
+                        (setf body (append-array body data :element-type '(unsigned-byte 8))))
+                      :socket-is-evbuffer t)
+    body))
+
 (cffi:defcallback tcp-read-cb :void ((bev :pointer) (event-base :pointer))
   "Called whenever a read event happens on a TCP socket. Ties into the anonymous
    callback system to run user-specified anonymous callbacks on read events."
