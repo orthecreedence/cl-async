@@ -27,7 +27,7 @@
         (callbacks (if (listp callbacks)
                        callbacks
                        (list callbacks))))
-    (setf (gethash (cffi:pointer-address pointer) *fn-registry*) callbacks)))
+    (setf (gethash pointer *fn-registry*) callbacks)))
 
 (defun get-callbacks (pointer)
   "Get all callbacks for the given object (pointer)."
@@ -43,7 +43,7 @@
     (let ((pointer (if (cffi:pointerp pointer)
                        (cffi:pointer-address pointer)
                        pointer)))
-      (remhash (cffi:pointer-address pointer) *fn-registry*))))
+      (remhash pointer *fn-registry*))))
 
 (defun split-usec-time (time-s)
   "Given a second value, ie 3.67, return the number of seconds as the first
