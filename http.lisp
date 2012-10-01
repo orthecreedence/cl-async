@@ -130,17 +130,13 @@
                                          :body body)))
         (funcall request-cb http-request)))))
 
-(cffi:defcallback http-client-cb :void ((request :pointer) (arg :pointer))
+(cffi:defcallback http-client-cb :void ((request :pointer) (connection :pointer))
   "HTTP client callback. All client HTTP requests come through here, get
    processed, and send off to either the fail-cb (in case of connection error)
    or to the request-cb for everything else (even HTTP errors are sent through)."
-  (let* ((callbacks (get-callbacks arg))
+  (let* ((callbacks (get-callbacks connection))
          (request-cb (getf callbacks :request-cb))
-         (fail-cb (getf callbacks :fail-cb))
-         (conn (le:evhttp-request-get-connection request)))
-    ;; free the connection if it exists
-    (unless (cffi:null-pointer-p conn) (le:evhttp-connection-free conn))
-
+         (fail-cb (getf callbacks :fail-cb)))
     ;; if the conneciton timed out/was refused, call the error CB
     (cond
       ;; timeout
@@ -149,14 +145,17 @@
       ;; connection refused
       ((eq (le:evhttp-request-get-response-code request) 0)
        (funcall fail-cb :connection-refused))
-      ;; got response back, send off to request-cb
+      ;; got response back, parse and send off to request-cb
       (t
        (let ((status (le:evhttp-request-get-response-code request))
              (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
              (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
          ;; This segfaults *sometimes* so are we not supposed to call this?
          ;(le:evhttp-request-free request)
-         (funcall request-cb status headers body))))))
+         (funcall request-cb status headers body)))))
+  ;; free the connection if it exists
+  (unless (cffi:null-pointer-p connection)
+    (le:evhttp-connection-free connection)))
 
 (defun lookup-status-text (status-code)
   "Get the HTTP standard text that goes along with a status code."
