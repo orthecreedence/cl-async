@@ -16,7 +16,7 @@
                        (('le::tv-sec time-sec)
                         ('le::tv-usec time-usec))
       (let* ((pointer (cffi:foreign-alloc :char :count 0))
-             (ev (le::event-new *event-base* -1 0 (cffi:callback timer-cb) pointer)))
+             (ev (le:event-new *event-base* -1 0 (cffi:callback timer-cb) pointer)))
         (save-callbacks pointer callback)
-        (le::event-add ev time-c)))))
+        (le:event-add ev time-c)))))
 
