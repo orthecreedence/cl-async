@@ -62,16 +62,46 @@
   (clear-callbacks http-base))
 
 (defun get-method (enum)
+  "Given a libevent EVHTTP_REQ enum key word, return the appropriate method
+   string."
   (case enum
     (:+evhttp-req-get+ "GET")
     (:+evhttp-req-post+ "POST")
     (:+evhttp-req-head+ "HEAD")
     (:+evhttp-req-put+ "PUT")
     (:+evhttp-req-delete+ "DELETE")
-    (:+evhttp-req-options "OPTIONS")
+    (:+evhttp-req-options+ "OPTIONS")
     (:+evhttp-req-trace+ "TRACE")
     (:+evhttp-req-connect+ "CONNECT")
     (:+evhttp-req-patch+ "PATCH")))
+
+(defun get-method-reverse (method)
+  "Given a method string, return the appropriate enum value for the libevent
+   type."
+  (case (cond
+          ((stringp method) (read-from-string method))
+          ((symbolp method) method))
+    (GET :+evhttp-req-get+)
+    (POST :+evhttp-req-post+)
+    (HEAD :+evhttp-req-head+)
+    (PUT :+evhttp-req-put+)
+    (DELETE :+evhttp-req-delete+)
+    (OPTIONS :+evhttp-req-options+)
+    (TRACE :+evhttp-req-trace+)
+    (CONNECT :+evhttp-req-connect+)
+    (PATCH :+evhttp-req-patch+)
+    (t :+evhttp-req-get+)))
+
+(defun http-get-headers (http-headers)
+  "Pull the headers out of an HTTP request as a plist."
+  (let ((header-ptr (le-a:evkeyvalq-thq-first http-headers))
+        (headers nil))
+    (loop while (not (cffi:null-pointer-p header-ptr)) do
+      (let ((key (le-a:evkeyval-key header-ptr))
+            (val (le-a:evkeyval-value header-ptr)))
+        (push (cons key val) headers)
+        (setf header-ptr (le-a:evkeyval-next header-ptr))))
+    headers))
 
 (cffi:defcallback http-request-cb :void ((request :pointer) (http-base :pointer))
   "ALL HTTP requests come through here. They are processed into the http-request
@@ -86,36 +116,36 @@
            (find-q (position #\? uri))
            (resource (if find-q (subseq uri 0 find-q)))
            (querystring (if find-q (subseq uri (1+ find-q)) ""))
-           (body (make-array 0 :element-type '(unsigned-byte 8))))
+           (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
+           (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
+      ;; grab the headers and build the final request object, then pass it into
+      ;; the callback
+      (let ((http-request (make-instance 'http-request
+                                         :c request
+                                         :method method
+                                         :uri uri
+                                         :resource resource
+                                         :querystring querystring
+                                         :headers headers
+                                         :body body)))
+        (funcall request-cb http-request)))))
 
-      ;; populate the body array. reads all input data from the HTTP stream,
-      ;; and this byte array is set directly into the request class. the app can
-      ;; turn it into a string if it wants, but we don't make any assumptions
-      ;; here.
-      (read-socket-data (le:evhttp-request-get-input-buffer request)
-                        (lambda (data)
-                          (setf body (append-array body data :element-type '(unsigned-byte 8))))
-                        :socket-is-evbuffer t)
-
-      ;; parse the headers
-      (let ((header-ptr (le-a:evkeyvalq-thq-first (le:evhttp-request-get-input-headers request)))
-            (headers nil))
-        (loop while (not (cffi:null-pointer-p header-ptr)) do
-          (let ((key (le-a:evkeyval-key header-ptr))
-                (val (le-a:evkeyval-value header-ptr)))
-            (push (cons key val) headers)
-            (setf header-ptr (le-a:evkeyval-next header-ptr))))
-
-        ;; build the final request object and send it into the request callback
-        (let ((http-request (make-instance 'http-request
-                                           :c request
-                                           :method method
-                                           :uri uri
-                                           :resource resource
-                                           :querystring querystring
-                                           :headers headers
-                                           :body body)))
-          (funcall request-cb http-request))))))
+(cffi:defcallback http-client-cb :void ((request :pointer) (arg :pointer))
+  (let* ((callbacks (get-callbacks arg))
+         (request-cb (getf callbacks :request-cb))
+         (fail-cb (getf callbacks :fail-cb)))
+    (cond
+      ((cffi:null-pointer-p request)
+       (funcall fail-cb :timeout))
+      ((eq (le:evhttp-request-get-response-code request) 0)
+       (funcall fail-cb :connection-refused))
+      (t
+       (let ((status (le:evhttp-request-get-response-code request))
+             (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
+             (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
+         ;(le:evhttp-request-free request)
+         (funcall request-cb status headers body))))
+    (error "sexrobot")))
 
 (defun lookup-status-text (status-code)
   "Get the HTTP standard text that goes along with a status code."
@@ -201,7 +231,7 @@
 
 (defparameter *url-scanner*
   (cl-ppcre:create-scanner
-    "^([a-z]+)://(([a-z0-9-]+):([a-z0-9-]+)@)?([^/:]+)(:([0-9]+))?(/.*)$"
+    "^([a-z]+)://(([\\w-]+):([\\w-]+)@)?([^/:\?]+)(:([0-9]+))?((/|\\?).*)?$"
     :case-insensitive-mode t)
   "Scanner that splits URLs into their multiple parts. A bit sloppy abd general,
    but works great for it's purpose.")
@@ -230,12 +260,37 @@
               :password pass
               :host host
               :port (if port (read-from-string port) 80)
-              :resource resource)))))
+              :resource (if resource resource "/"))))))
 
-(defun http-client (uri &key (method "GET") headers body)
+(defun http-client (uri request-cb fail-cb &key (method 'GET) headers body timeout)
+  "Asynchronously contact an HTTP server. Allows passing of method, headers, and
+   body. If host is not present in the headers, it is set from the hostname (if
+   given) in the URI. Also supports setting a timeout."
   (check-event-loop-running)
-  (let ((dns-base (le:evdns-base-new *event-base* 1)))
-  (let ((request (le:evhttp-connection-base-new *event-base* 
+  (let* ((parsed-uri (parse-uri uri))
+         (host (getf parsed-uri :host))
+         (dns-base (if (is-hostname host)
+                       (le:evdns-base-new *event-base* 1)
+                       -1))
+         (connection (le:evhttp-connection-base-new *event-base*
+                                                    dns-base
+                                                    host
+                                                    (getf parsed-uri :port 80)))
+         (request (le:evhttp-request-new (cffi:callback http-client-cb) connection)))
+    (save-callbacks connection (list :request-cb request-cb :fail-cb fail-cb))
+    (when (numberp timeout)
+      (le:evhttp-connection-set-timeout connection timeout))
+    (let ((host-set nil)
+          (header-ptr (le:evhttp-request-get-output-headers request)))
+      (dolist (header headers)
+        (le:evhttp-add-header header-ptr (car header) (cdr header))
+        (when (string= (string-downcase (car header)) "host")
+          (setf host-set t)))
+      (unless host-set
+        (le:evhttp-add-header header-ptr "Host" host)))
+    (when body
+      (write-socket-data (le:evhttp-request-get-output-buffer request) body :socket-is-evbuffer t))
+    (le:evhttp-make-request connection request (get-method-reverse method) (getf parsed-uri :resource))))
 
 (defun http-server (bind port request-cb fail-cb)
   "Start an HTTP server. If `bind` is nil, it bind to 0.0.0.0."
