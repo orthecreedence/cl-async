@@ -41,6 +41,16 @@
 	(#.(lispify "thq_first" 'slotname) :pointer)
 	(#.(lispify "thq_last" 'slotname) :pointer))
 
+(cffi:defcstruct #.(lispify "evutil_addrinfo" 'classname)
+	(#.(lispify "ai_flags" 'slotname) :int)
+	(#.(lispify "ai_family" 'slotname) :int)
+	(#.(lispify "ai_socktype" 'slotname) :int)
+	(#.(lispify "ai_protocol" 'slotname) :int)
+	(#.(lispify "ai_addrlen" 'slotname) :unsigned-int)
+	(#.(lispify "ai_canonname" 'slotname) :string)
+	(#.(lispify "ai_addr" 'slotname) :pointer)
+	(#.(lispify "ai_next" 'slotname) :pointer))
+
 (cl:defconstant #.(lispify "_EVENT_HAVE_FCNTL_H" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_GETTIMEOFDAY" 'constant) 1)

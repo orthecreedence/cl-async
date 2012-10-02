@@ -49,6 +49,17 @@ struct evkeyvalq {
     struct evkeyval **thq_last;
 };
 
+struct evutil_addrinfo {
+    int     ai_flags;     /* AI_PASSIVE, AI_CANONNAME, AI_NUMERICHOST */
+    int     ai_family;    /* PF_xxx */
+    int     ai_socktype;  /* SOCK_xxx */
+    int     ai_protocol;  /* 0 or IPPROTO_xxx for IPv4 and IPv6 */
+    size_t  ai_addrlen;   /* length of ai_addr */
+    char   *ai_canonname; /* canonical name for nodename */
+    struct sockaddr  *ai_addr; /* binary address */
+    struct evutil_addrinfo  *ai_next; /* next structure in linked list */
+};
+
 %include "/usr/local/libevent/include/event2/event-config.h"
 %include "/usr/local/libevent/include/event2/util.h"
 
