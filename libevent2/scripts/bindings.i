@@ -12,6 +12,9 @@
 #define AF_UNSPEC   0
 #define AF_UNIX 1
 #define AF_INET 2
+#define AF_INET6 23
+#define SOCK_STREAM 1
+#define IPPROTO_TCP 6
 
 typedef unsigned int size_t;
 

@@ -14,6 +14,12 @@
 
 (cl:defconstant #.(lispify "AF_INET" 'constant) 2)
 
+(cl:defconstant #.(lispify "AF_INET6" 'constant) 23)
+
+(cl:defconstant #.(lispify "SOCK_STREAM" 'constant) 1)
+
+(cl:defconstant #.(lispify "IPPROTO_TCP" 'constant) 6)
+
 (cffi:defcstruct #.(lispify "timeval" 'classname)
 	(#.(lispify "tv_sec" 'slotname) :long)
 	(#.(lispify "tv_usec" 'slotname) :long))
