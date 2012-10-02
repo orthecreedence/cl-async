@@ -280,6 +280,42 @@ are *not* decoded by `http-server`. As such, it is currently up to your app to
 do this. *This may change in the future* and if so, I will do my best to make the
 change backwards compatible.
 
+Event callbacks (and error handling in general)
+-----------------------------------------------
+Any parameter labelled event-cb or fail-cb is what's known as an "event
+callback." Event callbacks have one argument: a condition describing the event
+that caused them to be invoked. Originally event callbacks were failure 
+callbacks, but since non-failure conditions are sometimes useful to an app, it
+made sense to make it more generic.
+
+The event conditions generally match conditions in libevent, although they try
+to be as informative as possible. Note that conditions are not actually thrown,
+but rather instantiated via `make-instance` and passed directly to the event
+callback.
+
+- [connection-info](#connection-info)
+- [connection-error](#connection-error)
+- [connection-eof](#connection-eof)
+- [connection-timeout](#connection-timeout)
+- [connection-refused](#connection-refused)
+- [connection-dns-error](#connection-dns-error)
+- [http-connection-timeout](#http-connection-timeout)
+- [http-connection-refused](#http-connection-refused)
+
+### connection-info
+This is the base condition for any connection event. Any other connection
+condition extends it.
+
+##### conn-fd
+Pulls the connection file descriptor out of a connection-info condition. This is
+not necessarily useful to an application, but may be used internally for the
+tracking and cleaning of verious object. Exposed to the API since there are
+instances where it could be useful.
+
+### connection-error
+Base connection error condition. Anything considered an error happening on a
+connection will extend this condition.
+
 Examples
 --------
 Some limited examples are outlined above, but I learn by example, not reading

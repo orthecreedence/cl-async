@@ -1,6 +1,10 @@
 (defpackage :cl-async
   (:use :cl)
-  (:export #:enable-threading-support
+  (:export #:conn-fd
+           #:conn-errcode
+           #:conn-errmsg
+           
+           #:enable-threading-support
            ;#:enable-debug-mode
            #:start-event-loop
            #:event-loop-exit
