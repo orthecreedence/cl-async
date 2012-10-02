@@ -317,6 +317,7 @@ instances where it could be useful.
 
 ### connection-error
 _extends [connection-info](#connection-info)_
+
 Base connection error condition. Anything considered an error happening on a
 connection will extend this condition. Most of the time, will contain an error
 code and error message. 
@@ -335,7 +336,36 @@ is -1, then this string will be a cl-async description of the error instead of
 a system-supplied description.
 
 ### connection-eof
+_extends [connection-info](#connection-info)_
 
+Describes the condition when the peer closes a connection.
+
+### connection-timeout
+_extends [connection-error](#connection-error)_
+
+Describes the condition when a connection has timed out either connecting or
+waiting for a read/write.
+
+### connection-refused
+_extends [connection-error](#connection-error)_
+
+Describes the condition when a connection has been refused by the peer.
+
+### connection-dns-error
+_extends [connection-error](#connection-error)_
+
+Describes the condition when a DNS lookup has failed.
+
+### http-connection-timeout
+_extends [connection-timeout](#connection-timeout)_
+
+Describes the condition when an HTTP connection has timed out either connecting
+or waiting for a read/write.
+
+### http-connection-refused
+_extends [connection-refused](#connection-refused)_
+
+Describes the condition when an HTTP connection has been refused by the peer.
 
 Examples
 --------
