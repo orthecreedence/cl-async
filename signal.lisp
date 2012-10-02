@@ -18,5 +18,5 @@
     ;; cleanup
     (add-event-loop-exit-callback (lambda ()
                                     (le:event-del ev)
-                                    (clear-callbacks (signal-name signo))))))
+                                    (clear-object-attachments (signal-name signo))))))
 

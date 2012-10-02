@@ -67,7 +67,7 @@
 (defun free-http-base (http-base)
   "Free an HTTP server object and clear any callbacks associated with it."
   (le:evhttp-free http-base)
-  (clear-callbacks http-base))
+  (clear-object-attachments http-base))
 
 (defun get-method (enum)
   "Given a libevent EVHTTP_REQ enum key word, return the appropriate method
@@ -143,27 +143,30 @@
    processed, and send off to either the fail-cb (in case of connection error)
    or to the request-cb for everything else (even HTTP errors are sent through)."
   (let* ((callbacks (get-callbacks connection))
+         (dns-base (deref-data-from-pointer connection))
          (request-cb (getf callbacks :request-cb))
          (fail-cb (getf callbacks :fail-cb)))
-    ;; if the conneciton timed out/was refused, call the error CB
-    (cond
-      ;; timeout
-      ((cffi:null-pointer-p request)
-       (funcall fail-cb (make-instance 'http-connection-timeout :connection connection)))
-      ;; connection refused
-      ((eq (le:evhttp-request-get-response-code request) 0)
-       (funcall fail-cb (make-instance 'http-connection-refused :connection connection)))
-      ;; got response back, parse and send off to request-cb
-      (t
-       (let ((status (le:evhttp-request-get-response-code request))
-             (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
-             (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
-         ;; This segfaults *sometimes* so are we not supposed to call this?
-         ;(le:evhttp-request-free request)
-         (funcall request-cb status headers body)))))
-  ;; free the connection if it exists
-  (unless (cffi:null-pointer-p connection)
-    (le:evhttp-connection-free connection)))
+    (unwind-protect
+      (cond
+        ;; timeout
+        ((cffi:null-pointer-p request)
+         (funcall fail-cb (make-instance 'http-connection-timeout :connection connection)))
+        ;; connection refused
+        ((eq (le:evhttp-request-get-response-code request) 0)
+         (funcall fail-cb (make-instance 'http-connection-refused :connection connection)))
+        ;; got response back, parse and send off to request-cb
+        (t
+         (let ((status (le:evhttp-request-get-response-code request))
+               (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
+               (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
+           ;; This segfaults *sometimes* so are we not supposed to call this?
+           ;(le:evhttp-request-free request)
+           (funcall request-cb status headers body))))
+      (free-dns-base dns-base)
+      (clear-object-attachments connection)
+      ;; free the connection if it exists
+      (unless (cffi:null-pointer-p connection)
+        (le:evhttp-connection-free connection)))))
 
 (defun lookup-status-text (status-code)
   "Get the HTTP standard text that goes along with a status code."
@@ -288,14 +291,15 @@
   (let* ((parsed-uri (parse-uri uri))
          (host (getf parsed-uri :host))
          (dns-base (if (ip-address-p host)
-                       (le:evdns-base-new *event-base* 1)
-                       -1))
+                       -1
+                       (le:evdns-base-new *event-base* 1)))
          (connection (le:evhttp-connection-base-new *event-base*
                                                     dns-base
                                                     host
                                                     (getf parsed-uri :port 80)))
          (request (le:evhttp-request-new (cffi:callback http-client-cb) connection)))
     (save-callbacks connection (list :request-cb request-cb :fail-cb fail-cb))
+    (attach-data-to-pointer connection dns-base)
     (when (numberp timeout)
       (le:evhttp-connection-set-timeout connection timeout))
     (let ((host-set nil)
@@ -311,7 +315,7 @@
     (le:evhttp-make-request connection request (get-method-reverse method) (getf parsed-uri :resource))))
 
 (defun http-server (bind port request-cb fail-cb)
-  "Start an HTTP server. If `bind` is nil, it bind to 0.0.0.0."
+  "Start an HTTP server. If `bind` is nil, it bind to 0.0.0.0"
   (check-event-loop-running)
   (let ((http-base (le:evhttp-new *event-base*)))
     (when (eq http-base 0)

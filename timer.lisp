@@ -5,7 +5,9 @@
    callbacks on timer events."
   (declare (ignore fd what))
   (let ((cb (car (get-callbacks data))))
-    (when cb (funcall cb))))
+    (unwind-protect
+      (when cb (funcall cb))
+      (clear-object-attachments data))))
 
 (defun timer (time-s callback)
   "Run a function, asynchronously, after the specified amount of seconds. An

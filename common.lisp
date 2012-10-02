@@ -4,8 +4,33 @@
   "THE event base (libevent) used to process all async operations.")
 (defvar *fn-registry* nil
   "Function registry, allows the CFFI callbacks to run anonymous functions.")
+(defvar *data-registry* nil
+  "Data registry, gives CFFI callbacks access to anonymous data.")
 (defvar *event-loop-end-functions* nil
   "Functions to call when the event loop closes")
+
+(define-condition connection-info ()
+  ((connection :initarg :connection :reader conn-fd :initform nil))
+  (:report (lambda (c s) (format s "Connection info: ~a~%" (conn-fd c))))
+  (:documentation "Describes the base condition for any action on a connection."))
+
+(define-condition connection-eof (connection-info) ()
+  (:report (lambda (c s) (format s "Connection EOF: ~a~%" (conn-fd c))))
+  (:documentation "Passed to a failure callback when a peer closes the connection."))
+
+(define-condition connection-error (connection-info)
+  ((code :initarg :code :reader conn-errcode :initform 0)
+   (msg :initarg :msg :reader conn-errmsg :initform nil))
+  (:report (lambda (c s) (format s "Connection error: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
+  (:documentation "Describes a general connection error."))
+
+(define-condition connection-timeout (connection-error) ()
+  (:report (lambda (c s) (format s "Connection timeout: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
+  (:documentation "Passed to a failure callback when a connection times out."))
+
+(define-condition connection-refused (connection-error) ()
+  (:report (lambda (c s) (format s "Connection refused: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
+  (:documentation "Passed to a failure callback when a connection is refused."))
 
 (defmacro make-foreign-type ((var type &key initial) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
@@ -45,6 +70,36 @@
                        pointer)))
       (remhash pointer *fn-registry*))))
 
+(defun attach-data-to-pointer (pointer data)
+  "Attach a lisp object to a foreign pointer."
+  (unless *data-registry*
+    (setf *data-registry* (make-hash-table :test #'eql)))
+  (let ((pointer (if (cffi:pointerp pointer)
+                     (cffi:pointer-address pointer)
+                     pointer)))
+    (setf (gethash pointer *data-registry*) data)))
+
+(defun deref-data-from-pointer (pointer)
+  "Grab data attached to a CFFI pointer."
+  (when *data-registry*
+    (let ((pointer (if (cffi:pointerp pointer)
+                       (cffi:pointer-address pointer)
+                       pointer)))
+      (gethash pointer *data-registry*))))
+
+(defun clear-pointer-data (pointer)
+  "Clear the data attached to a CFFI pointer."
+  (when *data-registry*
+    (let ((pointer (if (cffi:pointerp pointer)
+                       (cffi:pointer-address pointer)
+                       pointer)))
+      (remhash pointer *data-registry*))))
+
+(defun clear-object-attachments (pointer)
+  "Clears out all data attached to a foreign pointer."
+  (clear-callbacks pointer)
+  (clear-pointer-data pointer))
+
 (defun split-usec-time (time-s)
   "Given a second value, ie 3.67, return the number of seconds as the first
    value and the number of usecs for the second value."
@@ -79,20 +134,74 @@
   (unless *event-base*
     (error "Event loop not running. Start with function start-event-loop.")))
 
-(defun start-event-loop (start-fn)
-  "Simple wrapper function that starts an event loop which runs the given
-   callback, most likely to init your server/client."
+(cffi:defcallback fatal-cb :void ((err :int))
+  "Used to handle fatal libevent errors."
+  (let ((fatal-cb (getf (get-callbacks *event-base*) :fatal-cb)))
+    (when fatal-cb
+      (funcall fatal-cb err))))
+
+(cffi:defcallback logger-cb :void ((severity :int) (msg :string))
+  "Used to catch log messages (if setup in start-event-loop)."
+  (let ((logger-cb (getf (get-callbacks *event-base*) :logger-cb)))
+    (when logger-cb
+      (funcall logger-cb severity msg))))
+
+(defun enable-debug-mode ()
+  "Enable debug mode. As far as I can tell, this is undoable, so you may have to
+   restart your CL implementation after calling if you want to disable it.
+
+   NOTE: This appears to make libevent exit suddenly after creating a second
+   event loop for some reason. I recommend *not* using this function until I
+   figure out debug omde a bit more."
   (if *event-base*
-      (error "Event loop already started. Please wait for it to exit.")
-      (let ((*event-base* (le:event-base-new)))
-        (timer 0.0 start-fn)
-        (unwind-protect
-          (progn
-            ;; this will block until all events are processed
-            (le:event-base-dispatch *event-base*))
-          (process-event-loop-exit-callbacks)
-          (le:event-base-free *event-base*)
-          (setf *event-base* nil)))))
+      (error "Debug mode must be enabled *before* an event loop has started.")
+      (le:event-enable-debug-mode)))
+
+(defun enable-threading-support ()
+  "Enable threading support in libevent. This attempts to guess which threading
+   function of libevent's to use and call it.
+
+   Experimental, only supports pthreads or Windows."
+  (let ((use-pthreads (cffi:foreign-symbol-pointer "evthread_use_pthreads"))
+        (use-win-threads (cffi:foreign-symbol-pointer "evthread_use_windows_threads")))
+    (cond
+      (use-pthreads
+        (cffi:foreign-funcall-pointer use-pthreads () :void))
+      (use-win-threads
+        (cffi:foreign-funcall-pointer use-win-threads () :void)))))
+
+(defun start-event-loop (start-fn &key fatal-cb logger-cb)
+  "Simple wrapper function that starts an event loop which runs the given
+   callback, most likely to init your server/client.
+
+   Supports setting up a callback for fatal errors. In case you don't want
+   libevent to just exit your app for you.
+
+   Supports setting up a logging callback for your application.
+
+   *PLEASE NOTE* Using libevent functions from within the logging callback can
+   lead to strange bugs and problems. Don't do it."
+  (when *event-base*
+    (error "Event loop already started. Please wait for it to exit."))
+  (let ((*event-base* (le:event-base-new))
+        (callbacks nil))
+    ;; set up a callback for dealing with fatal errors
+    (when fatal-cb
+      (setf callbacks (append callbacks (list :fatal-cb fatal-cb)))
+      (le:event-set-fatal-callback (cffi:callback fatal-cb)))
+    ;; set up the logging callback if we were passed one
+    (when logger-cb
+      (setf callbacks (append callbacks (list :logger-cb logger-cb)))
+      (le:event-set-log-callback (cffi:callback logger-cb)))
+    (timer 0.0 start-fn)
+    (save-callbacks *event-base* callbacks)
+    (unwind-protect
+      (progn
+        ;; this will block until all events are processed
+        (le:event-base-dispatch *event-base*))
+      (process-event-loop-exit-callbacks)
+      (le:event-base-free *event-base*)
+      (setf *event-base* nil))))
 
 (defun event-loop-exit ()
   "Exit the event loop if running."

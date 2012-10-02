@@ -6,33 +6,6 @@
 (defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in))
   "Really no sense in computing this OVER AND OVER.")
 
-(define-condition connection-info ()
-  ((connection :initarg :connection :reader conn-fd :initform nil))
-  (:report (lambda (c s) (format s "Connection info: ~a~%" (conn-fd c))))
-  (:documentation "Describes the base condition for any action on a connection."))
-
-(define-condition connection-eof (connection-info) ()
-  (:report (lambda (c s) (format s "Connection EOF: ~a~%" (conn-fd c))))
-  (:documentation "Passed to a failure callback when a peer closes the connection."))
-
-(define-condition connection-error (connection-info)
-  ((code :initarg :code :reader conn-errcode :initform 0)
-   (msg :initarg :msg :reader conn-errmsg :initform nil))
-  (:report (lambda (c s) (format s "Connection error: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
-  (:documentation "Describes a general connection error."))
-
-(define-condition connection-timeout (connection-error) ()
-  (:report (lambda (c s) (format s "Connection timeout: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
-  (:documentation "Passed to a failure callback when a connection times out."))
-
-(define-condition connection-refused (connection-error) ()
-  (:report (lambda (c s) (format s "Connection refused: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
-  (:documentation "Passed to a failure callback when a connection is refused."))
-
-(define-condition connection-dns-error (connection-error) ()
-  (:report (lambda (c s) (format s "Connection DNS error: ~a~%" (conn-df c))))
-  (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
-
 (defun get-last-tcp-err ()
   "Since libevent provides a macro but not a function for getting the last error
    code, we have to essentially rebuild that macro here.
@@ -51,14 +24,16 @@
               (cffi:foreign-funcall "strerror" :int code :string))))
 
 (defun close-socket (bev)
-  "Free a socket and clear out all associated data."
-  (clear-callbacks bev)
-  (le:evutil-closesocket (le:bufferevent-getfd bev))
-  (le:bufferevent-free bev))
+  "Free a socket (bufferevent) and clear out all associated data."
+  (clear-object-attachments bev)
+  (le:bufferevent-disable bev (logior le:+ev-read+ le:+ev-write+))
+  (let ((fd (le:bufferevent-getfd bev)))
+    (le:bufferevent-free bev)
+    (le:evutil-closesocket fd)))
 
 (defun free-listener (listener)
   "Free a socket listener and all associated data."
-  (clear-callbacks listener)
+  (clear-object-attachments listener)
   (le:evconnlistener-free listener))
 
 (defun set-socket-timeouts (socket read-sec write-sec)
@@ -129,6 +104,7 @@
   (declare (ignore event-base))
   (let ((err nil)
         (connection (le:bufferevent-getfd bev))
+        (dns-base (deref-data-from-pointer bev))
         (fail-cb (getf (get-callbacks bev) :fail-cb)))
     (unwind-protect
       (cond
@@ -156,7 +132,7 @@
         ((< 0 (logand events le:+bev-event-eof+))
          (setf err (make-instance 'connection-eof :connection connection)))
         ((< 0 (logand events le:+bev-event-connected+))
-         nil))
+         (free-dns-base dns-base)))
       (when err
         (unwind-protect
           (when fail-cb (funcall fail-cb err))
@@ -221,18 +197,17 @@
     (unless bev-exists-p
       ;; connect the socket
       (if (ip-address-p host)
-          ;; spawn a DNS base and do an async lookup
-          (let ((dns-base (le:evdns-base-new *event-base* 1)))
-            (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port))
-
           ;; got an IP so just connect directly
           (make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
                              (('le::sin-family le:+af-inet+)
                               ('le::sin-port (cffi:foreign-funcall "htons" :int port :unsigned-short))
                               ('le::sin-addr (cffi:foreign-funcall "inet_addr" :string host :unsigned-long)))
-            (le:bufferevent-socket-connect bev
-                                            sockaddr
-                                            +sockaddr-size+))))))
+            (le:bufferevent-socket-connect bev sockaddr +sockaddr-size+))
+
+          ;; spawn a DNS base and do an async lookup
+          (let ((dns-base (le:evdns-base-new *event-base* 1)))
+            (attach-data-to-pointer bev dns-base)
+            (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port))))))
 
 (defun tcp-server (bind-address port read-cb fail-cb)
   "Start a TCP listener on the current event loop."

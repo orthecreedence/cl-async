@@ -1,9 +1,14 @@
 (defpackage :cl-async
   (:use :cl)
-  (:export #:start-event-loop
+  (:export #:enable-threading-support
+           ;#:enable-debug-mode
+           #:start-event-loop
            #:event-loop-exit
 
            #:timer
+
+           #:free-dns-base
+           #:dns-lookup
 
            #:connection-info
            #:connection-eof
