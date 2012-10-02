@@ -17,7 +17,7 @@ Usage
 -----
 You can use cl-async with the prefixes `cl-async:` or `as:`.
 
-### *function* start-event-loop
+### <small>function</small> start-event-loop
 Start the event loop, giving a function that will be run inside the event loop
 once started. This function blocks the main thread until the event loop returns,
 which doesn't happen until the loop is empty *or* `(event-loop-exit)` is called
@@ -31,14 +31,14 @@ inside the loop.
 
 _The following functions assume an event loop is started and running._
 
-### *function* event-loop-exit
+### <small>function</small> event-loop-exit
 Exit the event loop. This will free up all resources internally and close down
 the event loop.
 
     ;; definition
     (event-loop-exit)
 
-### *function* timer
+### <small>function</small> timer
 Run a function after a specified amount of time (in seconds, decimals OK):
 
     ;; definition:
@@ -47,7 +47,7 @@ Run a function after a specified amount of time (in seconds, decimals OK):
     ;; example:
     (timer 3.2 (lambda () (format t "I ran! (3.2 seconds later)~%")))
 
-### *function* tcp-send
+### <small>function</small> tcp-send
 Open an asynchronous TCP connection to a host (IP or hostname) and port, once
 connected send the given data (byte array or string) and process any response
 with the given read callback. Also supports timing out after no data is read /
@@ -79,7 +79,7 @@ The callbacks are as follows:
     ;; error callback
     (lambda (socket errors) ...)
 
-### *function* tcp-server
+### <small>function</small> tcp-server
 Bind an asynchronous listener to the given bind address/port and start accepting
 connections on it. It takes read and failure callbacks (like [tcp-send](#tcp-send)).
 If `nil` is passed into the bind address, it effectively binds the listener to
@@ -95,7 +95,7 @@ If `nil` is passed into the bind address, it effectively binds the listener to
 
 Read/failure callbacks take the same arguments as the [tcp-send](#tcp-send) function.
 
-### *function* write-socket-data
+### <small>function</small> write-socket-data
 Write data to an existing socket (such as one passed into a read-cb). Data can
 be a byte array or string (converted to a byte array via babel).
 
@@ -107,7 +107,7 @@ be a byte array or string (converted to a byte array via babel).
       ...
       (write-socket-data socket "thxlol"))
 
-### *function* set-socket-timeouts
+### <small>function</small> set-socket-timeouts
 Set the read/write timeouts (in seconds) on a socket. If nil, the timeout is
 cleared, otherwise if a number, the timeout is set into the socket such that
 when the socket is active and hasn't been read from/written to in the specified
@@ -119,13 +119,13 @@ amount of time, it is closed.
     ;; example
     (set-socket-timeouts socket 10.5 nil)
 
-### *function* close-socket
+### <small>function</small> close-socket
 Close a socket and free its callbacks.
 
     ;; definition
     (close-socket socket)
 
-### *function* http-client
+### <small>function</small> http-client
 Asynchronously communicates with an HTTP server. Allows setting the method,
 headers, and body in the request which should be enough to make just about any
 HTTP request. This functionality wraps the libevent HTTP client.
@@ -148,7 +148,7 @@ The `timeout` arg is in seconds.
                  :headers '(("Accept" . "text/html"))
                  :timeout 5)
 
-### *function* http-server
+### <small>function</small> http-server
 Start a server that asynchronously processes HTTP requests. It takes data out of
 the request and populates the [http-request](#http-request) with it, which is
 passed into the request callback.
@@ -167,7 +167,7 @@ If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
                    (format t "Request: ~a~%" req)
                    (http-response req :body "hai")))
 
-### *function* http-response
+### <small>function</small> http-response
 This is the function called by the application using an [http-server](#http-server)
 after it is done processing a request. It takes the [http-request](#http-request)
 object passed into the request callback, along with some information about the
