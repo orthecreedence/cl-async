@@ -7,21 +7,22 @@
   "Really no sense in computing this OVER AND OVER.")
 
 (define-condition connection-error (error)
-  ((connection :initarg :connection :reader connection-error-connection :initform nil))
+  ((bufferevent :initarg :bufferevent :reader connection-error-bufferevent :initform nil)
+   (connection :initarg :connection :reader connection-error-connection :initform nil))
   (:report (lambda (c s) (format s "Connection error: ~a~%" (connection-error-connection c))))
   (:documentation "Describes a connection error. Meant to be extended."))
 
 (define-condition connection-timeout (connection-error) ()
-  (:report (lambda (c s) (format s "Connection timeout: ~a~%" (connection-error-connection c))))
+  (:report (lambda (c s) (format s "Connection timeout: ~a~%" (connection-error-bufferevent c))))
   (:documentation "Passed to a failure callback when a connection times out."))
 
 (define-condition connection-refused (connection-error) ()
-  (:report (lambda (c s) (format s "Connection refused: ~a~%" (connection-error-connection c))))
+  (:report (lambda (c s) (format s "Connection refused: ~a~%" (connection-error-bufferevent c))))
   (:documentation "Passed to a failure callback when a connection is refused."))
 
 (define-condition connection-dns-error (connection-error)
   ((msg :initarg :msg :reader connection-dns-error-msg :initform nil))
-  (:report (lambda (c s) (format s "Connection DNS error: ~a~%" (connection-error-connection c))))
+  (:report (lambda (c s) (format s "Connection DNS error: ~a~%" (connection-error-bufferevent c))))
   (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
 
 (defun close-socket (bev)
@@ -102,32 +103,27 @@
    callback system to track failures/disconnects."
   (cond
     ((< 0 (logand events le:+bev-event-connected+))
-     (format t " - Connect OK.~%"))
+     ;(format t " - Connect OK.~%")
+     )
     ((< 0 (logand events (logior le:+bev-event-error+
                                  le:+bev-event-eof+
                                  le:+bev-event-timeout+)))
-     (format t " - Closing: ")
-     (when (< 0 (logand events le:+bev-event-error+))
-       (let ((err (le:bufferevent-socket-get-dns-error bev)))
-         (when (not (zerop err))
-           (format t "Error: ~a" (le:evutil-gai-strerror err)))))
-     (when (< 0 (logand events le:+bev-event-timeout+))
-       (format t "Timeout"))
-     (when (< 0 (logand events le:+bev-event-eof+))
-       (format t "EOF"))
-     (format t "~%")
-     (close-socket bev)
-     (le:event-base-loopexit event-base (cffi:null-pointer))
-     (when (< 0 (logand events (logior le:+bev-event-error+
-                                       le:+bev-event-timeout+)))
-       (let ((fail-cb (getf (get-callbacks bev) :fail-cb))
-             (errors nil))
-         (when fail-cb
-           (dolist (err (list (cons le:+bev-event-error+ :err)
-                              (cons le:+bev-event-timeout+ :timeout)))
-             (when (logand events (car err))
-               (push (cdr err) errors)))
-           (funcall fail-cb bev errors)))))))
+     ;(format t " - Closing: ")
+     (let ((err nil))
+       (when (< 0 (logand events le:+bev-event-error+))
+         (let ((err (le:bufferevent-socket-get-dns-error bev)))
+           (when (not (zerop err))
+             (setf err (make-instance 'connection-dns-error
+                                      :bufferevent bev
+                                      :msg (le:evutil-gai-strerror err))))
+       (when (< 0 (logand events le:+bev-event-timeout+))
+         (setf err (make-instance 'connection-timeout :bufferevent bev)))
+       (when (< 0 (logand events le:+bev-event-eof+))
+         ;(format t "EOF")
+         )
+       ;(format t "~%")
+       (close-socket bev)
+       (when err (funcall fail-cb err))))))))
 
 (cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (ctx :pointer))
   "Called when a connection is accepted. Creates a bufferevent for the socket
@@ -160,10 +156,15 @@
     (format t "There was an error and I don't know how to get the code.~%")
     (le:event-base-loopexit event-base (cffi:null-pointer))))
 
-(defun is-hostname (host)
+(defparameter *ip-scanner*
+  (cl-ppcre:create-scanner
+    "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$"
+    :case-insensitive-mode t)
+  "Scanner that detects if a string is an IP.")
+
+(defun ip-address-p (host)
   "Determine if the given host is an IP or a hostname."
-  ;; TODO: implement
-  t)
+  (cl-ppcre:scan *ip-scanner* host))
 
 (defun tcp-send (host port data read-cb fail-cb &key ((:socket bev)) (read-timeout 30) (write-timeout 30))
   "Open a TCP connection asynchronously. An event loop must be running for this
@@ -182,7 +183,7 @@
     (format t "socket: ~s~%" (le:bufferevent-getfd bev))
     (unless bev-exists-p
       ;; connect the socket
-      (if (is-hostname host)
+      (if (ip-address-p host)
           ;; spawn a DNS base and do an async lookup
           (let ((dns-base (le:evdns-base-new *event-base* 1)))
             (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port))

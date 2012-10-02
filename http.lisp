@@ -9,6 +9,14 @@
 
 (in-package :cl-async)
 
+(define-condition http-connection-timeout (connection-timeout) ()
+  (:report (lambda (c s) (format s "HTTP connection timeout: ~a~%" (connection-error-connection c))))
+  (:documentation "Passed to a failure callback when an HTTP connection times out"))
+
+(define-condition http-connection-refused (connection-refused) ()
+  (:report (lambda (c s) (format s "HTTP connection refused: ~a~%" (connection-error-connection c))))
+  (:documentation "Passed to a failure callback when an HTTP connection is refused"))
+
 (defclass http-request ()
   ((req-obj :accessor http-request-c :initarg :c :initform nil :documentation
      "Holds the libevent evhttp request foreign pointer. Can be used to get more
@@ -141,10 +149,10 @@
     (cond
       ;; timeout
       ((cffi:null-pointer-p request)
-       (funcall fail-cb :timeout))
+       (funcall fail-cb (make-instance 'http-connection-timeout :connection connection)))
       ;; connection refused
       ((eq (le:evhttp-request-get-response-code request) 0)
-       (funcall fail-cb :connection-refused))
+       (funcall fail-cb (make-instance 'http-connection-refused :connection connection)))
       ;; got response back, parse and send off to request-cb
       (t
        (let ((status (le:evhttp-request-get-response-code request))
@@ -243,7 +251,7 @@
   (cl-ppcre:create-scanner
     "^([a-z]+)://(([\\w-]+):([\\w-]+)@)?([^/:\?]+)(:([0-9]+))?((/|\\?).*)?$"
     :case-insensitive-mode t)
-  "Scanner that splits URLs into their multiple parts. A bit sloppy abd general,
+  "Scanner that splits URLs into their multiple parts. A bit sloppy and general,
    but works great for it's purpose.")
 
 (defun parse-uri (uri)
@@ -279,7 +287,7 @@
   (check-event-loop-running)
   (let* ((parsed-uri (parse-uri uri))
          (host (getf parsed-uri :host))
-         (dns-base (if (is-hostname host)
+         (dns-base (if (ip-address-p host)
                        (le:evdns-base-new *event-base* 1)
                        -1))
          (connection (le:evhttp-connection-base-new *event-base*
