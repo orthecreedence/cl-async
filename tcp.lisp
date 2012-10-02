@@ -127,40 +127,47 @@
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
    callback system to track failures/disconnects."
   (declare (ignore event-base))
-  (cond
-    ((< 0 (logand events le:+bev-event-connected+))
-     nil)
-    ((< 0 (logand events (logior le:+bev-event-error+
-                                 le:+bev-event-eof+
-                                 le:+bev-event-timeout+)))
-     (unwind-protect
-       (multiple-value-bind (errcode errstr) (get-last-tcp-err)
-         (let ((err nil)
-               (connection (le:bufferevent-getfd bev))
-               (dns-err (le:bufferevent-socket-get-dns-error bev))
-               (fail-cb (getf (get-callbacks bev) :fail-cb)))
-           (cond
-             ;; DNS error
-             ((and (< 0 (logand events le:+bev-event-error+))
-                   (not (zerop dns-err)))
-              (setf err (make-instance 'connection-dns-error
-                                       :connection connection
-                                       :msg (le:evutil-gai-strerror dns-err))))
+  (let ((err nil)
+        (connection (le:bufferevent-getfd bev))
+        (fail-cb (getf (get-callbacks bev) :fail-cb)))
+    (unwind-protect
+      (cond
+        ((< 0 (logand events (logior le:+bev-event-error+
+                                     le:+bev-event-timeout+)))
+         (format t "ev cb: errr~%")
+         (multiple-value-bind (errcode errstr) (get-last-tcp-err)
+           (let ((dns-err (le:bufferevent-socket-get-dns-error bev)))
+             (cond
+               ;; DNS error
+               ((and (< 0 (logand events le:+bev-event-error+))
+                     (not (zerop dns-err)))
+                (format t "ev cb: dns~%")
+                (setf err (make-instance 'connection-dns-error
+                                         :connection connection
+                                         :msg (le:evutil-gai-strerror dns-err))))
 
-             ;; socket timeout
-             ((< 0 (logand events le:+bev-event-timeout+))
-              (setf err (make-instance 'connection-timeout :connection connection :code errcode :msg errstr)))
+               ;; socket timeout
+               ((< 0 (logand events le:+bev-event-timeout+))
+                (format t "ev cb: timeout~%")
+                (setf err (make-instance 'connection-timeout :connection connection :code errcode :msg errstr)))
 
-             ;; peer closed connection.
-             ((< 0 (logand events le:+bev-event-eof+))
-              (setf err (make-instance 'connection-eof :connection connection :code errcode :msg errstr)))
-
-             ;; since we don't know what the error was, just spawn a general
-             ;; error.
-             (t
-              (setf err (make-instance 'connection-error :connection connection :code errcode :msg errstr))))
-           (funcall fail-cb err)))
-       (close-socket bev)))))
+               ;; since we don't know what the error was, just spawn a general
+               ;; error.
+               (t
+                (format t "ev cb: generic socket err: ~a~%" errstr)
+                (setf err (make-instance 'connection-error :connection connection :code errcode :msg errstr)))))))
+        ;; peer closed connection.
+        ((< 0 (logand events le:+bev-event-eof+))
+         (format t "ev cb: EOF~%")
+         (setf err (make-instance 'connection-eof :connection connection)))
+        ((< 0 (logand events le:+bev-event-connected+))
+         (format t "ev cb: connected~%")
+         nil))
+      (format t "ERR: ~a~%" err)
+      (when err
+        (unwind-protect
+          (when fail-cb (funcall fail-cb err))
+          (close-socket bev))))))
 
 (cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (ctx :pointer))
   "Called when a connection is accepted. Creates a bufferevent for the socket
