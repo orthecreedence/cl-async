@@ -134,36 +134,29 @@
       (cond
         ((< 0 (logand events (logior le:+bev-event-error+
                                      le:+bev-event-timeout+)))
-         (format t "ev cb: errr~%")
          (multiple-value-bind (errcode errstr) (get-last-tcp-err)
            (let ((dns-err (le:bufferevent-socket-get-dns-error bev)))
              (cond
                ;; DNS error
                ((and (< 0 (logand events le:+bev-event-error+))
                      (not (zerop dns-err)))
-                (format t "ev cb: dns~%")
                 (setf err (make-instance 'connection-dns-error
                                          :connection connection
                                          :msg (le:evutil-gai-strerror dns-err))))
 
                ;; socket timeout
                ((< 0 (logand events le:+bev-event-timeout+))
-                (format t "ev cb: timeout~%")
                 (setf err (make-instance 'connection-timeout :connection connection :code errcode :msg errstr)))
 
                ;; since we don't know what the error was, just spawn a general
                ;; error.
                (t
-                (format t "ev cb: generic socket err: ~a~%" errstr)
                 (setf err (make-instance 'connection-error :connection connection :code errcode :msg errstr)))))))
         ;; peer closed connection.
         ((< 0 (logand events le:+bev-event-eof+))
-         (format t "ev cb: EOF~%")
          (setf err (make-instance 'connection-eof :connection connection)))
         ((< 0 (logand events le:+bev-event-connected+))
-         (format t "ev cb: connected~%")
          nil))
-      (format t "ERR: ~a~%" err)
       (when err
         (unwind-protect
           (when fail-cb (funcall fail-cb err))
@@ -197,6 +190,7 @@
   "Called when an error occurs accepting a connection."
   (declare (ignore ctx))
   (let* ((event-base (le:evconnlistener-get-base listener)))
+    ;; TODO: why does the error handler segfault?!?!?
     (format t "There was an error and I don't know how to get the code.~%")
     (le:event-base-loopexit event-base (cffi:null-pointer))))
 

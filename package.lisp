@@ -5,6 +5,12 @@
 
            #:timer
 
+           #:connection-info
+           #:connection-eof
+           #:connection-error
+           #:connection-timeout
+           #:connection-refused
+           #:connection-dns-error
            #:tcp-send
            #:tcp-server
            #:write-socket-data
@@ -12,6 +18,8 @@
            #:set-socket-timeouts
            #:read-socket-data
 
+           #:http-connection-timeout
+           #:http-connection-refused
            #:http-client
            #:http-response
            #:http-server
