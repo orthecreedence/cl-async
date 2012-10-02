@@ -57,6 +57,7 @@ typedef unsigned int ev_uint16_t;
 %include "/usr/local/libevent/include/event2/event.h"
 %include "/usr/local/libevent/include/event2/dns.h"
 %include "/usr/local/libevent/include/event2/bufferevent.h"
+%include "/usr/local/libevent/include/event2/bufferevent_struct.h"
 %include "/usr/local/libevent/include/event2/buffer.h"
 %include "/usr/local/libevent/include/event2/listener.h"
 %include "/usr/local/libevent/include/event2/http.h"

@@ -978,6 +978,27 @@
 (cffi:defcfun ("bufferevent_rate_limit_group_reset_totals" #.(lispify "bufferevent_rate_limit_group_reset_totals" 'function)) :void
   (grp :pointer))
 
+(cffi:defcstruct #.(lispify "event_watermark" 'classname)
+	(#.(lispify "low" 'slotname) :unsigned-int)
+	(#.(lispify "high" 'slotname) :unsigned-int))
+
+(cffi:defcstruct #.(lispify "bufferevent" 'classname)
+	(#.(lispify "ev_base" 'slotname) :pointer)
+	(#.(lispify "be_ops" 'slotname) :pointer)
+	(#.(lispify "ev_read" 'slotname) :pointer)
+	(#.(lispify "ev_write" 'slotname) :pointer)
+	(#.(lispify "input" 'slotname) :pointer)
+	(#.(lispify "output" 'slotname) :pointer)
+	(#.(lispify "wm_read" 'slotname) #.(lispify "event_watermark" 'classname))
+	(#.(lispify "wm_write" 'slotname) #.(lispify "event_watermark" 'classname))
+	(#.(lispify "readcb" 'slotname) :pointer)
+	(#.(lispify "writecb" 'slotname) :pointer)
+	(#.(lispify "errorcb" 'slotname) :pointer)
+	(#.(lispify "cbarg" 'slotname) :pointer)
+	(#.(lispify "timeout_read" 'slotname) #.(lispify "timeval" 'classname))
+	(#.(lispify "timeout_write" 'slotname) #.(lispify "timeval" 'classname))
+	(#.(lispify "enabled" 'slotname) :short))
+
 (cffi:defcstruct #.(lispify "evbuffer_ptr" 'classname)
 	(#.(lispify "pos" 'slotname) :pointer)
 	(#.(lispify "_internal" 'slotname) :pointer))
