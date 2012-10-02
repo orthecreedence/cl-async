@@ -234,43 +234,43 @@ pointer to the socket the request came in on.
 ### http-request accessors
 This details the accessors in `http-request`.
 
-#### http-request-c
+##### http-request-c
 Pulls out the pointer to the libevent request object. This is included just in
 case extra processing is needed on the request that the library doesn't handle
 for you. In other words, ignore this accessor unless you know the libevent evhttp
 internals and are comfortable using the libevent CFFI wrapper included with
 cl-async.
 
-#### http-request-method
+##### http-request-method
 Pull out the request method. This is a symbol, and will be one of
 
     '(GET POST HEAD PUT DELETE OPTIONS TRACE CONNECT PATCH)
 
-#### http-request-uri
+##### http-request-uri
 This is the full request URI in the request. For instance, if the request was
 
     GET /documents/45?format=json
 
 Then this will be the string "GET /documents/45?format=json"
 
-#### http-request-resource
+##### http-request-resource
 This is a string of the request resource (path). A request of
 
     GET /mysite/index?page=4
 
 The resource will be "/mysite/index"
 
-#### http-request-querystring
+##### http-request-querystring
 The querystring from the request (string). Everything after (and not including)
 the "?"
 
-#### http-request-headers
+##### http-request-headers
 All headers given in the request as an alist:
 
     '(("Host" . "musio.com")
       ("Accept" . "text/html"))
 
-#### http-request-body
+##### http-request-body
 Get the body out of the request. Since we don't make any assumptions about the
 data that's being passed around, it is a byte array. Convert it to a string in
 your app via `babel:octets-to-string` if needed.
@@ -293,18 +293,22 @@ to be as informative as possible. Note that conditions are not actually thrown,
 but rather instantiated via `make-instance` and passed directly to the event
 callback.
 
-- [connection-info](#connection-info)
-- [connection-error](#connection-error)
-- [connection-eof](#connection-eof)
-- [connection-timeout](#connection-timeout)
-- [connection-refused](#connection-refused)
-- [connection-dns-error](#connection-dns-error)
-- [http-connection-timeout](#http-connection-timeout)
-- [http-connection-refused](#http-connection-refused)
+- [connection-info](#connection-info) _condition_
+  - [conn-fd](#conn-fd) _accessor_
+- [connection-error](#connection-error) _condition_
+  - [conn-errcode](#conn-errcode) _accessor_
+  - [conn-errmsg](#conn-errmsg) _accessor_
+- [connection-eof](#connection-eof) _condition_
+- [connection-timeout](#connection-timeout) _condition_
+- [connection-refused](#connection-refused) _condition_
+- [connection-dns-error](#connection-dns-error) _condition_
+- [http-connection-timeout](#http-connection-timeout) _condition_
+- [http-connection-refused](#http-connection-refused) _condition_
 
 ### connection-info
 This is the base condition for any connection event. Any other connection
 condition extends it.
+
 ##### conn-fd
 Pulls the connection file descriptor out of a connection-info condition. This is
 not necessarily useful to an application, but may be used internally for the
@@ -312,8 +316,26 @@ tracking and cleaning of verious object. Exposed to the API since there are
 instances where it could be useful.
 
 ### connection-error
+_extends [connection-info](#connection-info)_
 Base connection error condition. Anything considered an error happening on a
-connection will extend this condition.
+connection will extend this condition. Most of the time, will contain an error
+code and error message. 
+
+##### conn-errcode
+The error code this socket error was triggered with. The code generally refers
+to what the C `errno` code is (`WSAGetLastError` on Windows).
+
+_NOTE:_ In cases where the error is triggered by cl-async, the error code will
+generally be -1. This may change in the future to support cl-async specific
+error codes.
+
+##### conn-errmsg
+The error string corresponding to the code in `conn-errcode`. If the error code
+is -1, then this string will be a cl-async description of the error instead of
+a system-supplied description.
+
+### connection-eof
+
 
 Examples
 --------
