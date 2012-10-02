@@ -118,25 +118,26 @@
   (let* ((callbacks (get-callbacks http-base))
          (request-cb (getf callbacks :request-cb))
          (event-cb (getf callbacks :event-cb)))
-    (let* ((method (get-method (le:evhttp-request-get-command request)))
-           (uri (le:evhttp-request-get-uri request))
-           (uri (le:evhttp-uridecode uri 1 (cffi:null-pointer)))
-           (find-q (position #\? uri))
-           (resource (if find-q (subseq uri 0 find-q)))
-           (querystring (if find-q (subseq uri (1+ find-q)) ""))
-           (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
-           (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
-      ;; grab the headers and build the final request object, then pass it into
-      ;; the callback
-      (let ((http-request (make-instance 'http-request
-                                         :c request
-                                         :method method
-                                         :uri uri
-                                         :resource resource
-                                         :querystring querystring
-                                         :headers headers
-                                         :body body)))
-        (funcall request-cb http-request)))))
+    (catch-app-errors event-cb
+      (let* ((method (get-method (le:evhttp-request-get-command request)))
+             (uri (le:evhttp-request-get-uri request))
+             (uri (le:evhttp-uridecode uri 1 (cffi:null-pointer)))
+             (find-q (position #\? uri))
+             (resource (if find-q (subseq uri 0 find-q)))
+             (querystring (if find-q (subseq uri (1+ find-q)) ""))
+             (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
+             (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
+        ;; grab the headers and build the final request object, then pass it into
+        ;; the callback
+        (let ((http-request (make-instance 'http-request
+                                           :c request
+                                           :method method
+                                           :uri uri
+                                           :resource resource
+                                           :querystring querystring
+                                           :headers headers
+                                           :body body)))
+          (funcall request-cb http-request))))))
 
 (cffi:defcallback http-client-cb :void ((request :pointer) (connection :pointer))
   "HTTP client callback. All client HTTP requests come through here, get
@@ -146,27 +147,28 @@
          (dns-base (deref-data-from-pointer connection))
          (request-cb (getf callbacks :request-cb))
          (event-cb (getf callbacks :event-cb)))
-    (unwind-protect
-      (cond
-        ;; timeout
-        ((cffi:null-pointer-p request)
-         (funcall event-cb (make-instance 'http-connection-timeout :connection connection)))
-        ;; connection refused
-        ((eq (le:evhttp-request-get-response-code request) 0)
-         (funcall event-cb (make-instance 'http-connection-refused :connection connection)))
-        ;; got response back, parse and send off to request-cb
-        (t
-         (let ((status (le:evhttp-request-get-response-code request))
-               (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
-               (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
-           ;; This segfaults *sometimes* so are we not supposed to call this?
-           ;(le:evhttp-request-free request)
-           (funcall request-cb status headers body))))
-      (free-dns-base dns-base)
-      (clear-object-attachments connection)
-      ;; free the connection if it exists
-      (unless (cffi:null-pointer-p connection)
-        (le:evhttp-connection-free connection)))))
+    (catch-app-errors event-cb
+      (unwind-protect
+        (cond
+          ;; timeout
+          ((cffi:null-pointer-p request)
+           (funcall event-cb (make-instance 'http-connection-timeout :connection connection)))
+          ;; connection refused
+          ((eq (le:evhttp-request-get-response-code request) 0)
+           (funcall event-cb (make-instance 'http-connection-refused :connection connection)))
+          ;; got response back, parse and send off to request-cb
+          (t
+           (let ((status (le:evhttp-request-get-response-code request))
+                 (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
+                 (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
+             ;; This segfaults *sometimes* so are we not supposed to call this?
+             ;(le:evhttp-request-free request)
+             (funcall request-cb status headers body))))
+        (free-dns-base dns-base)
+        (clear-object-attachments connection)
+        ;; free the connection if it exists
+        (unless (cffi:null-pointer-p connection)
+          (le:evhttp-connection-free connection))))))
 
 (defun lookup-status-text (status-code)
   "Get the HTTP standard text that goes along with a status code."

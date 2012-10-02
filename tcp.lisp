@@ -91,13 +91,16 @@
   "Called whenever a read event happens on a TCP socket. Ties into the anonymous
    callback system to run user-specified anonymous callbacks on read events."
   (declare (ignore event-base))
-  (let ((read-cb (getf (get-callbacks bev) :read-cb)))
-    (if read-cb
-        ;; we have a callback, so grab the data form the socket and send it in
-        (read-socket-data bev (lambda (data) (funcall read-cb bev data)))
-        ;; no callback associated, so just drain the buffer so it doesn't pile up
-        (le:evbuffer-drain (le:bufferevent-get-input bev) *buffer-size*))))
-  
+  (let* ((callbacks (get-callbacks bev))
+         (read-cb (getf callbacks :read-cb))
+         (event-cb (getf callbacks :event-cb)))
+    (catch-app-errors event-cb
+      (if read-cb
+          ;; we have a callback, so grab the data form the socket and send it in
+          (read-socket-data bev (lambda (data) (funcall read-cb bev data)))
+          ;; no callback associated, so just drain the buffer so it doesn't pile up
+          (le:evbuffer-drain (le:bufferevent-get-input bev) *buffer-size*)))))
+
 (cffi:defcallback tcp-event-cb :void ((bev :pointer) (events :short) (event-base :pointer))
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
    callback system to track failures/disconnects."
@@ -106,37 +109,38 @@
         (connection (le:bufferevent-getfd bev))
         (dns-base (deref-data-from-pointer bev))
         (event-cb (getf (get-callbacks bev) :event-cb)))
-    (unwind-protect
-      (cond
-        ((< 0 (logand events (logior le:+bev-event-error+
-                                     le:+bev-event-timeout+)))
-         (multiple-value-bind (errcode errstr) (get-last-tcp-err)
-           (let ((dns-err (le:bufferevent-socket-get-dns-error bev)))
-             (cond
-               ;; DNS error
-               ((and (< 0 (logand events le:+bev-event-error+))
-                     (not (zerop dns-err)))
-                (setf err (make-instance 'connection-dns-error
-                                         :connection connection
-                                         :msg (le:evutil-gai-strerror dns-err))))
+    (catch-app-errors event-cb
+      (unwind-protect
+        (cond
+          ((< 0 (logand events (logior le:+bev-event-error+
+                                       le:+bev-event-timeout+)))
+           (multiple-value-bind (errcode errstr) (get-last-tcp-err)
+             (let ((dns-err (le:bufferevent-socket-get-dns-error bev)))
+               (cond
+                 ;; DNS error
+                 ((and (< 0 (logand events le:+bev-event-error+))
+                       (not (zerop dns-err)))
+                  (setf err (make-instance 'connection-dns-error
+                                           :connection connection
+                                           :msg (le:evutil-gai-strerror dns-err))))
 
-               ;; socket timeout
-               ((< 0 (logand events le:+bev-event-timeout+))
-                (setf err (make-instance 'connection-timeout :connection connection :code errcode :msg errstr)))
+                 ;; socket timeout
+                 ((< 0 (logand events le:+bev-event-timeout+))
+                  (setf err (make-instance 'connection-timeout :connection connection :code errcode :msg errstr)))
 
-               ;; since we don't know what the error was, just spawn a general
-               ;; error.
-               (t
-                (setf err (make-instance 'connection-error :connection connection :code errcode :msg errstr)))))))
-        ;; peer closed connection.
-        ((< 0 (logand events le:+bev-event-eof+))
-         (setf err (make-instance 'connection-eof :connection connection)))
-        ((< 0 (logand events le:+bev-event-connected+))
-         (free-dns-base dns-base)))
-      (when err
-        (unwind-protect
-          (when event-cb (funcall event-cb err))
-          (close-socket bev))))))
+                 ;; since we don't know what the error was, just spawn a general
+                 ;; error.
+                 (t
+                  (setf err (make-instance 'connection-error :connection connection :code errcode :msg errstr)))))))
+          ;; peer closed connection.
+          ((< 0 (logand events le:+bev-event-eof+))
+           (setf err (make-instance 'connection-eof :connection connection)))
+          ((< 0 (logand events le:+bev-event-connected+))
+           (free-dns-base dns-base)))
+        (when err
+          (unwind-protect
+            (when event-cb (funcall event-cb err))
+            (close-socket bev)))))))
 
 (cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (ctx :pointer))
   "Called when a connection is accepted. Creates a bufferevent for the socket
@@ -146,21 +150,23 @@
          (bev (le:bufferevent-socket-new event-base
                                           fd
                                           (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+)))
-         (callbacks (get-callbacks listener)))
-    ;; make sure the socket is non-blocking
-    (let ((nonblock (le:evutil-make-socket-nonblocking (le:bufferevent-getfd bev))))
-      (unless (zerop nonblock)
-        (error "Failed to make socket non-blocking: ~a~%" nonblock)))
+         (callbacks (get-callbacks listener))
+         (event-cb (getf callbacks :event-cb)))
+    (catch-app-errors event-cb
+      ;; make sure the socket is non-blocking
+      (let ((nonblock (le:evutil-make-socket-nonblocking (le:bufferevent-getfd bev))))
+        (unless (zerop nonblock)
+          (error "Failed to make socket non-blocking: ~a~%" nonblock)))
 
-    ;; save the callbacks given to the listener onto each socket individually
-    (save-callbacks bev callbacks)
-    (le:bufferevent-setcb bev
-                           (cffi:callback tcp-read-cb)
-                           (cffi:null-pointer)
-                           (cffi:callback tcp-event-cb)
-                           (cffi:null-pointer))
-    ;(set-socket-timeouts bev 5 5)
-    (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))))
+      ;; save the callbacks given to the listener onto each socket individually
+      (save-callbacks bev callbacks)
+      (le:bufferevent-setcb bev
+                             (cffi:callback tcp-read-cb)
+                             (cffi:null-pointer)
+                             (cffi:callback tcp-event-cb)
+                             (cffi:null-pointer))
+      ;(set-socket-timeouts bev 5 5)
+      (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+)))))
 
 (cffi:defcallback tcp-accept-err-cb :void ((listener :pointer) (ctx :pointer))
   "Called when an error occurs accepting a connection."
@@ -180,7 +186,7 @@
                   (le:bufferevent-socket-new *event-base* -1 (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+)))))
     (le:bufferevent-setcb bev (cffi:callback tcp-read-cb) (cffi:null-pointer) (cffi:callback tcp-event-cb) *event-base*)
     (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
-    (save-callbacks bev (list :read-cb read-cb :event-cb event-cb))
+    (save-callbacks bev (list :read-cb read-cb :event-cb event-cb event-cb))
     (write-socket-data bev data)
     (set-socket-timeouts bev read-timeout write-timeout)
 
@@ -211,5 +217,5 @@
       (when (and (not (cffi:pointerp listener)) (zerop listener))
         (error "Couldn't create listener: ~a~%" listener))
       ;(le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
-      (save-callbacks listener (list :read-cb read-cb :event-cb event-cb)))))
+      (save-callbacks listener (list :read-cb read-cb :event-cb event-cb event-cb)))))
 

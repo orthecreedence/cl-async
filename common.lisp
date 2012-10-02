@@ -32,6 +32,32 @@
   (:report (lambda (c s) (format s "Connection refused: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Passed to an event callback when a connection is refused."))
 
+(defvar *catch-application-errors* nil)
+(defvar *default-event-handler*
+  (lambda (err)
+    ;; throw the error so we can wrap it in a handler-case
+    (handler-case (error err)
+      (connection-info ()
+        ;; this is just info, let it slide
+        nil)
+      (t
+        ;; this an actual error. throw it back to toplevel (will exit the
+        ;; event loop and cancel any pending events)
+        (error err))))
+  "If an event-cb is not specified, this will always be used.")
+
+(defmacro catch-app-errors (event-cb &body body)
+  "Wraps catching of application errors into a simple handler-case (if wanted),
+   otherwise just runs the body with no error/event handling."
+  `(if *catch-application-errors*
+       (let ((event-cb (if (functionp ,event-cb)
+                           ,event-cb
+                           *default-event-handler*)))
+         (handler-case
+           (progn ,@body)
+           (t (err) (funcall event-cb err))))
+       (progn ,@body)))
+     
 (defmacro make-foreign-type ((var type &key initial) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."

@@ -1,6 +1,8 @@
 (defpackage :cl-async
   (:use :cl)
-  (:export #:conn-fd
+  (:export #:*catch-application-errors*
+           #:*default-event-handler*
+           #:conn-fd
            #:conn-errcode
            #:conn-errmsg
            

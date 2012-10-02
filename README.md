@@ -282,7 +282,7 @@ change backwards compatible.
 
 Event callbacks (and error handling in general)
 -----------------------------------------------
-Any parameter labelled event-cb or fail-cb is what's known as an "event
+Any parameter labelled `event-cb` or `fail-cb` is what's known as an "event
 callback." Event callbacks have one argument: a condition describing the event
 that caused them to be invoked. Originally event callbacks were failure 
 callbacks, but since non-failure conditions are sometimes useful to an app, it
@@ -292,6 +292,47 @@ The event conditions generally match conditions in libevent, although they try
 to be as informative as possible. Note that conditions are not actually thrown,
 but rather instantiated via `make-instance` and passed directly to the event
 callback.
+
+- [Application error handling](#Application error handling)
+- [General cl-async conditions](#General cl-async conditions)
+
+### Application error handling
+cl-async can be set up to catch errors in your application and pass them to
+your `event-cb`. This makes for seamless error handling, and keeps a rouge
+condition from exiting the event loop (assuming you have an `event-cb` set for
+the operation that generated the condition).
+
+- [\*catch-application-errors\*](#\*catch-application-errors\*) _variable_
+- [\*default-event-handler\*](#\*default-event-handler\*) _variable_
+
+##### \*catch-application-errors\*
+_default: `nil`_
+
+By setting this to true, you allow cl-async to catch conditions in your app and
+pass them to the event callback associated with the procedure that triggered the
+condition.
+
+If this is left as `nil`, triggered conditions will make their way to the top
+level and cause the event loop to exit, cancelling any pending events.
+
+##### \*default-event-handler\*
+When [\*catch-application-errors\*](#\*catch-application-errors\*) is set to `t`
+and an `event-cb` is not specified for an operation, the function assigned to
+this variable will be used as the `event-cb`. The default:
+
+    (lambda (err)
+      (handler-case (error err)
+        (connection-info ()
+          ;; this is just info, let it slide
+          nil)
+        (t
+          ;; this an actual error. throw it back to toplevel (will exit the
+          ;; event loop and cancel any pending events)
+          (error err))))
+
+This can be changed by your application if different behavior is desired.
+
+### General cl-async conditions
 
 - [connection-info](#connection-info) _condition_
   - [conn-fd](#conn-fd) _accessor_
