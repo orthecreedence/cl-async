@@ -17,6 +17,8 @@ Usage
 -----
 You can use cl-async with the prefixes `cl-async:` or `as:`.
 
+* _function_ [**start-event-loop**](#start-event-loop)
+
 ### start-event-loop
 Start the event loop, giving a function that will be run inside the event loop
 once started. This function blocks the main thread until the event loop returns,
