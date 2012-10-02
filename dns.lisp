@@ -47,25 +47,26 @@
     (let* ((callbacks (get-callbacks dns-base))
            (resolve-cb (getf callbacks :resolve-cb))
            (fail-cb (getf callbacks :fail-cb)))
-      (if (not (zerop errcode))
-          ;; DNS call failed, get error
-          (funcall fail-cb (make-instance 'connection-dns-error :code errcode :msg (le:evutil-gai-strerror errcode)))
-          ;; success, pull out address
-          (let ((family (le-a:evutil-addrinfo-ai-family addrinfo))
-                (addr nil))
-            (cond
-              ((eq family le:+af-inet+)
-               (cffi:with-foreign-object (buf :unsigned-char 128)
-                 (let* ((sin-addr (cffi:foreign-slot-pointer (le-a:evutil-addrinfo-ai-addr addrinfo) (le::cffi-type le::sockaddr-in) 'le::sin-addr)))
-                   (setf addr (le:evutil-inet-ntop family sin-addr buf 128)))))
-              (t
-                ;; probably ipv6, not supported ATM
-                ))
-            (if addr
-                (funcall resolve-cb addr family)
-                (funcall fail-cb (make-instance 'connection-dns-error :code -1 :msg (format nil "Error pulling out address from family: ~a" family))))
-            (unless (cffi:null-pointer-p addrinfo)
-              (le:evutil-freeaddrinfo addrinfo)))))
+      (catch-app-errors fail-cb
+        (if (not (zerop errcode))
+            ;; DNS call failed, get error
+            (funcall fail-cb (make-instance 'connection-dns-error :code errcode :msg (le:evutil-gai-strerror errcode)))
+            ;; success, pull out address
+            (let ((family (le-a:evutil-addrinfo-ai-family addrinfo))
+                  (addr nil))
+              (cond
+                ((eq family le:+af-inet+)
+                 (cffi:with-foreign-object (buf :unsigned-char 128)
+                   (let* ((sin-addr (cffi:foreign-slot-pointer (le-a:evutil-addrinfo-ai-addr addrinfo) (le::cffi-type le::sockaddr-in) 'le::sin-addr)))
+                     (setf addr (le:evutil-inet-ntop family sin-addr buf 128)))))
+                (t
+                  ;; probably ipv6, not supported ATM
+                  ))
+              (if addr
+                  (funcall resolve-cb addr family)
+                  (funcall fail-cb (make-instance 'connection-dns-error :code -1 :msg (format nil "Error pulling out address from family: ~a" family))))
+              (unless (cffi:null-pointer-p addrinfo)
+                (le:evutil-freeaddrinfo addrinfo))))))
     (free-dns-base dns-base)))
 
 (defun dns-lookup (host resolve-cb fail-cb)
