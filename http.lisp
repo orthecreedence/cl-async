@@ -11,11 +11,11 @@
 
 (define-condition http-connection-timeout (connection-timeout) ()
   (:report (lambda (c s) (format s "HTTP connection timeout: ~a~%" (connection-error-connection c))))
-  (:documentation "Passed to a failure callback when an HTTP connection times out"))
+  (:documentation "Passed to an event callback when an HTTP connection times out"))
 
 (define-condition http-connection-refused (connection-refused) ()
   (:report (lambda (c s) (format s "HTTP connection refused: ~a~%" (connection-error-connection c))))
-  (:documentation "Passed to a failure callback when an HTTP connection is refused"))
+  (:documentation "Passed to an event callback when an HTTP connection is refused"))
 
 (defclass http-request ()
   ((req-obj :accessor http-request-c :initarg :c :initform nil :documentation
@@ -117,7 +117,7 @@
   ;; TODO: process request body
   (let* ((callbacks (get-callbacks http-base))
          (request-cb (getf callbacks :request-cb))
-         (fail-cb (getf callbacks :fail-cb)))
+         (event-cb (getf callbacks :event-cb)))
     (let* ((method (get-method (le:evhttp-request-get-command request)))
            (uri (le:evhttp-request-get-uri request))
            (uri (le:evhttp-uridecode uri 1 (cffi:null-pointer)))
@@ -140,20 +140,20 @@
 
 (cffi:defcallback http-client-cb :void ((request :pointer) (connection :pointer))
   "HTTP client callback. All client HTTP requests come through here, get
-   processed, and send off to either the fail-cb (in case of connection error)
+   processed, and send off to either the event-cb (in case of connection error)
    or to the request-cb for everything else (even HTTP errors are sent through)."
   (let* ((callbacks (get-callbacks connection))
          (dns-base (deref-data-from-pointer connection))
          (request-cb (getf callbacks :request-cb))
-         (fail-cb (getf callbacks :fail-cb)))
+         (event-cb (getf callbacks :event-cb)))
     (unwind-protect
       (cond
         ;; timeout
         ((cffi:null-pointer-p request)
-         (funcall fail-cb (make-instance 'http-connection-timeout :connection connection)))
+         (funcall event-cb (make-instance 'http-connection-timeout :connection connection)))
         ;; connection refused
         ((eq (le:evhttp-request-get-response-code request) 0)
-         (funcall fail-cb (make-instance 'http-connection-refused :connection connection)))
+         (funcall event-cb (make-instance 'http-connection-refused :connection connection)))
         ;; got response back, parse and send off to request-cb
         (t
          (let ((status (le:evhttp-request-get-response-code request))
@@ -283,7 +283,7 @@
               :port (if port (read-from-string port) 80)
               :resource (if resource resource "/"))))))
 
-(defun http-client (uri request-cb fail-cb &key (method 'GET) headers body timeout)
+(defun http-client (uri request-cb event-cb &key (method 'GET) headers body timeout)
   "Asynchronously contact an HTTP server. Allows passing of method, headers, and
    body. If host is not present in the headers, it is set from the hostname (if
    given) in the URI. Also supports setting a timeout."
@@ -298,7 +298,7 @@
                                                     host
                                                     (getf parsed-uri :port 80)))
          (request (le:evhttp-request-new (cffi:callback http-client-cb) connection)))
-    (save-callbacks connection (list :request-cb request-cb :fail-cb fail-cb))
+    (save-callbacks connection (list :request-cb request-cb :event-cb event-cb))
     (attach-data-to-pointer connection dns-base)
     (when (numberp timeout)
       (le:evhttp-connection-set-timeout connection timeout))
@@ -314,7 +314,7 @@
       (write-socket-data (le:evhttp-request-get-output-buffer request) body :socket-is-evbuffer t))
     (le:evhttp-make-request connection request (get-method-reverse method) (getf parsed-uri :resource))))
 
-(defun http-server (bind port request-cb fail-cb)
+(defun http-server (bind port request-cb event-cb)
   "Start an HTTP server. If `bind` is nil, it bind to 0.0.0.0"
   (check-event-loop-running)
   (let ((http-base (le:evhttp-new *event-base*)))
@@ -322,7 +322,7 @@
       (error "Error creating HTTP listener"))
     (add-event-loop-exit-callback (lambda () (free-http-base http-base)))
     (le:evhttp-set-gencb http-base (cffi:callback http-request-cb) http-base)
-    (save-callbacks http-base (list :request-cb request-cb :fail-cb fail-cb))
+    (save-callbacks http-base (list :request-cb request-cb :event-cb event-cb))
     (let* ((bind (if bind bind "0.0.0.0"))
            (handle (le:evhttp-bind-socket-with-handle http-base bind port)))
       (when (eq handle 0)

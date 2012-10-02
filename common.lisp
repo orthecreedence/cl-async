@@ -16,7 +16,7 @@
 
 (define-condition connection-eof (connection-info) ()
   (:report (lambda (c s) (format s "Connection EOF: ~a~%" (conn-fd c))))
-  (:documentation "Passed to a failure callback when a peer closes the connection."))
+  (:documentation "Passed to an event callback when a peer closes the connection."))
 
 (define-condition connection-error (connection-info)
   ((code :initarg :code :reader conn-errcode :initform 0)
@@ -26,11 +26,11 @@
 
 (define-condition connection-timeout (connection-error) ()
   (:report (lambda (c s) (format s "Connection timeout: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
-  (:documentation "Passed to a failure callback when a connection times out."))
+  (:documentation "Passed to an event callback when a connection times out."))
 
 (define-condition connection-refused (connection-error) ()
   (:report (lambda (c s) (format s "Connection refused: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
-  (:documentation "Passed to a failure callback when a connection is refused."))
+  (:documentation "Passed to an event callback when a connection is refused."))
 
 (defmacro make-foreign-type ((var type &key initial) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.

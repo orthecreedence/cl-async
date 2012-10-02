@@ -102,7 +102,7 @@ Note that the `host` can be an IP address *or* a hostname, the hostname will
 be looked up asynchronously via libevent.
 
     ;; definition:
-    (tcp-send host port data read-cb fail-cb &key read-timeout write-timeout)
+    (tcp-send host port data read-cb event-cb &key read-timeout write-timeout)
     
     ;; example:
     (tcp-send "www.google.com" 80
@@ -122,19 +122,19 @@ The callbacks are as follows:
 
 ### tcp-server
 Bind an asynchronous listener to the given bind address/port and start accepting
-connections on it. It takes read and failure callbacks (like [tcp-send](#tcp-send)).
+connections on it. It takes read and event callbacks (like [tcp-send](#tcp-send)).
 If `nil` is passed into the bind address, it effectively binds the listener to
 "0.0.0.0" (listens from any address).
 
     ;; definition
-    (tcp-server bind-address port read-cb fail-cb)
+    (tcp-server bind-address port read-cb event-cb)
     
     ;; example
     (tcp-server "127.0.0.1" 8080
                 #'myapp:process-client-data
                 #'myapp:error-handler)
 
-Read/failure callbacks take the same arguments as the [tcp-send](#tcp-send) function.
+Read/event callbacks take the same arguments as the [tcp-send](#tcp-send) function.
 
 ### write-socket-data
 Write data to an existing socket (such as one passed into a read-cb). Data can
@@ -177,7 +177,7 @@ is pulled out of the `uri`.
 The `timeout` arg is in seconds.
 
     ;; definition
-    (http-client uri request-cb fail-cb &key (method 'GET) headers body timeout)
+    (http-client uri request-cb event-cb &key (method 'GET) headers body timeout)
 
     ;; example
     (http-client "http://musio.com/"
@@ -200,7 +200,7 @@ the [http-response](#http-response) function.
 If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
 
     ;; definition
-    (http-server bind port request-cb fail-cb)
+    (http-server bind port request-cb event-cb)
 
     ;; example
     (http-server "192.168.0.1" 8090
@@ -310,17 +310,17 @@ Implementation notes
 --------------------
 ### TODO
  - Error handling. Need to catch errors in user code and fire appropriate
- cleanup functions and/or call appropriate "fail" callbacks. Right now this
+ cleanup functions and/or call appropriate "event" callbacks. Right now this
  isn't really happening. More on this below.
  - Tests/benchmarks
 
 ### Error handling
 One thing that is *not* solidified yet is error handling. The arguments for
-error/failure callbacks will most likely stay the same, but the data passed into
+fail/event callbacks will most likely stay the same, but the data passed into
 them will most likely change in the near future.
 
 Also, I need to figure out when it makes sense to auto-close connections (for
-uncaught exceptions and such) and when to call failure callbacks. Right now,
+uncaught exceptions and such) and when to call event callbacks. Right now,
 everything works great until something goes wrong.
 
 As I build a few applications with this library, except this to solidify, but

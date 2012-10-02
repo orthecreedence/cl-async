@@ -105,7 +105,7 @@
   (let ((err nil)
         (connection (le:bufferevent-getfd bev))
         (dns-base (deref-data-from-pointer bev))
-        (fail-cb (getf (get-callbacks bev) :fail-cb)))
+        (event-cb (getf (get-callbacks bev) :event-cb)))
     (unwind-protect
       (cond
         ((< 0 (logand events (logior le:+bev-event-error+
@@ -135,7 +135,7 @@
          (free-dns-base dns-base)))
       (when err
         (unwind-protect
-          (when fail-cb (funcall fail-cb err))
+          (when event-cb (funcall event-cb err))
           (close-socket bev))))))
 
 (cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (ctx :pointer))
@@ -170,7 +170,7 @@
     (format t "There was an error and I don't know how to get the code.~%")
     (le:event-base-loopexit event-base (cffi:null-pointer))))
 
-(defun tcp-send (host port data read-cb fail-cb &key ((:socket bev)) (read-timeout 30) (write-timeout 30))
+(defun tcp-send (host port data read-cb event-cb &key ((:socket bev)) (read-timeout 30) (write-timeout 30))
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
   (check-event-loop-running)
@@ -180,7 +180,7 @@
                   (le:bufferevent-socket-new *event-base* -1 (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+)))))
     (le:bufferevent-setcb bev (cffi:callback tcp-read-cb) (cffi:null-pointer) (cffi:callback tcp-event-cb) *event-base*)
     (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
-    (save-callbacks bev (list :read-cb read-cb :fail-cb fail-cb))
+    (save-callbacks bev (list :read-cb read-cb :event-cb event-cb))
     (write-socket-data bev data)
     (set-socket-timeouts bev read-timeout write-timeout)
 
@@ -196,7 +196,7 @@
             (attach-data-to-pointer bev dns-base)
             (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port))))))
 
-(defun tcp-server (bind-address port read-cb fail-cb)
+(defun tcp-server (bind-address port read-cb event-cb)
   "Start a TCP listener on the current event loop."
   (check-event-loop-running)
   (with-ipv4-to-sockaddr (sockaddr bind-address port)
@@ -211,5 +211,5 @@
       (when (and (not (cffi:pointerp listener)) (zerop listener))
         (error "Couldn't create listener: ~a~%" listener))
       ;(le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
-      (save-callbacks listener (list :read-cb read-cb :fail-cb fail-cb)))))
+      (save-callbacks listener (list :read-cb read-cb :event-cb event-cb)))))
 
