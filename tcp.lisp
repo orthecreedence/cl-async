@@ -6,24 +6,49 @@
 (defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in))
   "Really no sense in computing this OVER AND OVER.")
 
-(define-condition connection-error (error)
-  ((bufferevent :initarg :bufferevent :reader connection-error-bufferevent :initform nil)
-   (connection :initarg :connection :reader connection-error-connection :initform nil))
-  (:report (lambda (c s) (format s "Connection error: ~a~%" (connection-error-connection c))))
-  (:documentation "Describes a connection error. Meant to be extended."))
+(define-condition connection-info ()
+  ((connection :initarg :connection :reader conn-fd :initform nil))
+  (:report (lambda (c s) (format s "Connection info: ~a~%" (conn-fd c))))
+  (:documentation "Describes the base condition for any action on a connection."))
+
+(define-condition connection-eof (connection-info) ()
+  (:report (lambda (c s) (format s "Connection EOF: ~a~%" (conn-fd c))))
+  (:documentation "Passed to a failure callback when a peer closes the connection."))
+
+(define-condition connection-error (connection-info)
+  ((code :initarg :code :reader conn-errcode :initform 0)
+   (msg :initarg :msg :reader conn-errmsg :initform nil))
+  (:report (lambda (c s) (format s "Connection error: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
+  (:documentation "Describes a general connection error."))
 
 (define-condition connection-timeout (connection-error) ()
-  (:report (lambda (c s) (format s "Connection timeout: ~a~%" (connection-error-bufferevent c))))
+  (:report (lambda (c s) (format s "Connection timeout: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Passed to a failure callback when a connection times out."))
 
 (define-condition connection-refused (connection-error) ()
-  (:report (lambda (c s) (format s "Connection refused: ~a~%" (connection-error-bufferevent c))))
+  (:report (lambda (c s) (format s "Connection refused: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Passed to a failure callback when a connection is refused."))
 
-(define-condition connection-dns-error (connection-error)
-  ((msg :initarg :msg :reader connection-dns-error-msg :initform nil))
-  (:report (lambda (c s) (format s "Connection DNS error: ~a~%" (connection-error-bufferevent c))))
+(define-condition connection-dns-error (connection-error) ()
+  (:report (lambda (c s) (format s "Connection DNS error: ~a~%" (conn-df c))))
   (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
+
+(defun get-last-tcp-err ()
+  "Since libevent provides a macro but not a function for getting the last error
+   code, we have to essentially rebuild that macro here.
+
+   NOTE: As libevent says, this function cannot be considered idempotent. In
+   other words, calling it more than once may result in different values
+   returned. So, call once and save the result until the next time an error
+   happens."
+  #+(or :windows :win32 :win64)
+    (let ((code (cffi:foreign-funcall "WSAGetLastError" :int)))
+      (values code
+              (cffi:foreign-funcall "evutil_socket_error_to_string" :int code :string)))
+  #-(or :windows :win32 :win64)
+    (let ((code (cffi:mem-aref (cffi:foreign-symbol-pointer "errno") :int)))
+      (values code
+              (cffi:foreign-funcall "strerror" :int code :string))))
 
 (defun close-socket (bev)
   "Free a socket and clear out all associated data."
@@ -101,29 +126,41 @@
 (cffi:defcallback tcp-event-cb :void ((bev :pointer) (events :short) (event-base :pointer))
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
    callback system to track failures/disconnects."
+  (declare (ignore event-base))
   (cond
     ((< 0 (logand events le:+bev-event-connected+))
-     ;(format t " - Connect OK.~%")
-     )
+     nil)
     ((< 0 (logand events (logior le:+bev-event-error+
                                  le:+bev-event-eof+
                                  le:+bev-event-timeout+)))
-     ;(format t " - Closing: ")
-     (let ((err nil))
-       (when (< 0 (logand events le:+bev-event-error+))
-         (let ((err (le:bufferevent-socket-get-dns-error bev)))
-           (when (not (zerop err))
-             (setf err (make-instance 'connection-dns-error
-                                      :bufferevent bev
-                                      :msg (le:evutil-gai-strerror err))))
-       (when (< 0 (logand events le:+bev-event-timeout+))
-         (setf err (make-instance 'connection-timeout :bufferevent bev)))
-       (when (< 0 (logand events le:+bev-event-eof+))
-         ;(format t "EOF")
-         )
-       ;(format t "~%")
-       (close-socket bev)
-       (when err (funcall fail-cb err))))))))
+     (unwind-protect
+       (multiple-value-bind (errcode errstr) (get-last-tcp-err)
+         (let ((err nil)
+               (connection (le:bufferevent-getfd bev))
+               (dns-err (le:bufferevent-socket-get-dns-error bev))
+               (fail-cb (getf (get-callbacks bev) :fail-cb)))
+           (cond
+             ;; DNS error
+             ((and (< 0 (logand events le:+bev-event-error+))
+                   (not (zerop dns-err)))
+              (setf err (make-instance 'connection-dns-error
+                                       :connection connection
+                                       :msg (le:evutil-gai-strerror dns-err))))
+
+             ;; socket timeout
+             ((< 0 (logand events le:+bev-event-timeout+))
+              (setf err (make-instance 'connection-timeout :connection connection :code errcode :msg errstr)))
+
+             ;; peer closed connection.
+             ((< 0 (logand events le:+bev-event-eof+))
+              (setf err (make-instance 'connection-eof :connection connection :code errcode :msg errstr)))
+
+             ;; since we don't know what the error was, just spawn a general
+             ;; error.
+             (t
+              (setf err (make-instance 'connection-error :connection connection :code errcode :msg errstr))))
+           (funcall fail-cb err)))
+       (close-socket bev)))))
 
 (cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (ctx :pointer))
   "Called when a connection is accepted. Creates a bufferevent for the socket
@@ -180,7 +217,6 @@
     (write-socket-data bev data)
     (set-socket-timeouts bev read-timeout write-timeout)
 
-    (format t "socket: ~s~%" (le:bufferevent-getfd bev))
     (unless bev-exists-p
       ;; connect the socket
       (if (ip-address-p host)
