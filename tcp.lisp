@@ -6,6 +6,24 @@
 (defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in))
   "Really no sense in computing this OVER AND OVER.")
 
+(define-condition connection-error (error)
+  ((connection :initarg :connection :reader connection-error-connection :initform nil))
+  (:report (lambda (c s) (format s "Connection error: ~a~%" (connection-error-connection c))))
+  (:documentation "Describes a connection error. Meant to be extended."))
+
+(define-condition connection-timeout (connection-error) ()
+  (:report (lambda (c s) (format s "Connection timeout: ~a~%" (connection-error-connection c))))
+  (:documentation "Passed to a failure callback when a connection times out."))
+
+(define-condition connection-refused (connection-error) ()
+  (:report (lambda (c s) (format s "Connection refused: ~a~%" (connection-error-connection c))))
+  (:documentation "Passed to a failure callback when a connection is refused."))
+
+(define-condition connection-dns-error (connection-error)
+  ((msg :initarg :msg :reader connection-dns-error-msg :initform nil))
+  (:report (lambda (c s) (format s "Connection DNS error: ~a~%" (connection-error-connection c))))
+  (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
+
 (defun close-socket (bev)
   "Free a socket and clear out all associated data."
   (clear-callbacks bev)
