@@ -17,7 +17,25 @@ Usage
 -----
 You can use cl-async with the prefixes `cl-async:` or `as:`.
 
-* _function_ [**start-event-loop**](#start-event-loop)
+- [start-event-loop](#start-event-loop) _function_
+- [event-loop-exit](#event-loop-exit) _function_
+- [timer](#timer) _function_
+- [tcp-send](#tcp-send) _function_
+- [tcp-server](#tcp-server) _function_
+- [write-socket-data](#write-socket-data) _function_
+- [set-socket-timeouts](#set-socket-timeouts) _function_
+- [close-socket](#close-socket) _function_
+- [http-client](#http-client) _function_
+- [http-server](#http-server) _function_
+- [http-response](#http-response) _function_
+- [http-request](#http-request) _class_
+  - [http-request-c](#http-request-c) _accessor_
+  - [http-request-method](#http-request-method) _accessor_
+  - [http-request-uri](#http-request-uri) _accessor_
+  - [http-request-resource](#http-request-resource) _accessor_
+  - [http-request-querystring](#http-request-querystring) _accessor_
+  - [http-request-headers](#http-request-headers) _accessor_
+  - [http-request-body](#http-request-body) _accessor_
 
 ### start-event-loop
 Start the event loop, giving a function that will be run inside the event loop
