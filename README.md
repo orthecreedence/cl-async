@@ -305,7 +305,6 @@ callback.
 ### connection-info
 This is the base condition for any connection event. Any other connection
 condition extends it.
-
 ##### conn-fd
 Pulls the connection file descriptor out of a connection-info condition. This is
 not necessarily useful to an application, but may be used internally for the
