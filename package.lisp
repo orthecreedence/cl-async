@@ -7,7 +7,6 @@
 
            #:timer
 
-           #:free-dns-base
            #:dns-lookup
 
            #:connection-info

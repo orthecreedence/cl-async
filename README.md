@@ -20,6 +20,7 @@ You can use cl-async with the prefixes `cl-async:` or `as:`.
 - [start-event-loop](#start-event-loop) _function_
 - [event-loop-exit](#event-loop-exit) _function_
 - [timer](#timer) _function_
+- [dns-lookup](#dns-lookup) _function_
 - [tcp-send](#tcp-send) _function_
 - [tcp-server](#tcp-server) _function_
 - [write-socket-data](#write-socket-data) _function_
@@ -66,6 +67,26 @@ Run a function after a specified amount of time (in seconds, decimals OK):
     
     ;; example:
     (timer 3.2 (lambda () (format t "I ran! (3.2 seconds later)~%")))
+
+### dns-lookup
+Asynchronously lookup an IP address given a hostname. If the hostname is an IP
+address already, the mechanics are the same although the callback is called
+synchronously.
+
+Please note that at this time, IPV6 is not supported. Libevent has support for
+it, but I don't feel like wrapping up the necessary classes just yet. I'd rather
+get IPV4 going and then focus on IPV6 when everything's working. While the
+`resolve-cb` supports a family parameter, it will always be AF\_INET until this
+is implemented.
+
+    ;; definition
+    (dns-lookup host resolve-cb fail-cb)
+
+    ;; example
+    (dns-lookup "www.google.com"
+                (lambda (host family)
+                  (format t "Address: ~a~%" host))
+                (lambda (err) (format t "err: ~a~%" err)))
 
 ### tcp-send
 Open an asynchronous TCP connection to a host (IP or hostname) and port, once

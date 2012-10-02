@@ -170,16 +170,6 @@
     (format t "There was an error and I don't know how to get the code.~%")
     (le:event-base-loopexit event-base (cffi:null-pointer))))
 
-(defparameter *ip-scanner*
-  (cl-ppcre:create-scanner
-    "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$"
-    :case-insensitive-mode t)
-  "Scanner that detects if a string is an IP.")
-
-(defun ip-address-p (host)
-  "Determine if the given host is an IP or a hostname."
-  (cl-ppcre:scan *ip-scanner* host))
-
 (defun tcp-send (host port data read-cb fail-cb &key ((:socket bev)) (read-timeout 30) (write-timeout 30))
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
@@ -198,10 +188,7 @@
       ;; connect the socket
       (if (ip-address-p host)
           ;; got an IP so just connect directly
-          (make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
-                             (('le::sin-family le:+af-inet+)
-                              ('le::sin-port (cffi:foreign-funcall "htons" :int port :unsigned-short))
-                              ('le::sin-addr (cffi:foreign-funcall "inet_addr" :string host :unsigned-long)))
+          (with-ipv4-to-sockaddr (sockaddr host port)
             (le:bufferevent-socket-connect bev sockaddr +sockaddr-size+))
 
           ;; spawn a DNS base and do an async lookup
@@ -212,12 +199,7 @@
 (defun tcp-server (bind-address port read-cb fail-cb)
   "Start a TCP listener on the current event loop."
   (check-event-loop-running)
-  (make-foreign-type (sockaddr (le::cffi-type le::sockaddr-in) :initial #x0)
-                     (('le::sin-family le:+af-inet+)
-                      ('le::sin-port (cffi:foreign-funcall "htons" :int port :unsigned-short))
-                      ('le::sin-addr (if bind-address
-                                         (cffi:foreign-funcall "inet_addr" :string bind-address :unsigned-long)
-                                         (cffi:foreign-funcall "htonl" :unsigned-long 0 :unsigned-long))))
+  (with-ipv4-to-sockaddr (sockaddr bind-address port)
     (let* ((listener (le:evconnlistener-new-bind *event-base*
                                                   (cffi:callback tcp-accept-cb)
                                                   (cffi:null-pointer)
