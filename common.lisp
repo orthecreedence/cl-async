@@ -84,19 +84,19 @@
    callback, most likely to init your server/client."
   (if *event-base*
       (error "Event loop already started. Please wait for it to exit.")
-      (let ((*event-base* (le::event-base-new)))
+      (let ((*event-base* (le:event-base-new)))
         (timer 0.0 start-fn)
         (unwind-protect
           (progn
             ;; this will block until all events are processed
-            (le::event-base-dispatch *event-base*))
+            (le:event-base-dispatch *event-base*))
           (process-event-loop-exit-callbacks)
-          (le::event-base-free *event-base*)
+          (le:event-base-free *event-base*)
           (setf *event-base* nil)))))
 
 (defun event-loop-exit ()
   "Exit the event loop if running."
   (if *event-base*
-      (le::event-base-loopexit *event-base* (cffi:null-pointer))
+      (le:event-base-loopexit *event-base* (cffi:null-pointer))
       nil))
 
