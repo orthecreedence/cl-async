@@ -302,8 +302,8 @@ your `event-cb`. This makes for seamless error handling, and keeps a rouge
 condition from exiting the event loop (assuming you have an `event-cb` set for
 the operation that generated the condition).
 
-- [\*catch-application-errors\*](#\*catch-application-errors\*) _variable_
-- [\*default-event-handler\*](#\*default-event-handler\*) _variable_
+- [\*catch-application-errors\*](#catch-application-errors) _variable_
+- [\*default-event-handler\*](#default-event-handler) _variable_
 
 ##### \*catch-application-errors\*
 _default: `nil`_
@@ -316,7 +316,7 @@ If this is left as `nil`, triggered conditions will make their way to the top
 level and cause the event loop to exit, cancelling any pending events.
 
 ##### \*default-event-handler\*
-When [\*catch-application-errors\*](#\*catch-application-errors\*) is set to `t`
+When [\*catch-application-errors\*](#catch-application-errors) is set to `t`
 and an `event-cb` is not specified for an operation, the function assigned to
 this variable will be used as the `event-cb`. The default:
 
