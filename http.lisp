@@ -65,15 +65,15 @@
   "Given a libevent EVHTTP_REQ enum key word, return the appropriate method
    string."
   (case enum
-    (:+evhttp-req-get+ "GET")
-    (:+evhttp-req-post+ "POST")
-    (:+evhttp-req-head+ "HEAD")
-    (:+evhttp-req-put+ "PUT")
-    (:+evhttp-req-delete+ "DELETE")
-    (:+evhttp-req-options+ "OPTIONS")
-    (:+evhttp-req-trace+ "TRACE")
-    (:+evhttp-req-connect+ "CONNECT")
-    (:+evhttp-req-patch+ "PATCH")))
+    (:+evhttp-req-get+ 'GET)
+    (:+evhttp-req-post+ 'POST)
+    (:+evhttp-req-head+ 'HEAD)
+    (:+evhttp-req-put+ 'PUT)
+    (:+evhttp-req-delete+ 'DELETE)
+    (:+evhttp-req-options+ 'OPTIONS)
+    (:+evhttp-req-trace+ 'TRACE)
+    (:+evhttp-req-connect+ 'CONNECT)
+    (:+evhttp-req-patch+ 'PATCH)))
 
 (defun get-method-reverse (method)
   "Given a method string, return the appropriate enum value for the libevent
