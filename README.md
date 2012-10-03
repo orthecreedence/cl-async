@@ -549,6 +549,13 @@ which closes the socket and ends the event loop, returning to the main thread.
 Implementation notes
 --------------------
 ### TODO
+ - Create one global `\*dns-base\*` for all DNS queries. It takes a while to
+ instantiate the evdns object, so it would be useful to have one that serves
+ all the DNS queries. Note that the recent update where (create-data-pointer)
+ is used for all data referencing, this is now 100% possible, whereas before
+ the DNS callbacks were referenced by DNS base (meaning 1 DNS base for 1 DNS
+ lookup). Now one DNS base can serve unlimited requests and could be closed
+ if there are no pending DNS lookups.
  - `udp-send` and `udp-server`
  ([Issue #2](https://github.com/orthecreedence/cl-async/issues/2), thanks
  LinkFly)
