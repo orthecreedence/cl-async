@@ -10,9 +10,6 @@
            #:connection-eof
            #:connection-timeout
            #:connection-refused
-           #:connection-dns-error
-           #:http-connection-timeout
-           #:http-connection-refused
            
            #:enable-threading-support
            ;#:enable-debug-mode
@@ -21,14 +18,9 @@
 
            #:timer
 
+           #:connection-dns-error
            #:dns-lookup
 
-           #:connection-info
-           #:connection-eof
-           #:connection-error
-           #:connection-timeout
-           #:connection-refused
-           #:connection-dns-error
            #:tcp-send
            #:tcp-server
            #:write-socket-data
