@@ -19,6 +19,7 @@ The documentation is split into a few main sections.
 - [__Event callbacks and error handling__](#event-callbacks-and-error-handling-in-general)
 - [__Examples__](#examples)
 - [__Implementation notes__](#implementation-notes)
+  - [TODO](#todo)
 - [__Drivers__](#drivers)
 - [__License__](#license)
 
