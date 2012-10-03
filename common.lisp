@@ -9,6 +9,24 @@
 (defvar *event-loop-end-functions* nil
   "Functions to call when the event loop closes")
 
+(defvar *catch-application-errors* nil
+  "When t, permits cl-async to catch uncaught conditions in your application and
+   pass them to the event-cb callback given. If no event-cb is given for the
+   operation that triggered the condition, use *default-event-handler* as the
+   event-cb.")
+
+(defvar *default-event-handler*
+  (lambda (err)
+    ;; throw the error so we can wrap it in a handler-case
+    (handler-case (error err)
+      ;; this is just info, let it slide
+      (connection-info () nil)
+      ;; this an actual error. throw it back to toplevel (will exit the
+      ;; event loop and cancel any pending events)
+      (t () (error err))))
+  "If an event-cb is not specified, this will be used as the event-cb IF
+   *catch-application-errors* is set to t.")
+
 (define-condition connection-info ()
   ((connection :initarg :connection :reader conn-fd :initform nil))
   (:report (lambda (c s) (format s "Connection info: ~a" (conn-fd c))))
@@ -31,18 +49,6 @@
 (define-condition connection-refused (connection-error) ()
   (:report (lambda (c s) (format s "Connection refused: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Passed to an event callback when a connection is refused."))
-
-(defvar *catch-application-errors* nil)
-(defvar *default-event-handler*
-  (lambda (err)
-    ;; throw the error so we can wrap it in a handler-case
-    (handler-case (error err)
-      ;; this is just info, let it slide
-      (connection-info () nil)
-      ;; this an actual error. throw it back to toplevel (will exit the
-      ;; event loop and cancel any pending events)
-      (t () (error err))))
-  "If an event-cb is not specified, this will always be used.")
 
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
