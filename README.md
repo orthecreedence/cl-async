@@ -55,16 +55,16 @@ for more information on these callbacks (and error handling in general).
 
 ### start-event-loop
 Start the event loop, giving a function that will be run inside the event loop
-once started. This function blocks the main thread until the event loop returns,
-which doesn't happen until the loop is empty *or* `(event-loop-exit)` is called
-inside the loop.
+once started. `start-event-loop` blocks the main thread until the event loop
+returns, which doesn't happen until the loop is empty *or*
+[event-loop-exit](#event-loop-exit) is called inside the loop.
 
 This function must be called before any other operations in the library are
-allowed. Don't worry, if you try to do an asyn operation without an event loop
-running, it will throw an error.
+allowed. If you try to do an async operation without an event loop running, it
+will throw an error.
 
 It allows specifying callbacks for the fatal errors in libevent (called when
-libevent would normall exit, taking your app with it), logging, and default
+libevent would normally exit, taking your app with it), logging, and default
 application error handling.
 
 ```common-lisp
@@ -164,7 +164,7 @@ If you want to write data to an existing socket without modifying the callbacks,
 please see [write-socket-data](#write-socket-data).
 
 Note that the `host` can be an IP address *or* a hostname, the hostname will
-be looked up asynchronously via libevent.
+be looked up asynchronously via libevent's DNS implementation.
 
 ```common-lisp
 ;; definition:
@@ -551,7 +551,7 @@ Implementation notes
 ### TODO
  - `udp-send` and `udp-server`
  ([Issue #2](https://github.com/orthecreedence/cl-async/issues/2), thanks
- LinkFly)
+ Link Fly)
  - More [examples](#examples)!!
  - Wrap sockets/fds in their own classes, since right now there are CFFI
  pointers flying around willy nilly. While this works fine if people follow
@@ -563,6 +563,7 @@ Implementation notes
  [cl-signal-handler](https://github.com/orthecreedence/cl-signal-handler) with
  app-fired, custom events in conjuction with libevent's signal handling.
  Attacking the problem from both sides should get it working.
+ - IPV6 support
  - Tests/benchmarks. I have benchmarked a bit, but nothing official. So far,
  the results are somewhat favorable (enough so that building this library wasn't
  a complete waste of time, anyway).
