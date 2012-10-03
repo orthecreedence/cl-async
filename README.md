@@ -13,10 +13,14 @@ but work much like how I'd want an asynchronous I/O library to work.
 to change...a lot. Please rely on it at your own risk, until things solidify a
 bit.*
 
-The documentation is split into two main sections:
+The documentation is split into a few main sections.
 
 - [__Function and class documentation__](#functions-and-classes)
 - [__Event callbacks and error handling__](#event-callbacks-and-error-handling-in-general)
+- [__Examples__](#examples)
+- [__Implementation notes__](#implementation-notes)
+- [__Drivers__](#drivers)
+- [__License__](#license)
 
 Functions and classes
 ----------------------
@@ -543,13 +547,22 @@ Libevent was chosen for a few reasons:
 
 Drivers
 -------
+*Once cl-async is more stable, this section will list the drivers built on top
+of it to make it easy for people to find them.*
+
 I plan on building and releasing a number of drivers on top of this library. The
 first one is going to be an [asynchronous beanstalkd driver](https://github.com/orthecreedence/beanstalk-async).
-Then a MongoDB driver. And then every driver ever.
+Then a MongoDB driver (most likely built on top of [cl-mongo](https://github.com/fons/cl-mongo)).
+And then every driver ever.
 
-The biggest problem with asynchronous IO in lisp is that there are no drivers
-that use asynchronous IO. I'm hoping to get enough *drive* (heh heh) behind this
-to make asynchronous programming (ala Node.js) in lisp a viable option.
+The biggest problem with asynchronous IO in lisp is that there are lots of
+libraries that provide it, but no drivers built on top of the libraries. Nobody
+wants to sit around all day programming database drivers. I think if I get
+enough traction behind cl-async by providing drivers for enough services, it
+could stand to be the first viable asynchronous programming library for Common
+Lisp users.
+
+That's the goal, anyway...
 
 License
 -------
