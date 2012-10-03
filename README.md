@@ -521,11 +521,6 @@ Implementation notes
  a complete waste of time, anyway).
 
 ### Libevent
-The bindings for libevent are auto-generated. I'm not proud of the bindings
-themselves, but because I planned to completely wrap them all along, didn't put
-too much work into making them pretty and useful. They will most likely stay
-as-is.
-
 Libevent was chosen for a few reasons:
  - It provides a socket API. The USOCKET library was too undocumented for me
  to figure out. Plus things like delayed functions/timers were not clear to me.
@@ -543,6 +538,11 @@ Libevent was chosen for a few reasons:
  - It comes with asynchronous HTTP client/server implementations. These are not
  trivial, and if libevent makes it easier to have an asynchronous CL webserver
  or client, then hell let's use it.
+
+The bindings for libevent are auto-generated. I'm not proud of the bindings
+themselves, but because I planned to completely wrap them all along, didn't put
+too much work into making them pretty and useful. They will most likely stay
+as-is.
 
 Drivers
 -------
