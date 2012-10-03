@@ -507,6 +507,7 @@ which closes the socket and ends the event loop, returning to the main thread.
 Implementation notes
 --------------------
 ### TODO
+ - More [examples](#examples)!!
  - Wrap sockets/fds in their own classes, since right now there are CFFI
  pointers flying around willy nilly. While this works fine if people follow
  the API, it can potentially be disastrous as well. Wrapping pointers in
