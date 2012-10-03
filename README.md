@@ -15,7 +15,11 @@ bit.*
 
 Usage
 -----
-You can use cl-async with the prefixes `cl-async:` or `as:`.
+You can use cl-async with the prefixes `cl-async:` or `as:`. Throughout the
+functions documentded below, you will see a lot of `event-cb` callback
+arguments. Please refer to the
+[section on error handling](#Event callbacks (and error handling in general))
+for more information on this.
 
 - [start-event-loop](#start-event-loop) _function_
 - [event-loop-exit](#event-loop-exit) _function_
