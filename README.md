@@ -441,23 +441,14 @@ which closes the socket and ends the event loop, returning to the main thread.
 Implementation notes
 --------------------
 ### TODO
- - Error handling. Need to catch errors in user code and fire appropriate
- cleanup functions and/or call appropriate "event" callbacks. Right now this
- isn't really happening. More on this below.
- - Tests/benchmarks
-
-### Error handling
-One thing that is *not* solidified yet is error handling. The arguments for
-fail/event callbacks will most likely stay the same, but the data passed into
-them will most likely change in the near future.
-
-Also, I need to figure out when it makes sense to auto-close connections (for
-uncaught exceptions and such) and when to call event callbacks. Right now,
-everything works great until something goes wrong.
-
-As I build a few applications with this library, except this to solidify, but
-for now it's just a stab in the dark until I figure out how it should work. Be
-warned!
+ - Signal handling. Libevent supports signal handling events, but they aren't
+ really caught in lisp land. Will probably end up implementing something like
+ [cl-signal-handler](https://github.com/orthecreedence/cl-signal-handler) with
+ app-fired, custom events in conjuction with libevent's signal handling.
+ Attacking the problem from both sides should get it working.
+ - Tests/benchmarks. I have benchmarked a bit, but nothing official. So far,
+ the results are somewhat favorable (enough so that building this library wasn't
+ a complete waste of time, anyway).
 
 ### Libevent
 The bindings for libevent are auto-generated. I'm not proud of the bindings
