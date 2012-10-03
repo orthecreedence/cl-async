@@ -224,7 +224,7 @@
     (when logger-cb
       (setf callbacks (append callbacks (list :logger-cb logger-cb)))
       (le:event-set-log-callback (cffi:callback logger-cb)))
-    (timer 0.0 start-fn)
+    (delay start-fn)
     (save-callbacks *event-base* callbacks)
     (unwind-protect
       (progn
