@@ -1,15 +1,19 @@
 (in-package :cl-async)
 
-(cffi:defcallback timer-cb :void ((fd :pointer) (what :pointer) (data :pointer))
+(cffi:defcallback timer-cb :void ((fd :pointer) (what :pointer) (pointer :pointer))
   "Callback used by the async timer system to find and run user-specified
    callbacks on timer events."
   (declare (ignore fd what))
-  (let ((cb (car (get-callbacks data))))
-    (unwind-protect
-      (when cb (funcall cb))
-      (clear-object-attachments data))))
+  (let* ((callbacks (get-callbacks pointer))
+         (cb (getf callbacks :callback))
+         (event-cb (getf callbacks :event-cb)))
+    (catch-app-errors event-cb
+      (unwind-protect
+        (when cb (funcall cb))
+        (clear-object-attachments pointer)
+        (cffi:foreign-free pointer)))))
 
-(defun timer (time-s callback)
+(defun timer (time-s callback &key event-cb)
   "Run a function, asynchronously, after the specified amount of seconds. An
    event loop must be running for this to work."
   (check-event-loop-running)
@@ -19,6 +23,6 @@
                         ('le::tv-usec time-usec))
       (let* ((pointer (cffi:foreign-alloc :char :count 0))
              (ev (le:event-new *event-base* -1 0 (cffi:callback timer-cb) pointer)))
-        (save-callbacks pointer callback)
+        (save-callbacks pointer (list :callback callback :event-cb event-cb))
         (le:event-add ev time-c)))))
 

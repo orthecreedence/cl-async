@@ -46,11 +46,11 @@
   (unwind-protect
     (let* ((callbacks (get-callbacks dns-base))
            (resolve-cb (getf callbacks :resolve-cb))
-           (fail-cb (getf callbacks :fail-cb)))
-      (catch-app-errors fail-cb
+           (event-cb (getf callbacks :event-cb)))
+      (catch-app-errors event-cb
         (if (not (zerop errcode))
             ;; DNS call failed, get error
-            (funcall fail-cb (make-instance 'connection-dns-error :code errcode :msg (le:evutil-gai-strerror errcode)))
+            (funcall event-cb (make-instance 'connection-dns-error :code errcode :msg (le:evutil-gai-strerror errcode)))
             ;; success, pull out address
             (let ((family (le-a:evutil-addrinfo-ai-family addrinfo))
                   (addr nil))
@@ -64,12 +64,12 @@
                   ))
               (if addr
                   (funcall resolve-cb addr family)
-                  (funcall fail-cb (make-instance 'connection-dns-error :code -1 :msg (format nil "Error pulling out address from family: ~a" family))))
+                  (funcall event-cb (make-instance 'connection-dns-error :code -1 :msg (format nil "Error pulling out address from family: ~a" family))))
               (unless (cffi:null-pointer-p addrinfo)
                 (le:evutil-freeaddrinfo addrinfo))))))
     (free-dns-base dns-base)))
 
-(defun dns-lookup (host resolve-cb fail-cb)
+(defun dns-lookup (host resolve-cb event-cb)
   "Asynchronously lookup a DNS address. Note that if an IP address is passed,
    the lookup happens synchronously. If a lookup is synchronous (and instant)
    this returns T, otherwise nil (lookup happening in background). Either way
@@ -82,7 +82,7 @@
                         ('le::ai-flags le:+evutil-ai-canonname+)
                         ('le::ai-socktype le:+sock-stream+)
                         ('le::ai-protocol le:+ipproto-tcp+))
-      (save-callbacks dns-base (list :resolve-cb resolve-cb :fail-cb fail-cb))
+      (save-callbacks dns-base (list :resolve-cb resolve-cb :event-cb event-cb))
       (let ((dns-req (le:evdns-getaddrinfo dns-base host (cffi:null-pointer) hints (cffi:callback dns-cb) dns-base)))
         (cffi:null-pointer-p dns-req)))))
 

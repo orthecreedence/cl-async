@@ -10,11 +10,11 @@
 (in-package :cl-async)
 
 (define-condition http-connection-timeout (connection-timeout) ()
-  (:report (lambda (c s) (format s "HTTP connection timeout: ~a~%" (connection-error-connection c))))
+  (:report (lambda (c s) (format s "HTTP connection timeout: ~a~%" (conn-fd c))))
   (:documentation "Passed to an event callback when an HTTP connection times out"))
 
 (define-condition http-connection-refused (connection-refused) ()
-  (:report (lambda (c s) (format s "HTTP connection refused: ~a~%" (connection-error-connection c))))
+  (:report (lambda (c s) (format s "HTTP connection refused: ~a~%" (conn-fd c))))
   (:documentation "Passed to an event callback when an HTTP connection is refused"))
 
 (defclass http-request ()
@@ -293,7 +293,7 @@
   (let* ((parsed-uri (parse-uri uri))
          (host (getf parsed-uri :host))
          (dns-base (if (ip-address-p host)
-                       -1
+                       (cffi:null-pointer)
                        (le:evdns-base-new *event-base* 1)))
          (connection (le:evhttp-connection-base-new *event-base*
                                                     dns-base

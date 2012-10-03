@@ -60,10 +60,12 @@ the event loop.
     (event-loop-exit)
 
 ### timer
-Run a function after a specified amount of time (in seconds, decimals OK):
+Run a function after a specified amount of time (in seconds, decimals OK). It
+optionally takes an `event-cb` which can be used to catch application errors
+should they occur while running `callback`.
 
     ;; definition:
-    (timer time-s callback)
+    (timer time-s callback &key event-cb)
     
     ;; example:
     (timer 3.2 (lambda () (format t "I ran! (3.2 seconds later)~%")))
@@ -80,7 +82,7 @@ get IPV4 going and then focus on IPV6 when everything's working. While the
 is implemented.
 
     ;; definition
-    (dns-lookup host resolve-cb fail-cb)
+    (dns-lookup host resolve-cb event-cb)
 
     ;; example
     (dns-lookup "www.google.com"
@@ -282,11 +284,11 @@ change backwards compatible.
 
 Event callbacks (and error handling in general)
 -----------------------------------------------
-Any parameter labelled `event-cb` or `fail-cb` is what's known as an "event
-callback." Event callbacks have one argument: a condition describing the event
-that caused them to be invoked. Originally event callbacks were failure 
-callbacks, but since non-failure conditions are sometimes useful to an app, it
-made sense to make it more generic.
+Any parameter labelled `event-cb` is what's known as an "event callback." Event
+callbacks have one argument: a condition describing the event that caused them
+to be invoked. Originally event callbacks were failure callbacks, but since
+non-failure conditions are sometimes useful to an app, it made sense to make it
+more generic.
 
 The event conditions generally match conditions in libevent, although they try
 to be as informative as possible. Note that conditions are not actually thrown,
@@ -301,6 +303,9 @@ cl-async can be set up to catch errors in your application and pass them to
 your `event-cb`. This makes for seamless error handling, and keeps a rouge
 condition from exiting the event loop (assuming you have an `event-cb` set for
 the operation that generated the condition).
+
+An event callback takes exactly one argument, which is the condition being
+passed to it.
 
 - [\*catch-application-errors\*](#catch-application-errors) _variable_
 - [\*default-event-handler\*](#default-event-handler) _variable_
@@ -321,14 +326,13 @@ and an `event-cb` is not specified for an operation, the function assigned to
 this variable will be used as the `event-cb`. The default:
 
     (lambda (err)
+      ;; throw the error so we can wrap it in a handler-case
       (handler-case (error err)
-        (connection-info ()
-          ;; this is just info, let it slide
-          nil)
-        (t
-          ;; this an actual error. throw it back to toplevel (will exit the
-          ;; event loop and cancel any pending events)
-          (error err))))
+        ;; this is just info, let it slide
+        (connection-info () nil)
+        ;; this an actual error. throw it back to toplevel (will exit the
+        ;; event loop and cancel any pending events)
+        (t () (error err))))
 
 This can be changed by your application if different behavior is desired.
 
