@@ -23,17 +23,17 @@
       (values code
               (cffi:foreign-funcall "strerror" :int code :string))))
 
-(defun close-socket (bev)
+(defun close-socket (socket)
   "Free a socket (bufferevent) and clear out all associated data."
-  (le:bufferevent-disable bev (logior le:+ev-read+ le:+ev-write+))
+  (le:bufferevent-disable socket (logior le:+ev-read+ le:+ev-write+))
   ;; grab the data pointer associated with the bufferevent and free it. see
   ;; comment tcp-send about data-pointer for a better explanation.
-  (let ((bev-data-pointer (deref-data-from-pointer bev))
-        (fd (le::bufferevent-getfd bev)))
-    (le:bufferevent-free bev)
+  (let ((bev-data-pointer (deref-data-from-pointer socket))
+        (fd (le::bufferevent-getfd socket)))
+    (le:bufferevent-free socket)
     (le:evutil-closesocket fd)
     (free-pointer-data bev-data-pointer)
-    (free-pointer-data bev :preserve-pointer t)))
+    (free-pointer-data socket :preserve-pointer t)))
 
 (defun free-listener (listener)
   "Free a socket listener and all associated data."
