@@ -8,6 +8,14 @@
 
 %ignore "_EVENT_LT_OBJDIR";
 %ignore "_EVENT_VERSION";
+%ignore "_EVENT_PACKAGE";
+%ignore "_EVENT_PACKAGE_BUGREPORT";
+%ignore "_EVENT_PACKAGE_NAME";
+%ignore "_EVENT_PACKAGE_STRING";
+%ignore "_EVENT_PACKAGE_TARNAME";
+%ignore "_EVENT_PACKAGE_URL";
+%ignore "_EVENT_PACKAGE_VERSION";
+%ignore "LIBEVENT_VERSION";
 
 #define AF_UNSPEC   0
 #define AF_UNIX 1
