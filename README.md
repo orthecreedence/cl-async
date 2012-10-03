@@ -549,7 +549,7 @@ which closes the socket and ends the event loop, returning to the main thread.
 Implementation notes
 --------------------
 ### TODO
- - Create one global `\*dns-base\*` for all DNS queries. It takes a while to
+ - Create one global `*dns-base*` for all DNS queries. It takes a while to
  instantiate the evdns object, so it would be useful to have one that serves
  all the DNS queries. Note that the recent update where (create-data-pointer)
  is used for all data referencing, this is now 100% possible, whereas before
