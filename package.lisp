@@ -27,8 +27,6 @@
            #:set-socket-timeouts
            #:read-socket-data
 
-           #:http-connection-timeout
-           #:http-connection-refused
            #:http-client
            #:http-response
            #:http-server

@@ -416,8 +416,6 @@ This can be changed by your application if different behavior is desired.
 - [connection-timeout](#connection-timeout) _condition_
 - [connection-refused](#connection-refused) _condition_
 - [connection-dns-error](#connection-dns-error) _condition_
-- [http-connection-timeout](#http-connection-timeout) _condition_
-- [http-connection-refused](#http-connection-refused) _condition_
 
 ### connection-info
 This is the base condition for any connection event. Any other connection
@@ -469,17 +467,6 @@ Describes the condition when a connection has been refused by the peer.
 _extends [connection-error](#connection-error)_
 
 Describes the condition when a DNS lookup has failed.
-
-### http-connection-timeout
-_extends [connection-timeout](#connection-timeout)_
-
-Describes the condition when an HTTP connection has timed out either connecting
-or waiting for a read/write.
-
-### http-connection-refused
-_extends [connection-refused](#connection-refused)_
-
-Describes the condition when an HTTP connection has been refused by the peer.
 
 Examples
 --------

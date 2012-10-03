@@ -9,14 +9,6 @@
 
 (in-package :cl-async)
 
-(define-condition http-connection-timeout (connection-timeout) ()
-  (:report (lambda (c s) (format s "HTTP connection timeout: ~a~%" (conn-fd c))))
-  (:documentation "Passed to an event callback when an HTTP connection times out"))
-
-(define-condition http-connection-refused (connection-refused) ()
-  (:report (lambda (c s) (format s "HTTP connection refused: ~a~%" (conn-fd c))))
-  (:documentation "Passed to an event callback when an HTTP connection is refused"))
-
 (defclass http-request ()
   ((req-obj :accessor http-request-c :initarg :c :initform nil :documentation
      "Holds the libevent evhttp request foreign pointer. Can be used to get more
@@ -152,10 +144,10 @@
         (cond
           ;; timeout
           ((cffi:null-pointer-p request)
-           (funcall event-cb (make-instance 'http-connection-timeout :connection connection)))
+           (funcall event-cb (make-instance 'connection-timeout :connection connection)))
           ;; connection refused
           ((eq (le:evhttp-request-get-response-code request) 0)
-           (funcall event-cb (make-instance 'http-connection-refused :connection connection)))
+           (funcall event-cb (make-instance 'connection-refused :connection connection)))
           ;; got response back, parse and send off to request-cb
           (t
            (let ((status (le:evhttp-request-get-response-code request))
