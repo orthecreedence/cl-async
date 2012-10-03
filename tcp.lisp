@@ -156,6 +156,9 @@
          (callbacks (get-callbacks data-pointer))
          (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
+      ;; attach the per-conn-data-pointer to the bev
+      (attach-data-to-pointer bev per-conn-data-pointer)
+
       ;; make sure the socket is non-blocking
       (let ((nonblock (le:evutil-make-socket-nonblocking (le:bufferevent-getfd bev))))
         (unless (zerop nonblock)
