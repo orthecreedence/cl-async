@@ -18,7 +18,7 @@ Usage
 You can use cl-async with the prefixes `cl-async:` or `as:`. Throughout the
 functions documentded below, you will see a lot of `event-cb` callback
 arguments. Please refer to the
-[section on error handling](#Event callbacks (and error handling in general))
+[section on error handling](#event-callbacks-and-error-handling-in-general)
 for more information on this.
 
 - [start-event-loop](#start-event-loop) _function_
@@ -299,8 +299,8 @@ to be as informative as possible. Note that conditions are not actually thrown,
 but rather instantiated via `make-instance` and passed directly to the event
 callback.
 
-- [Application error handling](#Application error handling)
-- [General cl-async conditions](#General cl-async conditions)
+- [Application error handling](#application-error-handling)
+- [General cl-async conditions](#general-cl-async-conditions)
 
 ### Application error handling
 cl-async can be set up to catch errors in your application and pass them to
