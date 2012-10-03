@@ -94,7 +94,6 @@
 (cffi:defcallback tcp-read-cb :void ((bev :pointer) (data-pointer :pointer))
   "Called whenever a read event happens on a TCP socket. Ties into the anonymous
    callback system to run user-specified anonymous callbacks on read events."
-  (declare (ignore data-pointer))
   (let* ((callbacks (get-callbacks data-pointer))
          (read-cb (getf callbacks :read-cb))
          (event-cb (getf callbacks :event-cb)))
