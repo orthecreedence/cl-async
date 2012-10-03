@@ -244,5 +244,5 @@
       (when (and (not (cffi:pointerp listener)) (zerop listener))
         (error "Couldn't create listener: ~a~%" listener))
       ;(le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
-      (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb event-cb)))))
+      (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb)))))
 
