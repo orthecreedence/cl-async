@@ -97,11 +97,9 @@
   (let ((header-ptr (le-a:evkeyvalq-thq-first http-headers))
         (headers nil))
     (loop until (cffi:null-pointer-p header-ptr) do
-      (let ((key )
-            (val ))
-        (push (cons (le-a:evkeyval-key header-ptr)
-                    (le-a:evkeyval-value header-ptr)) headers)
-        (setf header-ptr (le-a:evkeyval-next header-ptr))))
+      (push (cons (le-a:evkeyval-key header-ptr)
+                  (le-a:evkeyval-value header-ptr)) headers)
+      (setf header-ptr (le-a:evkeyval-next header-ptr)))
     (nreverse headers)))
 
 (cffi:defcallback http-request-cb :void ((request :pointer) (data-pointer :pointer))
