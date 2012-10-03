@@ -475,21 +475,22 @@ function definitions and specifications. So here's some more to get you going.
 
 ### An echo server
 
-    (defun my-echo-server ()
-      (format t "Starting server.~%")
-      (as:tcp-server nil 9003  ; nil is "0.0.0.0"
-                     (lambda (socket data)
-                       "our read-cb, called when data is received from the client"
-                       ;; convert the data into a string
-                       (let ((str (babel:octets-to-string data :encoding :utf-8)))
-                         (when (search "QUIT" str)
-                           ;; sent "QUIT" so close the socket and exit
-                           (as:close-socket socket)
-                           (as:event-loop-exit)))
-                       ;; echo the data back into the socket
-                       (as:write-socket-data socket data))
-                     (lambda () nil)))  ; error handler that does nothing
-    (as:start-event-loop #'my-echo-server)
+```common-lisp
+(defun my-echo-server ()
+  (format t "Starting server.~%")
+  (as:tcp-server nil 9003  ; nil is "0.0.0.0"
+                 (lambda (socket data)
+                   "our read-cb, called when data is received from the client"
+                   ;; convert the data into a string
+                   (let ((str (babel:octets-to-string data :encoding :utf-8)))
+                     (when (search "QUIT" str)
+                       ;; sent "QUIT" so close the socket and exit
+                       (as:close-socket socket)
+                       (as:event-loop-exit)))
+                   ;; echo the data back into the socket
+                   (as:write-socket-data socket data))
+                 (lambda () nil)))  ; error handler that does nothing
+(as:start-event-loop #'my-echo-server)
 
 This echos anything back to the client that was sent, until "QUIT" is recieved,
 which closes the socket and ends the event loop, returning to the main thread.
