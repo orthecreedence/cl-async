@@ -1,8 +1,5 @@
 (in-package :cl-async)
 
-(defparameter *buffer-size* 16384
-  "The amount of data we'll pull from the evbuffers when doing reading/writing.")
-
 (defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in))
   "Really no sense in computing this OVER AND OVER.")
 
@@ -57,30 +54,37 @@
 
 (defun read-socket-data (socket data-cb &key socket-is-evbuffer)
   "Read the data out of a bufferevent (or directly, an evbuffer)."
-  (let ((bufsize *buffer-size*))
-    (cffi:with-foreign-object (buffer :unsigned-char bufsize)
-      (let ((input (if socket-is-evbuffer
-                       socket
-                       (le:bufferevent-get-input socket)))
-            (lbuf (make-array bufsize :element-type '(unsigned-byte 8))))
-        (loop for n = (le:evbuffer-remove input buffer bufsize)
-              while (< 0 n) do
-          (dotimes (i n)
-            (setf (aref lbuf i) (cffi:mem-aref buffer :char i)))
-          (funcall data-cb (subseq lbuf 0 n)))))))
+  (let ((bufsize *buffer-size*)
+        (buffer-c *socket-buffer-c*)
+        (buffer-lisp *socket-buffer-lisp*)
+        (input (if socket-is-evbuffer
+                   socket
+                   (le:bufferevent-get-input socket))))
+    (loop for n = (le:evbuffer-remove input buffer-c bufsize)
+          while (< 0 n) do
+      (dotimes (i n)
+        (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :char i)))
+      (funcall data-cb (subseq buffer-lisp 0 n)))))
 
 (defun write-socket-data (socket data &key socket-is-evbuffer)
-  "Write data into libevent socket (bufferevent)."
-  (let ((data (if (stringp data)
-                  (babel:string-to-octets data :encoding :utf-8)
-                  data))
-        (evbuffer (if socket-is-evbuffer
-                      socket
-                      (le:bufferevent-get-output socket))))
-    (cffi:with-foreign-object (data-c :unsigned-char (length data))
-      (dotimes (i (length data))
-        (setf (cffi:mem-aref data-c :unsigned-char i) (aref data i)))
-      (le:evbuffer-add evbuffer data-c (length data)))))
+  "Write data into libevent socket."
+  (let* ((data (if (stringp data)
+                   (babel:string-to-octets data :encoding :utf-8)
+                   data))
+         (data-length (length data))
+         (data-index 0)
+         (evbuffer (if socket-is-evbuffer
+                       socket
+                       (le:bufferevent-get-output socket)))
+         (buffer-c *socket-buffer-c*))
+    ;; copy into evbuffer using existing c buffer
+    (loop while (< 0 data-length) do
+      (let ((bufsize (min data-length *buffer-size*)))
+      (dotimes (i bufsize)
+        (setf (cffi:mem-aref buffer-c :unsigned-char i) (aref data data-index))
+        (incf data-index))
+      (le:evbuffer-add evbuffer buffer-c bufsize)
+      (decf data-length bufsize)))))
 
 (defun drain-evbuffer (evbuffer)
   "Grab all data in an evbuffer and put it into a byte array (returned)."

@@ -96,12 +96,13 @@
   "Pull the headers out of an HTTP request as a plist."
   (let ((header-ptr (le-a:evkeyvalq-thq-first http-headers))
         (headers nil))
-    (loop while (not (cffi:null-pointer-p header-ptr)) do
-      (let ((key (le-a:evkeyval-key header-ptr))
-            (val (le-a:evkeyval-value header-ptr)))
-        (push (cons key val) headers)
+    (loop until (cffi:null-pointer-p header-ptr) do
+      (let ((key )
+            (val ))
+        (push (cons (le-a:evkeyval-key header-ptr)
+                    (le-a:evkeyval-value header-ptr)) headers)
         (setf header-ptr (le-a:evkeyval-next header-ptr))))
-    headers))
+    (nreverse headers)))
 
 (cffi:defcallback http-request-cb :void ((request :pointer) (data-pointer :pointer))
   "ALL HTTP requests come through here. They are processed into the http-request
@@ -347,9 +348,7 @@
          (output-headers (le:evhttp-request-get-output-headers req-c)))
     (write-socket-data evbuffer body :socket-is-evbuffer t)
     (dolist (header headers)
-      (let ((key (car header))
-            (val (cdr header)))
-        (le:evhttp-add-header output-headers key val)))
+      (le:evhttp-add-header output-headers (car header) (cdr header)))
     (if (<= 200 status 299)
         (le:evhttp-send-reply req-c status (lookup-status-text status) evbuffer)
         (le:evhttp-send-error req-c status (lookup-status-text status)))

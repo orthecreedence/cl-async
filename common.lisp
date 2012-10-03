@@ -9,6 +9,15 @@
 (defvar *event-loop-end-functions* nil
   "Functions to call when the event loop closes")
 
+;; consider somehow moving these to tcp.lisp without creating circular deps
+;; (since they are initialized in start-event-loop as thread-local vars)
+(defparameter *buffer-size* 16384
+  "The amount of data we'll pull from the evbuffers when doing reading/writing.")
+(defvar *socket-buffer-c* nil
+  "A pointer to the buffer in C land that reads from sockets.")
+(defvar *socket-buffer-lisp* nil
+  "An array in lisp land that holds data copied from a socket.")
+
 (defvar *catch-application-errors* nil
   "When t, permits cl-async to catch uncaught conditions in your application and
    pass them to the event-cb callback given. If no event-cb is given for the
@@ -225,6 +234,8 @@
         (*fn-registry* nil)
         (*data-registry* nil)
         (*event-loop-end-functions* nil)
+        (*socket-buffer-c* (cffi:foreign-alloc :unsigned-char :count *buffer-size*))
+        (*socket-buffer-lisp* (make-array *buffer-size* :element-type '(unsigned-byte 8)))
         (*event-base* (le:event-base-new))
         (callbacks nil))
     ;; set up a callback for dealing with fatal errors
@@ -241,7 +252,9 @@
       (progn
         ;; this will block until all events are processed
         (le:event-base-dispatch *event-base*))
+      ;; cleanup
       (process-event-loop-exit-callbacks)
+      (cffi:foreign-free *socket-buffer-c*)
       (le:event-base-free *event-base*)
       (setf *event-base* nil))))
 
