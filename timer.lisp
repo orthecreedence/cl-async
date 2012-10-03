@@ -23,15 +23,21 @@
   ;; TODO: if time is in fact 0, just create and active a new vanilla event
   ;; instead of a timer event. should save some processing time
   (check-event-loop-running)
-  (multiple-value-bind (time-sec time-usec) (split-usec-time (if (numberp time) time 0))
-    (make-foreign-type (time-c (le::cffi-type le::timeval))
-                       (('le::tv-sec time-sec)
-                        ('le::tv-usec time-usec))
-      (let* ((data-pointer (create-data-pointer))
-             (ev (le:event-new *event-base* -1 0 (cffi:callback timer-cb) data-pointer)))
-        (save-callbacks data-pointer (list :callback callback :event-cb event-cb))
-        (attach-data-to-pointer data-pointer ev)
-        (le:event-add ev time-c)))))
+  (let* ((data-pointer (create-data-pointer))
+         (ev (le:event-new *event-base* -1 0 (cffi:callback timer-cb) data-pointer)))
+    (save-callbacks data-pointer (list :callback callback :event-cb event-cb))
+    (attach-data-to-pointer data-pointer ev)
+    (if (numberp time)
+        ;; time is not bogus, make a timeval struct and add the event to the
+        ;; loop for delayed processing.
+        (multiple-value-bind (time-sec time-usec) (split-usec-time time)
+          (make-foreign-type (time-c (le::cffi-type le::timeval))
+                             (('le::tv-sec time-sec)
+                              ('le::tv-usec time-usec))
+            (le:event-add ev time-c)))
+        ;; there was no time specified (or it wasn't a number), so fire up the
+        ;; event to be processed with no delay
+        (le:event-active ev 0 0))))
 
 (defun timer (time-s callback &key event-cb)
   "Deprecated, use delay."
