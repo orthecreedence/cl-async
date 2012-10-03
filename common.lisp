@@ -214,6 +214,9 @@
         (*default-event-handler* (if (functionp default-event-cb)
                                      default-event-cb
                                      *default-event-handler*))
+        (*fn-registry* nil)
+        (*data-registry* nil)
+        (*event-loop-end-functions* nil)
         (*event-base* (le:event-base-new))
         (callbacks nil))
     ;; set up a callback for dealing with fatal errors
