@@ -17,9 +17,10 @@ Usage
 -----
 You can use cl-async with the prefixes `cl-async:` or `as:`. Throughout the
 functions documentded below, you will see a lot of `event-cb` callback
-arguments. Please refer to the
+arguments. Since any callback labelled `event-cb` has the same specification,
+they are not documented here. Please refer to the
 [section on error handling](#event-callbacks-and-error-handling-in-general)
-for more information on this.
+for more information on these callbacks (and error handling in general).
 
 - [start-event-loop](#start-event-loop) _function_
 - [event-loop-exit](#event-loop-exit) _function_
@@ -48,13 +49,36 @@ once started. This function blocks the main thread until the event loop returns,
 which doesn't happen until the loop is empty *or* `(event-loop-exit)` is called
 inside the loop.
 
+This function must be called before any other operations in the library are
+allowed. Don't worry, if you try to do an asyn operation without an event loop
+running, it will throw an error.
+
+It allows specifying callbacks for the fatal errors in libevent (called when
+libevent would normall exit, taking your app with it), logging, and default
+application error handling.
+
     ;; definition:
-    (start-event-loop start-fn)
+    (start-event-loop start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors)
     
     ;; example:
     (start-event-loop (lambda () (format t "Event loop started.~%")))
 
-_The following functions assume an event loop is started and running._
+##### fatal-cb definition
+
+    (lambda (errcode) ...)
+
+##### logger-cb definition
+
+    (lambda (loglevel msg) ...)
+
+`loglevel` corresponds to syslog levels.
+
+##### default-event-cb and catch-app-errors
+Please see the [Application error handling](#application-error-handling) section
+for complete information on these. They correspond 1 to 1 with
+[\*default-event-handler\*](#default-event-handler) and
+[\*catch-application-errors\*](#catch-application-errors). Setting them when
+calling `start-event-loop` is really jsut a convenience to cut down on `setf`s.
 
 ### event-loop-exit
 Exit the event loop. This will free up all resources internally and close down
@@ -82,7 +106,7 @@ synchronously.
 Please note that at this time, IPV6 is not supported. Libevent has support for
 it, but I don't feel like wrapping up the necessary classes just yet. I'd rather
 get IPV4 going and then focus on IPV6 when everything's working. While the
-`resolve-cb` supports a family parameter, it will always be AF\_INET until this
+`resolve-cb` supports a family parameter, it will always be `AF_INET` until this
 is implemented.
 
     ;; definition
@@ -94,6 +118,14 @@ is implemented.
                   (format t "Address: ~a~%" host))
                 (lambda (err) (format t "err: ~a~%" err)))
 
+##### resolve-cb definition
+
+    (lambda (ip-address-string ip-address-family) ...)
+
+As mentioned, until IPV6 is implemented, `ip-address-family` will *always* be
+`AF_INET`. To test this, you can use the included libevent2 package's definition
+of `libevent2:+af-inet+` or `libevent2:+af-inet-6+` (`le:` for short).
+
 ### tcp-send
 Open an asynchronous TCP connection to a host (IP or hostname) and port, once
 connected send the given data (byte array or string) and process any response
@@ -103,6 +135,9 @@ the provided data will be written to the given socket instead of opening a new
 one, and the given callbacks will be set as the new callbacks for the socket.
 This can be useful if you need to set up a new request/response on an existing
 socket.
+
+If you want to write data to an existing socket without modifying the callbacks,
+please see [write-socket-data](#write-socket-data).
 
 Note that the `host` can be an IP address *or* a hostname, the hostname will
 be looked up asynchronously via libevent.
@@ -118,13 +153,12 @@ be looked up asynchronously via libevent.
                   (close-socket socket)))  ; close the socket if done processing
               #'my-app-error-handler)
 
-The callbacks are as follows:
+##### read-cb definition
 
-    ;; read callback:
-    (lambda (socket data-recieved) ...)
-    
-    ;; error callback
-    (lambda (socket errors) ...)
+    (lambda (socket byte-array) ...)
+
+`socket` should never be dealt with directly as it may change in the future,
+however it *can* be passed to other cl-async functions that take a `socket` arg.
 
 ### tcp-server
 Bind an asynchronous listener to the given bind address/port and start accepting
@@ -137,28 +171,32 @@ If `nil` is passed into the bind address, it effectively binds the listener to
     
     ;; example
     (tcp-server "127.0.0.1" 8080
-                #'myapp:process-client-data
-                #'myapp:error-handler)
+                (lambda (socket data) (myapp:process-client-data socket data))
+                nil)  ;; use *default-event-handler* as the event handler for this operation
 
-Read/event callbacks take the same arguments as the [tcp-send](#tcp-send) function.
+##### read-cb definition
+
+    (lambda (socket byte-array) ...)
+
+`socket` should never be dealt with directly as it may change in the future,
+however it *can* be passed to other cl-async functions that take a `socket` arg.
 
 ### write-socket-data
 Write data to an existing socket (such as one passed into a read-cb). Data can
-be a byte array or string (converted to a byte array via babel).
+be a byte array or string (converted to a byte array via babel). This is useful
+if you want to write data to an existing socket without modifying its callbacks,
+which is what [tcp-send](#tcp-send) would do.
 
     ;; definition
     (write-socket-data socket data)
     
-    ;; example
-    (defun read-cb (socket data)
-      ...
-      (write-socket-data socket "thxlol"))
-
 ### set-socket-timeouts
 Set the read/write timeouts (in seconds) on a socket. If nil, the timeout is
 cleared, otherwise if a number, the timeout is set into the socket such that
 when the socket is active and hasn't been read from/written to in the specified
 amount of time, it is closed.
+
+`nil` for a timeout value unsets the timeout.
 
     ;; definition
     (set-socket-timeouts socket read-sec write-sec)
@@ -195,6 +233,15 @@ The `timeout` arg is in seconds.
                  :headers '(("Accept" . "text/html"))
                  :timeout 5)
 
+##### request-cb definition
+
+    (lambda (http-status http-headers body-byte-array) ...)
+
+- `http-status` is an integer corresponding to the HTTP status code returned.
+- `http-headers` is an alist, as such: '(("Content-Type" . "text/html") ...)
+- `body-byte-array` is pretty self-explanatory. Convert to string w/ babel if
+needed.
+
 ### http-server
 Start a server that asynchronously processes HTTP requests. It takes data out of
 the request and populates the [http-request](#http-request) with it, which is
@@ -213,6 +260,12 @@ If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
                  (lambda (req)
                    (format t "Request: ~a~%" req)
                    (http-response req :body "hai")))
+
+##### request-cb definition
+
+    (lambda (http-request) ... )
+
+`http-request` is a on object of type [http-request](#http-request).
 
 ### http-response
 This is the function called by the application using an [http-server](#http-server)
@@ -445,6 +498,11 @@ which closes the socket and ends the event loop, returning to the main thread.
 Implementation notes
 --------------------
 ### TODO
+ - Wrap sockets/fds in their own classes, since right now there are CFFI
+ pointers flying around willy nilly. While this works fine if people follow
+ the API, it can potentially be disastrous as well. Wrapping pointers in
+ classes would also allow methods to be used, which would cut down a good
+ number of segfaults, I'm guessing.
  - Signal handling. Libevent supports signal handling events, but they aren't
  really caught in lisp land. Will probably end up implementing something like
  [cl-signal-handler](https://github.com/orthecreedence/cl-signal-handler) with
