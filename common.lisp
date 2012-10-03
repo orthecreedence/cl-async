@@ -195,11 +195,6 @@
       (use-win-threads
         (cffi:foreign-funcall-pointer use-win-threads () :void)))))
 
-;; TODO: DELETE ME!!!!
-(defvar *catch-application-errors* nil)
-(defvar *default-event-handler*
-;; -------------------
-
 (defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors)
   "Simple wrapper function that starts an event loop which runs the given
    callback, most likely to init your server/client.
