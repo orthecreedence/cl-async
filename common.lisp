@@ -33,7 +33,7 @@
   (:documentation "Passed to an event callback when a connection is refused."))
 
 (defvar *catch-application-errors* nil)
-(defparameter *default-event-handler*
+(defvar *default-event-handler*
   (lambda (err)
     ;; throw the error so we can wrap it in a handler-case
     (handler-case (error err)
