@@ -71,9 +71,7 @@
   "Save a set of callbacks, keyed by the given object (pointer)."
   (unless *fn-registry*
     (setf *fn-registry* (make-hash-table :test #'eql)))
-  (let ((pointer (if (cffi:pointerp pointer)
-                     (cffi:pointer-address pointer)
-                     pointer))
+  (let ((pointer (cffi:pointer-address pointer))
         (callbacks (if (listp callbacks)
                        callbacks
                        (list callbacks))))
@@ -82,48 +80,47 @@
 (defun get-callbacks (pointer)
   "Get all callbacks for the given object (pointer)."
   (when *fn-registry*
-    (let ((pointer (if (cffi:pointerp pointer)
-                       (cffi:pointer-address pointer)
-                       pointer)))
+    (let ((pointer (cffi:pointer-address pointer)))
       (gethash pointer *fn-registry*))))
 
 (defun clear-callbacks (pointer)
   "Clear out all callbacks for the given object (pointer)."
   (when *fn-registry*
-    (let ((pointer (if (cffi:pointerp pointer)
-                       (cffi:pointer-address pointer)
-                       pointer)))
+    (let ((pointer (cffi:pointer-address pointer)))
       (remhash pointer *fn-registry*))))
+
+(defun create-data-pointer ()
+  "Creates a pointer in C land that can be used to attach data/callbacks to.
+   Note that this must be freed via clear-pointer-data."
+  (cffi:foreign-alloc :char :count 0))
 
 (defun attach-data-to-pointer (pointer data)
   "Attach a lisp object to a foreign pointer."
   (unless *data-registry*
     (setf *data-registry* (make-hash-table :test #'eql)))
-  (let ((pointer (if (cffi:pointerp pointer)
-                     (cffi:pointer-address pointer)
-                     pointer)))
+  (let ((pointer (cffi:pointer-address pointer)))
     (setf (gethash pointer *data-registry*) data)))
 
 (defun deref-data-from-pointer (pointer)
   "Grab data attached to a CFFI pointer."
-  (when *data-registry*
-    (let ((pointer (if (cffi:pointerp pointer)
-                       (cffi:pointer-address pointer)
-                       pointer)))
+  (when (and pointer *data-registry*)
+    (let ((pointer (cffi:pointer-address pointer)))
       (gethash pointer *data-registry*))))
 
 (defun clear-pointer-data (pointer)
   "Clear the data attached to a CFFI pointer."
   (when *data-registry*
-    (let ((pointer (if (cffi:pointerp pointer)
-                       (cffi:pointer-address pointer)
-                       pointer)))
+    (let ((pointer (cffi:pointer-address pointer)))
       (remhash pointer *data-registry*))))
 
-(defun clear-object-attachments (pointer)
-  "Clears out all data attached to a foreign pointer."
-  (clear-callbacks pointer)
-  (clear-pointer-data pointer))
+(defun free-pointer-data (pointer &key preserve-pointer)
+  "Clears out all data attached to a foreign pointer, and frees the pointer."
+  (when pointer
+    (unwind-protect
+      (progn
+        (clear-callbacks pointer)
+        (clear-pointer-data pointer))
+      (unless preserve-pointer (cffi:foreign-free pointer)))))
 
 (defun split-usec-time (time-s)
   "Given a second value, ie 3.67, return the number of seconds as the first
@@ -208,6 +205,9 @@
    lead to strange bugs and problems. Don't do it."
   (when *event-base*
     (error "Event loop already started. Please wait for it to exit."))
+  ;; note the binding of these variable via (let), which means they are thread-
+  ;; local... so this function can be called in different threads, and the bound
+  ;; variables won't interfere with each other.
   (let ((*catch-application-errors* (if catch-app-errors-supplied-p
                                         catch-app-errors
                                         *catch-application-errors*))

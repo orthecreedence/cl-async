@@ -59,7 +59,7 @@
 (defun free-http-base (http-base)
   "Free an HTTP server object and clear any callbacks associated with it."
   (le:evhttp-free http-base)
-  (clear-object-attachments http-base))
+  (free-pointer-data http-base :preserve-pointer t))
 
 (defun get-method (enum)
   "Given a libevent EVHTTP_REQ enum key word, return the appropriate method
@@ -103,11 +103,11 @@
         (setf header-ptr (le-a:evkeyval-next header-ptr))))
     headers))
 
-(cffi:defcallback http-request-cb :void ((request :pointer) (http-base :pointer))
+(cffi:defcallback http-request-cb :void ((request :pointer) (data-pointer :pointer))
   "ALL HTTP requests come through here. They are processed into the http-request
    class and sent off to the appropriate callback."
   ;; TODO: process request body
-  (let* ((callbacks (get-callbacks http-base))
+  (let* ((callbacks (get-callbacks data-pointer))
          (request-cb (getf callbacks :request-cb))
          (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
@@ -131,12 +131,14 @@
                                            :body body)))
           (funcall request-cb http-request))))))
 
-(cffi:defcallback http-client-cb :void ((request :pointer) (connection :pointer))
+(cffi:defcallback http-client-cb :void ((request :pointer) (data-pointer :pointer))
   "HTTP client callback. All client HTTP requests come through here, get
    processed, and send off to either the event-cb (in case of connection error)
    or to the request-cb for everything else (even HTTP errors are sent through)."
-  (let* ((callbacks (get-callbacks connection))
-         (dns-base (deref-data-from-pointer connection))
+  (let* ((pointer-data (deref-data-from-pointer data-pointer))
+         (connection (getf pointer-data :connection))
+         (callbacks (get-callbacks connection))
+         (dns-base (getf pointer-data :dns-base))
          (request-cb (getf callbacks :request-cb))
          (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
@@ -157,7 +159,7 @@
              ;(le:evhttp-request-free request)
              (funcall request-cb status headers body))))
         (free-dns-base dns-base)
-        (clear-object-attachments connection)
+        (free-pointer-data data-pointer)
         ;; free the connection if it exists
         (unless (cffi:null-pointer-p connection)
           (le:evhttp-connection-free connection))))))
@@ -282,7 +284,8 @@
    body. If host is not present in the headers, it is set from the hostname (if
    given) in the URI. Also supports setting a timeout."
   (check-event-loop-running)
-  (let* ((parsed-uri (parse-uri uri))
+  (let* ((data-pointer (create-data-pointer))
+         (parsed-uri (parse-uri uri))
          (host (getf parsed-uri :host))
          (dns-base (if (ip-address-p host)
                        (cffi:null-pointer)
@@ -291,9 +294,9 @@
                                                     dns-base
                                                     host
                                                     (getf parsed-uri :port 80)))
-         (request (le:evhttp-request-new (cffi:callback http-client-cb) connection)))
+         (request (le:evhttp-request-new (cffi:callback http-client-cb) data-pointer)))
     (save-callbacks connection (list :request-cb request-cb :event-cb event-cb))
-    (attach-data-to-pointer connection dns-base)
+    (attach-data-to-pointer data-pointer (list :connection connection :dns-base dns-base))
     (when (numberp timeout)
       (le:evhttp-connection-set-timeout connection timeout))
     (let ((host-set nil)
@@ -311,12 +314,15 @@
 (defun http-server (bind port request-cb event-cb)
   "Start an HTTP server. If `bind` is nil, it bind to 0.0.0.0"
   (check-event-loop-running)
-  (let ((http-base (le:evhttp-new *event-base*)))
+  (let ((data-pointer (create-data-pointer))
+        (http-base (le:evhttp-new *event-base*)))
     (when (eq http-base 0)
       (error "Error creating HTTP listener"))
-    (add-event-loop-exit-callback (lambda () (free-http-base http-base)))
-    (le:evhttp-set-gencb http-base (cffi:callback http-request-cb) http-base)
-    (save-callbacks http-base (list :request-cb request-cb :event-cb event-cb))
+    (add-event-loop-exit-callback (lambda ()
+                                    (free-http-base http-base)
+                                    (free-pointer-data data-pointer)))
+    (le:evhttp-set-gencb http-base (cffi:callback http-request-cb) data-pointer)
+    (save-callbacks data-pointer (list :request-cb request-cb :event-cb event-cb))
     (let* ((bind (if bind bind "0.0.0.0"))
            (handle (le:evhttp-bind-socket-with-handle http-base bind port)))
       (when (eq handle 0)
