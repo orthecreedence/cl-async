@@ -13,8 +13,13 @@ but work much like how I'd want an asynchronous I/O library to work.
 to change...a lot. Please rely on it at your own risk, until things solidify a
 bit.*
 
-Usage
------
+The documentation is split into two main sections:
+
+- [__Function and class documentation__](#functions-and-classes)
+- [__Event callbacks and error handling__](#event-callbacks-and-error-handling-in-general)
+
+Functions and classes
+----------------------
 You can use cl-async with the prefixes `cl-async:` or `as:`. Throughout the
 functions documentded below, you will see a lot of `event-cb` callback
 arguments. Since any callback labelled `event-cb` has the same specification,
@@ -78,7 +83,7 @@ Please see the [Application error handling](#application-error-handling) section
 for complete information on these. They correspond 1 to 1 with
 [\*default-event-handler\*](#default-event-handler) and
 [\*catch-application-errors\*](#catch-application-errors). Setting them when
-calling `start-event-loop` is really jsut a convenience to cut down on `setf`s.
+calling `start-event-loop` is really just a convenience to cut down on `setf`s.
 
 ### event-loop-exit
 Exit the event loop. This will free up all resources internally and close down
