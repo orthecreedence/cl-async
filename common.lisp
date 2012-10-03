@@ -11,25 +11,25 @@
 
 (define-condition connection-info ()
   ((connection :initarg :connection :reader conn-fd :initform nil))
-  (:report (lambda (c s) (format s "Connection info: ~a~%" (conn-fd c))))
+  (:report (lambda (c s) (format s "Connection info: ~a" (conn-fd c))))
   (:documentation "Describes the base condition for any action on a connection."))
 
 (define-condition connection-error (connection-info)
   ((code :initarg :code :reader conn-errcode :initform 0)
    (msg :initarg :msg :reader conn-errmsg :initform nil))
-  (:report (lambda (c s) (format s "Connection error: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
+  (:report (lambda (c s) (format s "Connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Describes a general connection error."))
 
 (define-condition connection-eof (connection-info) ()
-  (:report (lambda (c s) (format s "Connection EOF: ~a~%" (conn-fd c))))
+  (:report (lambda (c s) (format s "Connection EOF: ~a" (conn-fd c))))
   (:documentation "Passed to an event callback when a peer closes the connection."))
 
 (define-condition connection-timeout (connection-error) ()
-  (:report (lambda (c s) (format s "Connection timeout: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
+  (:report (lambda (c s) (format s "Connection timeout: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Passed to an event callback when a connection times out."))
 
 (define-condition connection-refused (connection-error) ()
-  (:report (lambda (c s) (format s "Connection refused: ~a: ~a~%" (conn-errcode c) (conn-errmsg c))))
+  (:report (lambda (c s) (format s "Connection refused: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Passed to an event callback when a connection is refused."))
 
 (defvar *catch-application-errors* nil)

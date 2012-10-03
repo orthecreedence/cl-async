@@ -1,7 +1,7 @@
 (in-package :cl-async)
 
 (define-condition connection-dns-error (connection-error) ()
-  (:report (lambda (c s) (format s "Connection DNS error: ~a, ~a~%" (conn-fd c) (conn-errmsg c))))
+  (:report (lambda (c s) (format s "Connection DNS error: ~a, ~a" (conn-fd c) (conn-errmsg c))))
   (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
 
 (defparameter *ip-scanner*
