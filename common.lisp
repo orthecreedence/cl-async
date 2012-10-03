@@ -195,7 +195,7 @@
       (use-win-threads
         (cffi:foreign-funcall-pointer use-win-threads () :void)))))
 
-(defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors)
+(defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
   "Simple wrapper function that starts an event loop which runs the given
    callback, most likely to init your server/client.
 
@@ -208,7 +208,9 @@
    lead to strange bugs and problems. Don't do it."
   (when *event-base*
     (error "Event loop already started. Please wait for it to exit."))
-  (let ((*catch-application-errors* catch-app-errors)
+  (let ((*catch-application-errors* (if catch-app-errors-supplied-p
+                                        catch-app-errors
+                                        *catch-application-errors*))
         (*default-event-handler* (if (functionp default-event-cb)
                                      default-event-cb
                                      *default-event-handler*))
