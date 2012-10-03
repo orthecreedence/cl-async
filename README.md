@@ -373,9 +373,6 @@ the operation that generated the condition).
 An event callback takes exactly one argument, which is the condition being
 passed to it.
 
-- [\*catch-application-errors\*](#catch-application-errors) _variable_
-- [\*default-event-handler\*](#default-event-handler) _variable_
-
 ##### \*catch-application-errors\*
 _default: `nil`_
 
