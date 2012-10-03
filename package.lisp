@@ -2,9 +2,17 @@
   (:use :cl)
   (:export #:*catch-application-errors*
            #:*default-event-handler*
+           #:connection-info
            #:conn-fd
+           #:connection-error
            #:conn-errcode
            #:conn-errmsg
+           #:connection-eof
+           #:connection-timeout
+           #:connection-refused
+           #:connection-dns-error
+           #:http-connection-timeout
+           #:http-connection-refused
            
            #:enable-threading-support
            ;#:enable-debug-mode
