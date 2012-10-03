@@ -66,19 +66,25 @@ It allows specifying callbacks for the fatal errors in libevent (called when
 libevent would normall exit, taking your app with it), logging, and default
 application error handling.
 
-    ;; definition:
-    (start-event-loop start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors)
-    
-    ;; example:
-    (start-event-loop (lambda () (format t "Event loop started.~%")))
+```common-lisp
+;; definition:
+(start-event-loop start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors)
+
+;; example:
+(start-event-loop (lambda () (format t "Event loop started.~%")))
+```
 
 ##### fatal-cb definition
 
-    (lambda (errcode) ...)
+```common-lisp
+(lambda (errcode) ...)
+```
 
 ##### logger-cb definition
 
-    (lambda (loglevel msg) ...)
+```common-lisp
+(lambda (loglevel msg) ...)
+```
 
 `loglevel` corresponds to syslog levels.
 
@@ -93,19 +99,23 @@ calling `start-event-loop` is really just a convenience to cut down on `setf`s.
 Exit the event loop. This will free up all resources internally and close down
 the event loop.
 
-    ;; definition
-    (event-loop-exit)
+```common-lisp
+;; definition
+(event-loop-exit)
+```
 
 ### timer
 Run a function after a specified amount of time (in seconds, decimals OK). It
 optionally takes an `event-cb` which can be used to catch application errors
 should they occur while running `callback`.
 
-    ;; definition:
-    (timer time-s callback &key event-cb)
-    
-    ;; example:
-    (timer 3.2 (lambda () (format t "I ran! (3.2 seconds later)~%")))
+```common-lisp
+;; definition:
+(timer time-s callback &key event-cb)
+
+;; example:
+(timer 3.2 (lambda () (format t "I ran! (3.2 seconds later)~%")))
+```
 
 ### dns-lookup
 Asynchronously lookup an IP address given a hostname. If the hostname is an IP
@@ -118,18 +128,22 @@ get IPV4 going and then focus on IPV6 when everything's working. While the
 `resolve-cb` supports a family parameter, it will always be `AF_INET` until this
 is implemented.
 
-    ;; definition
-    (dns-lookup host resolve-cb event-cb)
+```common-lisp
+;; definition
+(dns-lookup host resolve-cb event-cb)
 
-    ;; example
-    (dns-lookup "www.google.com"
-                (lambda (host family)
-                  (format t "Address: ~a~%" host))
-                (lambda (err) (format t "err: ~a~%" err)))
+;; example
+(dns-lookup "www.google.com"
+            (lambda (host family)
+              (format t "Address: ~a~%" host))
+            (lambda (err) (format t "err: ~a~%" err)))
+```
 
 ##### resolve-cb definition
 
-    (lambda (ip-address-string ip-address-family) ...)
+```common-lisp
+(lambda (ip-address-string ip-address-family) ...)
+```
 
 As mentioned, until IPV6 is implemented, `ip-address-family` will *always* be
 `AF_INET`. To test this, you can use the included libevent2 package's definition
@@ -151,20 +165,24 @@ please see [write-socket-data](#write-socket-data).
 Note that the `host` can be an IP address *or* a hostname, the hostname will
 be looked up asynchronously via libevent.
 
-    ;; definition:
-    (tcp-send host port data read-cb event-cb &key read-timeout write-timeout)
-    
-    ;; example:
-    (tcp-send "www.google.com" 80
-              (format nil "GET /~c~c" #\return #\newline)
-              (lambda (socket data)
-                (when (pretend-http-package:process-http-stream data) 
-                  (close-socket socket)))  ; close the socket if done processing
-              #'my-app-error-handler)
+```common-lisp
+;; definition:
+(tcp-send host port data read-cb event-cb &key read-timeout write-timeout)
+
+;; example:
+(tcp-send "www.google.com" 80
+          (format nil "GET /~c~c" #\return #\newline)
+          (lambda (socket data)
+            (when (pretend-http-package:process-http-stream data) 
+              (close-socket socket)))  ; close the socket if done processing
+          #'my-app-error-handler)
+```
 
 ##### read-cb definition
 
-    (lambda (socket byte-array) ...)
+```common-lisp
+(lambda (socket byte-array) ...)
+```
 
 `socket` should never be dealt with directly as it may change in the future,
 however it *can* be passed to other cl-async functions that take a `socket` arg.
@@ -175,17 +193,21 @@ connections on it. It takes read and event callbacks (like [tcp-send](#tcp-send)
 If `nil` is passed into the bind address, it effectively binds the listener to
 "0.0.0.0" (listens from any address).
 
-    ;; definition
-    (tcp-server bind-address port read-cb event-cb)
-    
-    ;; example
-    (tcp-server "127.0.0.1" 8080
-                (lambda (socket data) (myapp:process-client-data socket data))
-                nil)  ;; use *default-event-handler* as the event handler for this operation
+```common-lisp
+;; definition
+(tcp-server bind-address port read-cb event-cb)
+
+;; example
+(tcp-server "127.0.0.1" 8080
+            (lambda (socket data) (myapp:process-client-data socket data))
+            nil)  ;; use *default-event-handler* as the event handler for this operation
+```
 
 ##### read-cb definition
 
-    (lambda (socket byte-array) ...)
+```common-lisp
+(lambda (socket byte-array) ...)
+```
 
 `socket` should never be dealt with directly as it may change in the future,
 however it *can* be passed to other cl-async functions that take a `socket` arg.
@@ -196,9 +218,11 @@ be a byte array or string (converted to a byte array via babel). This is useful
 if you want to write data to an existing socket without modifying its callbacks,
 which is what [tcp-send](#tcp-send) would do.
 
-    ;; definition
-    (write-socket-data socket data)
-    
+```common-lisp
+;; definition
+(write-socket-data socket data)
+```
+
 ### set-socket-timeouts
 Set the read/write timeouts (in seconds) on a socket. If nil, the timeout is
 cleared, otherwise if a number, the timeout is set into the socket such that
@@ -207,17 +231,21 @@ amount of time, it is closed.
 
 `nil` for a timeout value unsets the timeout.
 
-    ;; definition
-    (set-socket-timeouts socket read-sec write-sec)
-    
-    ;; example
-    (set-socket-timeouts socket 10.5 nil)
+```common-lisp
+;; definition
+(set-socket-timeouts socket read-sec write-sec)
+
+;; example
+(set-socket-timeouts socket 10.5 nil)
+```
 
 ### close-socket
 Close a socket and free its callbacks.
 
-    ;; definition
-    (close-socket socket)
+```common-lisp
+;; definition
+(close-socket socket)
+```
 
 ### http-client
 Asynchronously communicates with an HTTP server. Allows setting the method,
@@ -229,22 +257,26 @@ is pulled out of the `uri`.
 
 The `timeout` arg is in seconds.
 
-    ;; definition
-    (http-client uri request-cb event-cb &key (method 'GET) headers body timeout)
+```common-lisp
+;; definition
+(http-client uri request-cb event-cb &key (method 'GET) headers body timeout)
 
-    ;; example
-    (http-client "http://musio.com/"
-                 (lambda (status headers body)
-                   (format t "Result: ~s~%" (list status headers (babel:octets-to-string body :encoding :utf-8))))
-                 (lambda (err)
-                   (format t "ERROR!!!!: ~a~%" err))
-                 :method 'GET
-                 :headers '(("Accept" . "text/html"))
-                 :timeout 5)
+;; example
+(http-client "http://musio.com/"
+             (lambda (status headers body)
+               (format t "Result: ~s~%" (list status headers (babel:octets-to-string body :encoding :utf-8))))
+             (lambda (err)
+               (format t "ERROR!!!!: ~a~%" err))
+             :method 'GET
+             :headers '(("Accept" . "text/html"))
+             :timeout 5)
+```
 
 ##### request-cb definition
 
-    (lambda (http-status http-headers body-byte-array) ...)
+```common-lisp
+(lambda (http-status http-headers body-byte-array) ...)
+```
 
 - `http-status` is an integer corresponding to the HTTP status code returned.
 - `http-headers` is an alist, as such: '(("Content-Type" . "text/html") ...)
@@ -261,18 +293,22 @@ the [http-response](#http-response) function.
 
 If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
 
-    ;; definition
-    (http-server bind port request-cb event-cb)
+```common-lisp
+;; definition
+(http-server bind port request-cb event-cb)
 
-    ;; example
-    (http-server "192.168.0.1" 8090
-                 (lambda (req)
-                   (format t "Request: ~a~%" req)
-                   (http-response req :body "hai")))
+;; example
+(http-server "192.168.0.1" 8090
+             (lambda (req)
+               (format t "Request: ~a~%" req)
+               (http-response req :body "hai")))
+```
 
 ##### request-cb definition
 
-    (lambda (http-request) ... )
+```common-lisp
+(lambda (http-request) ... )
+```
 
 `http-request` is a on object of type [http-request](#http-request).
 
@@ -282,16 +318,18 @@ after it is done processing a request. It takes the [http-request](#http-request
 object passed into the request callback, along with some information about the
 response we're sending.
 
-    ;; definition
-    (http-response http-request &key (status 200) headers (body ""))
+```common-lisp
+;; definition
+(http-response http-request &key (status 200) headers (body ""))
 
-    ;; example
-    (http-server nil 80
-                 (lambda (req)
-                   (http-response req
-                                  :status 200
-                                  :headers '(("Content-Type" . "application/json"))
-                                  :body "{\"name\":\"larry\"}")))
+;; example
+(http-server nil 80
+             (lambda (req)
+               (http-response req
+                              :status 200
+                              :headers '(("Content-Type" . "application/json"))
+                              :body "{\"name\":\"larry\"}")))
+```
 
 ### http-request
 This is the class passed to an HTTP request callback after a request comes in
@@ -317,7 +355,9 @@ cl-async.
 ##### http-request-method
 Pull out the request method. This is a symbol, and will be one of
 
-    '(GET POST HEAD PUT DELETE OPTIONS TRACE CONNECT PATCH)
+```common-lisp
+'(GET POST HEAD PUT DELETE OPTIONS TRACE CONNECT PATCH)
+```
 
 ##### http-request-uri
 This is the full request URI in the request. For instance, if the request was
@@ -340,8 +380,10 @@ the "?"
 ##### http-request-headers
 All headers given in the request as an alist:
 
-    '(("Host" . "musio.com")
-      ("Accept" . "text/html"))
+```common-lisp
+'(("Host" . "musio.com")
+  ("Accept" . "text/html"))
+```
 
 ##### http-request-body
 Get the body out of the request. Since we don't make any assumptions about the
@@ -394,14 +436,16 @@ When [\*catch-application-errors\*](#catch-application-errors) is set to `t`
 and an `event-cb` is not specified for an operation, the function assigned to
 this variable will be used as the `event-cb`. The default:
 
-    (lambda (err)
-      ;; throw the error so we can wrap it in a handler-case
-      (handler-case (error err)
-        ;; this is just info, let it slide
-        (connection-info () nil)
-        ;; this an actual error. throw it back to toplevel (will exit the
-        ;; event loop and cancel any pending events)
-        (t () (error err))))
+```common-lisp
+(lambda (err)
+  ;; throw the error so we can wrap it in a handler-case
+  (handler-case (error err)
+    ;; this is just info, let it slide
+    (connection-info () nil)
+    ;; this an actual error. throw it back to toplevel (will exit the
+    ;; event loop and cancel any pending events)
+    (t () (error err))))
+```
 
 This can be changed by your application if different behavior is desired.
 
@@ -491,6 +535,7 @@ function definitions and specifications. So here's some more to get you going.
                    (as:write-socket-data socket data))
                  (lambda () nil)))  ; error handler that does nothing
 (as:start-event-loop #'my-echo-server)
+```
 
 This echos anything back to the client that was sent, until "QUIT" is recieved,
 which closes the socket and ends the event loop, returning to the main thread.
