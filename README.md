@@ -370,8 +370,9 @@ your `event-cb`. This makes for seamless error handling, and keeps a rouge
 condition from exiting the event loop (assuming you have an `event-cb` set for
 the operation that generated the condition).
 
-An event callback takes exactly one argument, which is the condition being
-passed to it.
+Note that the following variables are also controllable on a per-event-loop
+basis via the [start-event-loop](#start-event-loop) keyword arguments
+`:catch-app-errors` and `:default-event-cb`.
 
 ##### \*catch-application-errors\*
 _default: `nil`_
