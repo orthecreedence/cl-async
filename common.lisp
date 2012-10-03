@@ -73,27 +73,29 @@
          `(setf (cffi:foreign-slot-value ,var ,type ,(car binding)) ,(cadr binding)))
      ,@body))
 
+(defun make-pointer-eql-able (pointer)
+  "Abstraction to make a CFFI pointer #'eql to itself."
+  (when pointer
+    (cffi:pointer-address pointer)))
+
 (defun save-callbacks (pointer callbacks)
-  "Save a set of callbacks, keyed by the given object (pointer)."
+  "Save a set of callbacks, keyed by the given pointer."
   (unless *fn-registry*
     (setf *fn-registry* (make-hash-table :test #'eql)))
-  (let ((pointer (cffi:pointer-address pointer))
-        (callbacks (if (listp callbacks)
+  (let ((callbacks (if (listp callbacks)
                        callbacks
                        (list callbacks))))
-    (setf (gethash pointer *fn-registry*) callbacks)))
+    (setf (gethash (make-pointer-eql-able pointer) *fn-registry*) callbacks)))
 
 (defun get-callbacks (pointer)
-  "Get all callbacks for the given object (pointer)."
+  "Get all callbacks for the given pointer."
   (when *fn-registry*
-    (let ((pointer (cffi:pointer-address pointer)))
-      (gethash pointer *fn-registry*))))
+    (gethash (make-pointer-eql-able pointer) *fn-registry*)))
 
 (defun clear-callbacks (pointer)
-  "Clear out all callbacks for the given object (pointer)."
+  "Clear out all callbacks for the given pointer."
   (when *fn-registry*
-    (let ((pointer (cffi:pointer-address pointer)))
-      (remhash pointer *fn-registry*))))
+    (remhash (make-pointer-eql-able pointer) *fn-registry*)))
 
 (defun create-data-pointer ()
   "Creates a pointer in C land that can be used to attach data/callbacks to.
@@ -104,29 +106,29 @@
   "Attach a lisp object to a foreign pointer."
   (unless *data-registry*
     (setf *data-registry* (make-hash-table :test #'eql)))
-  (let ((pointer (cffi:pointer-address pointer)))
-    (setf (gethash pointer *data-registry*) data)))
+  (setf (gethash (make-pointer-eql-able pointer) *data-registry*) data))
 
 (defun deref-data-from-pointer (pointer)
   "Grab data attached to a CFFI pointer."
   (when (and pointer *data-registry*)
-    (let ((pointer (cffi:pointer-address pointer)))
-      (gethash pointer *data-registry*))))
+    (gethash (make-pointer-eql-able pointer) *data-registry*)))
 
 (defun clear-pointer-data (pointer)
   "Clear the data attached to a CFFI pointer."
-  (when *data-registry*
-    (let ((pointer (cffi:pointer-address pointer)))
-      (remhash pointer *data-registry*))))
+  (when (and pointer *data-registry*)
+    (remhash (make-pointer-eql-able pointer) *data-registry*)))
 
 (defun free-pointer-data (pointer &key preserve-pointer)
-  "Clears out all data attached to a foreign pointer, and frees the pointer."
+  "Clears out all data attached to a foreign pointer, and frees the pointer
+   (unless :preserve-pointer is t)."
   (when pointer
     (unwind-protect
       (progn
         (clear-callbacks pointer)
         (clear-pointer-data pointer))
-      (unless preserve-pointer (cffi:foreign-free pointer)))))
+      (unless preserve-pointer
+        (when (cffi:pointerp pointer)
+          (cffi:foreign-free pointer))))))
 
 (defun split-usec-time (time-s)
   "Given a second value, ie 3.67, return the number of seconds as the first
