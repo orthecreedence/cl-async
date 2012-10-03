@@ -19,9 +19,10 @@ The documentation is split into a few main sections.
 - [__Event callbacks and error handling__](#event-callbacks-and-error-handling-in-general)
 - [__Examples__](#examples)
 - [__Implementation notes__](#implementation-notes)
-  - [TODO](#todo)
 - [__Drivers__](#drivers)
 - [__License__](#license)
+
+See the [TODO list](https://github.com/orthecreedence/cl-async/issues).
 
 Functions and classes
 ----------------------
@@ -548,33 +549,6 @@ which closes the socket and ends the event loop, returning to the main thread.
 
 Implementation notes
 --------------------
-### TODO
- - Create one global `*dns-base*` for all DNS queries. It takes a while to
- instantiate the evdns object, so it would be useful to have one that serves
- all the DNS queries. Note that since the recent update where
- `(create-data-pointer)` is used internally for all data referencing, this is
- now 100% possible, whereas before the DNS callbacks were referenced by DNS base
- (meaning 1 DNS base for 1 DNS lookup). Now one DNS base can serve unlimited
- requests and could be closed if there are no pending DNS lookups.
- - `udp-send` and `udp-server`
- ([Issue #2](https://github.com/orthecreedence/cl-async/issues/2), thanks
- LinkFly)
- - More [examples](#examples)!!
- - Wrap sockets/fds in their own classes, since right now there are CFFI
- pointers flying around willy nilly. While this works fine if people follow
- the API, it can potentially be disastrous as well. Wrapping pointers in
- classes would also allow methods to be used, which would cut down a good
- number of segfaults, I'm guessing.
- - Signal handling. Libevent supports signal handling events, but they aren't
- really caught in lisp land. Will probably end up implementing something like
- [cl-signal-handler](https://github.com/orthecreedence/cl-signal-handler) with
- app-fired, custom events in conjuction with libevent's signal handling.
- Attacking the problem from both sides should get it working.
- - IPV6 support
- - Tests/benchmarks. I have benchmarked a bit, but nothing official. So far,
- the results are somewhat favorable (enough so that building this library wasn't
- a complete waste of time, anyway).
-
 ### Libevent
 Libevent was chosen for a few reasons:
  - It provides a socket API. The USOCKET library was too undocumented for me
