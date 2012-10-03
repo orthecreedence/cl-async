@@ -299,6 +299,11 @@ from [http-server](#http-server). It must also be passed into
 [http-response](#http-response) when the request is finished, since it holds the
 pointer to the socket the request came in on.
 
+`http-request` has a pretty-print method associated with it, so if you do
+something like `(format t "~a~%" http-request)`, you'll get a nice, detailed
+overview of the request (method, uri, headers, content body length (in bytes),
+etc).
+
 ### http-request accessors
 This details the accessors in `http-request`.
 
