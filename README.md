@@ -36,7 +36,7 @@ for more information on these callbacks (and error handling in general).
 - [start-event-loop](#start-event-loop) _function_
 - [event-loop-exit](#event-loop-exit) _function_
 - [delay](#delay) _function_
-- [timer](#timer) _function_
+- [timer](#timer) _function (deprecated)_
 - [dns-lookup](#dns-lookup) _function_
 - [tcp-send](#tcp-send) _function_
 - [tcp-server](#tcp-server) _function_
