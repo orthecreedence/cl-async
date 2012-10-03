@@ -544,6 +544,9 @@ which closes the socket and ends the event loop, returning to the main thread.
 Implementation notes
 --------------------
 ### TODO
+ - `udp-send` and `udp-server`
+ ([Issue #2](https://github.com/orthecreedence/cl-async/issues/2), thanks
+ LinkFly)
  - More [examples](#examples)!!
  - Wrap sockets/fds in their own classes, since right now there are CFFI
  pointers flying around willy nilly. While this works fine if people follow
