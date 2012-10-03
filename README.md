@@ -429,13 +429,17 @@ callback.
 
 ### Application error handling
 cl-async can be set up to catch errors in your application and pass them to
-your `event-cb`. This makes for seamless error handling, and keeps a rouge
+your `event-cb`. This makes for seamless error handling, and keeps a rogue
 condition from exiting the event loop (assuming you have an `event-cb` set for
-the operation that generated the condition).
+the operation that generated the condition, or a default event handler that
+deals with the condition).
 
 Note that the following variables are also controllable on a per-event-loop
 basis via the [start-event-loop](#start-event-loop) keyword arguments
-`:catch-app-errors` and `:default-event-cb`.
+`:catch-app-errors` and `:default-event-cb`. It make actually be favorable to
+use [start-event-loop](#start-event-loop) since it creates thread-local versions
+of these variables when instantiating, which can be useful if running event
+loops in multiple threads.
 
 ##### \*catch-application-errors\*
 _default: `nil`_
@@ -445,7 +449,8 @@ pass them to the event callback associated with the procedure that triggered the
 condition.
 
 If this is left as `nil`, triggered conditions will make their way to the top
-level and cause the event loop to exit, cancelling any pending events.
+level and cause the event loop to exit, cancelling any pending events (unless
+you have restarts implemented in your app).
 
 ##### \*default-event-handler\*
 When [\*catch-application-errors\*](#catch-application-errors) is set to `t`
@@ -484,8 +489,9 @@ condition extends it.
 ##### conn-fd
 Pulls the connection file descriptor out of a connection-info condition. This is
 not necessarily useful to an application, but may be used internally for the
-tracking and cleaning of verious object. Exposed to the API since there are
-instances where it could be useful.
+tracking and cleaning of various objects. Exposed to the API since there are
+instances where it *could* be useful. May be wrapped in a CLOS object at some
+point in the future, so don't rely on it too heavily just yet.
 
 ### connection-error
 _extends [connection-info](#connection-info)_
@@ -496,7 +502,7 @@ code and error message.
 
 ##### conn-errcode
 The error code this socket error was triggered with. The code generally refers
-to what the C `errno` code is (`WSAGetLastError` on Windows).
+to what the C `errno` code is (`WSAGetLastError` in Windows).
 
 _NOTE:_ In cases where the error is triggered by cl-async, the error code will
 generally be -1. This may change in the future to support cl-async specific
@@ -540,16 +546,15 @@ function definitions and specifications. So here's some more to get you going.
   (format t "Starting server.~%")
   (as:tcp-server nil 9003  ; nil is "0.0.0.0"
                  (lambda (socket data)
-                   "our read-cb, called when data is received from the client"
                    ;; convert the data into a string
                    (let ((str (babel:octets-to-string data :encoding :utf-8)))
                      (when (search "QUIT" str)
-                       ;; sent "QUIT" so close the socket and exit
+                       ;; "QUIT" was sent, close the socket and shut down the server
                        (as:close-socket socket)
                        (as:event-loop-exit)))
                    ;; echo the data back into the socket
                    (as:write-socket-data socket data))
-                 (lambda () nil)))  ; error handler that does nothing
+                 (lambda (err) (format t "listener event: ~a~%" err))))  ; error handler that does nothing
 (as:start-event-loop #'my-echo-server)
 ```
 
@@ -580,7 +585,24 @@ Libevent was chosen for a few reasons:
 The bindings for libevent are auto-generated. I'm not proud of the bindings
 themselves, but because I planned to completely wrap them all along, didn't put
 too much work into making them pretty and useful. They will most likely stay
-as-is.
+as-is (and undocumented).
+
+### Internals
+cl-async tracks anonymous callbacks and libevent objects using what are called
+data pointers. A data pointer is just a CFFI pointer that can be passed around
+to libevent callbacks, and can also be used to pull data out of a hash table.
+So while CFFI callbacks cannot be anonymous, we can fake it by creating a data
+pointer, assigning the app-supplied anonymous callbacks to the data pointer in
+a hash table lookup (pointer => callbacks), and sending the pointer (in what
+would be a void\* argument in C) to the libevent callback. Once the generic
+CFFI callback is fired, it can pull out the anonymous callbacks (as well as any
+assigned libevent objects) using the data pointer and do what it needs to with
+them. Data pointers (and the data attached to them in the function/data hash
+tables) are freed once no longer needed. This is managed completely by cl-async.
+
+### TODO
+Please see the [Issues list](https://github.com/orthecreedence/cl-async/issues)
+for the complete list of what needs to be done.
 
 Drivers
 -------
@@ -599,9 +621,10 @@ enough traction behind cl-async by providing drivers for enough services, it
 could stand to be the first viable asynchronous programming library for Common
 Lisp users.
 
-That's the goal, anyway...
+So all I need is critical mass. WHO'S WITH ME?!?!
 
 License
 -------
 As always, my code is MIT licenced. Do whatever the hell you want with it.
 Enjoy!
+
