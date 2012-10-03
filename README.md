@@ -35,6 +35,7 @@ for more information on these callbacks (and error handling in general).
 
 - [start-event-loop](#start-event-loop) _function_
 - [event-loop-exit](#event-loop-exit) _function_
+- [delay](#delay) _function_
 - [timer](#timer) _function_
 - [dns-lookup](#dns-lookup) _function_
 - [tcp-send](#tcp-send) _function_
@@ -106,18 +107,26 @@ the event loop.
 (event-loop-exit)
 ```
 
-### timer
-Run a function after a specified amount of time (in seconds, decimals OK). It
-optionally takes an `event-cb` which can be used to catch application errors
-should they occur while running `callback`.
+### delay
+Run a function asynchronously. Takes two optional parameters: `time`, the number
+of seconds to wait before running the given function (run with no delay if
+`nil`), and `event-cb` which can be used to catch application errors should they
+occur while running `callback`.
 
 ```common-lisp
 ;; definition:
-(timer time-s callback &key event-cb)
+(delay callback &key time event-cb)
 
 ;; example:
-(timer 3.2 (lambda () (format t "I ran! (3.2 seconds later)~%")))
+(delay (lambda () (format t "Run me immediately after control is given to the event loop.~%")))
+(delay (lambda () (format t "I will run 3.2 seconds after calling (delay).~%")) :time 3.2)
 ```
+
+### timer
+_Deprecated_
+
+Yes, even in its infancy, this library has a deprecated function. Use
+[delay](#delay) for running functions asynchronously!
 
 ### dns-lookup
 Asynchronously lookup an IP address given a hostname. If the hostname is an IP

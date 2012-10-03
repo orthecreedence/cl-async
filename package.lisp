@@ -15,6 +15,7 @@
            #:start-event-loop
            #:event-loop-exit
 
+           #:delay
            #:timer
 
            #:connection-dns-error
