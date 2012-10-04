@@ -664,7 +664,7 @@ before they start getting released, which is a good way to test how many
 connections it can handle.
 
 On another neighboring Linode, I ran
-```bash
+```shell
 httperf --server=1.2.3.4 --port=9009 --num-conns=40000 --num-calls=10 --hog --rate=2000
 ```
 
