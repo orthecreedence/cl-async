@@ -244,6 +244,9 @@ setting a `write-cb`, which replaces any current write-cb on the given socket.
 This can be useful where you have a server that wants to close a connection
 after sending data.
 
+Note that if you call this using a socket that has been closed already, it will
+throw a [socket-closed](#socket-closed) condition.
+
 ```common-lisp
 ;; definition
 (write-socket-data socket data &key write-cb)
@@ -271,6 +274,9 @@ amount of time, it is closed.
 
 `nil` for a timeout value unsets the timeout.
 
+Note that if you call this using a socket that has been closed already, it will
+throw a [socket-closed](#socket-closed) condition.
+
 ```common-lisp
 ;; definition
 (set-socket-timeouts socket read-sec write-sec)
@@ -281,6 +287,9 @@ amount of time, it is closed.
 
 ### close-socket
 Close a socket and free its callbacks.
+
+Note that if you call this using a socket that has been closed already, it will
+throw a [socket-closed](#socket-closed) condition.
 
 ```common-lisp
 ;; definition
@@ -523,6 +532,7 @@ This can be changed by your application if different behavior is desired.
 - [connection-timeout](#connection-timeout) _condition_
 - [connection-refused](#connection-refused) _condition_
 - [connection-dns-error](#connection-dns-error) _condition_
+- [socket-closed](#socket-closed) _condition_
 
 ### connection-info
 This is the base condition for any connection event. Any other connection
@@ -575,6 +585,11 @@ Describes the condition when a connection has been refused by the peer.
 _extends [connection-error](#connection-error)_
 
 Describes the condition when a DNS lookup has failed.
+
+### socket-closed
+_extends [connection-error](#connection-error)_
+
+This condition is _thrown_ when a socket that has been closed is operated on.
 
 Examples
 --------

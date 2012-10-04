@@ -22,12 +22,12 @@
            #:connection-dns-error
            #:dns-lookup
 
+           #:close-socket
+           #:write-socket-data
+           ;#:read-socket-data
+           #:set-socket-timeouts
            #:tcp-send
            #:tcp-server
-           #:write-socket-data
-           #:close-socket
-           #:set-socket-timeouts
-           #:read-socket-data
 
            #:http-client
            #:http-response
