@@ -66,8 +66,22 @@
         (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :char i)))
       (funcall data-cb (subseq buffer-lisp 0 n)))))
 
-(defun write-socket-data (socket data &key socket-is-evbuffer)
-  "Write data into libevent socket."
+(defun write-socket-data (socket data &key write-cb socket-is-evbuffer)
+  "Write data into libevent socket. Allows specifying if the given socket is
+   actually just a libevent evbuffer, or a socket (aka bufferevent). Also allows
+   assigning of a write-cb, which will be called when the data written to the
+   evbuffer is flushed out to the socket. This can be useful for closing a
+   connection after writing data to it."
+  ;; if a write-cb was passed, set it into the socket's callbacks
+  (when (and write-cb (functionp write-cb))
+    (let* ((socket-data-pointer (deref-data-from-pointer socket))
+           (callbacks (get-callbacks socket-data-pointer))
+           (read-cb (getf callbacks :read-cb (cffi:null-pointer)))
+           (event-cb (getf callbacks :event-cb (cffi:null-pointer))))
+    (le:bufferevent-enable socket (logior le:+ev-write+))
+    (save-callbacks socket-data-pointer (list :read-cb read-cb :write-cb write-cb :event-cb event-cb))))
+  
+  ;; copy the data into an evbuffer and ship it off to the socket
   (let* ((data (if (stringp data)
                    (babel:string-to-octets data :encoding :utf-8)
                    data))
@@ -109,6 +123,15 @@
           (read-socket-data bev (lambda (data) (funcall read-cb bev data)))
           ;; no callback associated, so just drain the buffer so it doesn't pile up
           (le:evbuffer-drain (le:bufferevent-get-input bev) *buffer-size*)))))
+
+(cffi:defcallback tcp-write-cb :void ((bev :pointer) (data-pointer :pointer))
+  "Called when data is finished being written to a socket."
+  (let* ((callbacks (get-callbacks data-pointer))
+         (write-cb (getf callbacks :write-cb))
+         (event-cb (getf callbacks :event-cb)))
+    (catch-app-errors event-cb
+      (when write-cb
+        (funcall write-cb bev)))))
 
 (cffi:defcallback tcp-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
@@ -153,7 +176,7 @@
 (cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (data-pointer :pointer))
   "Called when a connection is accepted. Creates a bufferevent for the socket
    and sets up the callbacks onto that socket."
-  (declare (ignore ctx socklen addr))
+  (declare (ignore socklen addr))
   (let* ((per-conn-data-pointer (create-data-pointer))
          (event-base (le:evconnlistener-get-base listener))
          (bev (le:bufferevent-socket-new event-base
@@ -174,7 +197,7 @@
       (save-callbacks per-conn-data-pointer callbacks)
       (le:bufferevent-setcb bev
                             (cffi:callback tcp-read-cb)
-                            (cffi:null-pointer)
+                            (cffi:callback tcp-write-cb)
                             (cffi:callback tcp-event-cb)
                             per-conn-data-pointer)
       ;(set-socket-timeouts bev 5 5)
@@ -188,7 +211,7 @@
     (format t "There was an error and I don't know how to get the code.~%")
     (le:event-base-loopexit event-base (cffi:null-pointer))))
 
-(defun tcp-send (host port data read-cb event-cb &key ((:socket bev)) (read-timeout 30) (write-timeout 30))
+(defun tcp-send (host port data read-cb event-cb &key ((:socket bev)) write-cb (read-timeout 30) (write-timeout 30))
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
   (check-event-loop-running)
@@ -210,13 +233,13 @@
          (bev (if bev-exists-p
                   bev
                   (le:bufferevent-socket-new *event-base* -1 (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+)))))
-    (le:bufferevent-setcb bev (cffi:callback tcp-read-cb) (cffi:null-pointer) (cffi:callback tcp-event-cb) data-pointer)
+    (le:bufferevent-setcb bev (cffi:callback tcp-read-cb) (cffi:callback tcp-write-cb) (cffi:callback tcp-event-cb) data-pointer)
     (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
     (unless data-pointer-exists-p
       ;; make sure the data pointer is attached to the bufferevent so we don't
       ;; lose track of it if the bufferevent is reused.
       (attach-data-to-pointer bev data-pointer))
-    (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb))
+    (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :write-cb write-cb))
     (write-socket-data bev data)
     (set-socket-timeouts bev read-timeout write-timeout)
 

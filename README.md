@@ -170,8 +170,8 @@ one, and the given callbacks will be set as the new callbacks for the socket.
 This can be useful if you need to set up a new request/response on an existing
 socket.
 
-If you want to write data to an existing socket without modifying the callbacks,
-please see [write-socket-data](#write-socket-data).
+If you want a simple interface to write data to an existing socket, see
+[write-socket-data](#write-socket-data).
 
 Note that the `host` can be an IP address *or* a hostname, the hostname will
 be looked up asynchronously via libevent's DNS implementation.
@@ -198,6 +198,15 @@ be looked up asynchronously via libevent's DNS implementation.
 `socket` should never be dealt with directly as it may change in the future,
 however it *can* be passed to other cl-async functions that take a `socket` arg.
 
+##### write-cb definition
+
+```common-lisp
+(lambda (socket) ...)
+```
+
+The `write-cb` will be called after data written to the socket's buffer is
+flushed out to the socket.
+
 ### tcp-server
 Bind an asynchronous listener to the given bind address/port and start accepting
 connections on it. It takes read and event callbacks (like [tcp-send](#tcp-send)).
@@ -210,7 +219,11 @@ If `nil` is passed into the bind address, it effectively binds the listener to
 
 ;; example
 (tcp-server "127.0.0.1" 8080
-            (lambda (socket data) (myapp:process-client-data socket data))
+            (lambda (socket data)
+              (format t "data: ~a~%" data)
+              (write-socket-data socket "i noticed you have brathes. i have brathes too. uhhhhuhuhuh."
+                                 :write-cb (lambda (socket)
+                                             (close-socket socket))))
             nil)  ;; use *default-event-handler* as the event handler for this operation
 ```
 
@@ -225,13 +238,28 @@ however it *can* be passed to other cl-async functions that take a `socket` arg.
 
 ### write-socket-data
 Write data to an existing socket (such as one passed into a read-cb). Data can
-be a byte array or string (converted to a byte array via babel). This is useful
-if you want to write data to an existing socket without modifying its callbacks,
-which is what [tcp-send](#tcp-send) would do.
+be a byte array or string (converted to a byte array via babel). Supports
+setting a `write-cb`, which replaces any current write-cb on the given socket.
+This can be useful where you have a server that wants to close a connection
+after sending data.
 
 ```common-lisp
 ;; definition
-(write-socket-data socket data)
+(write-socket-data socket data &key write-cb)
+
+;; example
+(write-socket-data socket "invalid command, closing connection"
+                   :write-cb (lambda (socket) (close-socket socket)))
+```
+
+If you were to close the socket right after sending the data to the buffer,
+there's no guarantee it would be sent out. Setting a write-cb guarantees that
+the data is sent when called.
+
+##### write-cb definition
+
+```common-lisp
+(lambda (socket) ...)
 ```
 
 ### set-socket-timeouts
