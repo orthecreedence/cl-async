@@ -54,6 +54,7 @@ for more information on these callbacks (and error handling in general).
   - [http-request-querystring](#http-request-querystring) _accessor_
   - [http-request-headers](#http-request-headers) _accessor_
   - [http-request-body](#http-request-body) _accessor_
+- [stats](#stats) _function_
 
 ### start-event-loop
 Start the event loop, giving a function that will be run inside the event loop
@@ -292,7 +293,8 @@ headers, and body in the request which should be enough to make just about any
 HTTP request. This functionality wraps the libevent HTTP client.
 
 If a "Host" header isn't passed in, it is automatically set with whatever host
-is pulled out of the `uri`.
+is pulled out of the `uri`. Also, any "Connection" header passed in will be
+ignored...for right now, every request is sent out with `Connection: close`.
 
 The `timeout` arg is in seconds.
 
@@ -438,6 +440,18 @@ It's important to note that at this time, multipart form data, posted files, etc
 are *not* decoded by `http-server`. As such, it is currently up to your app to
 do this. *This may change in the future* and if so, I will do my best to make the
 change backwards compatible.
+
+### stats
+This function returns data on the current state of the cl-async internals. How
+many open connections, how many registered callbacks, how many registered data
+objects, how many open DNS requests, etc.
+
+Data is an alist. Stats might change in the near future.
+
+```common-lisp
+;; definition
+(stats)
+```
 
 Event callbacks (and error handling in general)
 -----------------------------------------------
