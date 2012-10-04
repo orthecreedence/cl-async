@@ -630,23 +630,41 @@ and [http-server](#http-server)) was able to process about 40K concurrent
 requests with this example before running out of memory:
 
 ```common-lisp
+(defparameter *http-response*
+  (babel:string-to-octets
+    (with-output-to-string (s)
+      (format s "HTTP/1.1 200 OK~c~c" #\return #\newline)
+      (format s "Date: Wed, 03 Oct 2012 23:43:10 GMT~c~c" #\return #\newline)
+      (format s "Content-Type: text/plain~c~c" #\return #\newline)
+      (format s "Content-Length: 9~c~c" #\return #\newline)
+      (format s "~c~c" #\return #\newline)
+      (format s "omglolwtf"))))
+
 (defun tcp-server-test (&key stats)
+  "Asynchronous TCP server, made specifically for testing how many connections
+  the system can handle."
   (as:start-event-loop
     (lambda ()
       (format t "Starting TCP server.~%")
       (as:tcp-server nil 9009
                      (lambda (socket data)
+                       ;; after a request comes in, delay 10s before responding
+                       ;; this allows connections to build up (for testing)
                        (as:delay (lambda ()
                                    (as:write-socket-data
                                      socket *http-response*
                                      :write-cb (lambda (socket) (as:close-socket socket))))
                                  :time 10)
-                       ;; search for "DELETE" in data
+                       ;; if "DELETE" is found in the data payload, exit the TCP
+                       ;; server (kill switch)
                        (when (search #(68 69 76 69 84 69) data)
                          (as:close-socket socket)
                          (as:event-loop-exit)))
                      (lambda (err)
                        (format t "tcp server event: ~a~%" err)))
+
+      ;; start up secondly statistics reports on the number of connections. for
+      ;; this example, incoming connections is the only thing we care about
       (labels ((show-stats ()
                  (let* ((stats (as:stats))
                         (incoming (getf stats :incoming-connections))
@@ -656,6 +674,9 @@ requests with this example before running out of memory:
         (when stats (show-stats))))
     :catch-app-errors t)
   (format t "TCP server exited.~%"))
+
+;; run it
+(tcp-server-test :stats t)
 ```
 
 What's happening here is that the server gets a request, delays 10 seconds, then
