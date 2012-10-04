@@ -112,7 +112,11 @@
     (catch-app-errors event-cb
       (let* ((method (get-method (le:evhttp-request-get-command request)))
              (uri (le:evhttp-request-get-uri request))
-             (uri (le:evhttp-uridecode uri 1 (cffi:null-pointer)))
+             (uri (let ((str-pt (cffi:foreign-funcall "evhttp_uridecode" :string uri :int 1 :pointer (cffi:null-pointer) :pointer)))
+                    (unwind-protect
+                      (cffi:foreign-string-to-lisp str-pt)
+                      (cffi:foreign-string-free str-pt))))
+             ;(uri (le:evhttp-uridecode uri 1 (cffi:null-pointer)))
              (find-q (position #\? uri))
              (resource (if find-q (subseq uri 0 find-q)))
              (querystring (if find-q (subseq uri (1+ find-q)) ""))
