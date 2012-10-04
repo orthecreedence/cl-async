@@ -626,7 +626,7 @@ time is spent in CFFI (at least on Clozure CL 32bit on Windows). I haven't done
 any profiling on linux, but I have done some benchmarks.
 
 On my (already crowded) Linode 512, cl-async (for both [tcp-server](#tcp-server)
-and (http-server](#http-server)) was able to process about 40K concurrent
+and [http-server](#http-server)) was able to process about 40K concurrent
 requests with this example before running out of memory:
 
 ```common-lisp
