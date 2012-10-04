@@ -488,7 +488,7 @@ deals with the condition).
 
 Note that the following variables are also controllable on a per-event-loop
 basis via the [start-event-loop](#start-event-loop) keyword arguments
-`:catch-app-errors` and `:default-event-cb`. It make actually be favorable to
+`:catch-app-errors` and `:default-event-cb`. It might actually be favorable to
 use [start-event-loop](#start-event-loop) since it creates thread-local versions
 of these variables when instantiating, which can be useful if running event
 loops in multiple threads.
