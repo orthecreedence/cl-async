@@ -10,7 +10,7 @@
 
 (eval-when (:load-toplevel)
   (define-foreign-library libevent2
-    (:unix (:or "libevent.so" "/usr/lib/libevent.so" "/usr/local/lib/libevent.so"))
+    (:unix (:or "libevent.so" "libevent-2.0.so.5" "/usr/lib/libevent.so" "/usr/local/lib/libevent.so"))
     (t (:default "libevent")))
   (unless (foreign-library-loaded-p 'libevent2)
     (use-foreign-library libevent2)))
