@@ -104,7 +104,8 @@
 
 (cffi:defcallback http-client-close-cb :void ((connection :pointer) (data-pointer :pointer))
   "Called when an HTTP client connection is closed."
-  (decf *open-connection-count*)
+  (declare (ignore connection))
+  (decf *outgoing-connection-count*)
   (free-pointer-data data-pointer))
 
 (cffi:defcallback http-request-cb :void ((request :pointer) (data-pointer :pointer))
@@ -118,7 +119,7 @@
     ;; connection, so it would be better to track the connection when it's
     ;; opened. not sure if libevent allows that on evhttp though, so for now
     ;; this is the next best thing.
-    (incf *open-connection-count*)
+    (incf *incoming-connection-count*)
     (catch-app-errors event-cb
       (let* ((method (get-method (le:evhttp-request-get-command request)))
              (uri (le:evhttp-request-get-uri request))
@@ -322,12 +323,12 @@
           (when (string= (string-downcase (car header)) "host")
             (setf host-set t))))
       (unless host-set
-        (le:evhttp-add-header header-ptr "Host" host)))
-    ;; always close
-    (le:evhttp-add-header header-ptr "Connection" "close")
+        (le:evhttp-add-header header-ptr "Host" host))
+      ;; always close
+      (le:evhttp-add-header header-ptr "Connection" "close"))
     (when body
       (write-socket-data (le:evhttp-request-get-output-buffer request) body :socket-is-evbuffer t))
-    (incf *open-connection-count*)
+    (incf *outgoing-connection-count*)
     (le:evhttp-make-request connection request (get-method-reverse method) (getf parsed-uri :resource))))
 
 (defun http-server (bind port request-cb event-cb)
@@ -371,5 +372,5 @@
         (le:evhttp-send-reply req-c status (lookup-status-text status) evbuffer)
         (le:evhttp-send-error req-c status (lookup-status-text status)))
     (le:evbuffer-free evbuffer)
-    (decf *open-connection-count*)))
+    (decf *incoming-connection-count*)))
 

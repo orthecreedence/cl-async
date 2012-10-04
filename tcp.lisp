@@ -40,8 +40,9 @@
          (bev-data-pointer (getf bev-data :data-pointer))
          (fd (le::bufferevent-getfd bev)))
     (le:bufferevent-disable bev (logior le:+ev-read+ le:+ev-write+))
-    (when (and (numberp fd) (< 0 fd))
-      (decf *open-connection-count*))
+    (if (eq (socket-direction socket) 'in)
+        (decf *incoming-connection-count*)
+        (decf *outgoing-connection-count*))
     (le:bufferevent-free bev)
     (le:evutil-closesocket fd)
     (setf (socket-closed socket) t)
@@ -230,7 +231,7 @@
           (error "Failed to make socket non-blocking: ~a~%" nonblock)))
 
       ;; track the connection. will be decf'ed when close-socket is called
-      (incf *open-connection-count*)
+      (incf *incoming-connection-count*)
 
       ;; save the callbacks given to the listener onto each socket individually
       (save-callbacks per-conn-data-pointer callbacks)
@@ -282,7 +283,7 @@
       (let ((socket (make-instance 'socket :c bev :direction 'out)))
         (attach-data-to-pointer bev (list :data-pointer data-pointer :socket socket)))
       ;; connect the socket
-      (incf *open-connection-count*)
+      (incf *outgoing-connection-count*)
       (if (ip-address-p host)
           ;; got an IP so just connect directly
           (with-ipv4-to-sockaddr (sockaddr host port)

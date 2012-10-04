@@ -26,12 +26,10 @@
 (defvar *socket-buffer-lisp* nil
   "An array in lisp land that holds data copied from a socket.")
 
-(defvar *open-connection-count* 0
-  "Number of open connections (incoming and outgoing).")
-;(defvar *incoming-connection-count* 0
-  ;"Number of incoming commections.")
-;(defvar *outgoing-connection-count* 0
-  ;"Number of outgoing connections.")
+(defvar *incoming-connection-count* 0
+  "Number of incoming commections.")
+(defvar *outgoing-connection-count* 0
+  "Number of outgoing connections.")
 
 (defvar *catch-application-errors* nil
   "When t, permits cl-async to catch uncaught conditions in your application and
@@ -267,7 +265,8 @@
         (*socket-buffer-c* (cffi:foreign-alloc :unsigned-char :count *buffer-size*))
         (*socket-buffer-lisp* (make-array *buffer-size* :element-type '(unsigned-byte 8)))
         (*event-base* (le:event-base-new))
-        (*open-connection-count* 0)
+        (*incoming-connection-count* 0)
+        (*outgoing-connection-count* 0)
         (callbacks nil))
     ;; set up a callback for dealing with fatal errors
     (when fatal-cb
