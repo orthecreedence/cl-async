@@ -292,7 +292,7 @@
          (host (getf parsed-uri :host))
          (dns-base (if (ip-address-p host)
                        (cffi:null-pointer)
-                       (le:evdns-base-new *event-base* 1)))
+                       (get-dns-base)))
          (connection (le:evhttp-connection-base-new *event-base*
                                                     dns-base
                                                     host

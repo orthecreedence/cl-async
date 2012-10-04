@@ -14,6 +14,24 @@
   "Determine if the given host is an IP or a hostname."
   (cl-ppcre:scan *ip-scanner* host))
 
+(defun get-dns-base ()
+  "Grabs the current DNS base (or instantiates if it doesn't exist) and also
+   tracks how many open DNS base queries there are."
+  (prog1 (if *dns-base*
+             *dns-base*
+             (let ((dns-base (le:evdns-base-new *event-base* 1)))
+               (setf *dns-ref-count* 0
+                     *dns-base* dns-base)))
+    (incf *dns-ref-count*)))
+
+(defun release-dns-base ()
+  "Decrements the DNS base reference counter. If there are no more references,
+   frees the DNS base."
+  (decf *dns-ref-count*)
+  (when (<= *dns-ref-count* 0)
+    (setf *dns-ref-count* 0)
+    (free-dns-base *dns-base*)))
+
 (defun free-dns-base (dns-base)
   "Free a dns base."
   (when dns-base
@@ -43,7 +61,7 @@
 
 (cffi:defcallback dns-cb :void ((errcode :int) (addrinfo :pointer) (data-pointer :pointer))
   "Callback for DNS lookups."
-  (let* ((dns-base (deref-data-from-pointer data-pointer))
+  (let* (;(dns-base (deref-data-from-pointer data-pointer))
          (callbacks (get-callbacks data-pointer))
          (resolve-cb (getf callbacks :resolve-cb))
          (event-cb (getf callbacks :event-cb)))
@@ -69,7 +87,7 @@
               (unless (cffi:null-pointer-p addrinfo)
                 (le:evutil-freeaddrinfo addrinfo)))))
       (free-pointer-data data-pointer)
-      (free-dns-base dns-base))))
+      (release-dns-base))))
 
 (defun dns-lookup (host resolve-cb event-cb)
   "Asynchronously lookup a DNS address. Note that if an IP address is passed,
@@ -79,7 +97,7 @@
    async)."
   (check-event-loop-running)
   (let ((data-pointer (create-data-pointer))
-        (dns-base (le:evdns-base-new *event-base* 1)))
+        (dns-base (get-dns-base)))
     (make-foreign-type (hints (le::cffi-type le::evutil-addrinfo) :initial #x0)
                        (('le::ai-family le:+af-inet+)  ;; only want ipv4 for now
                         ('le::ai-flags le:+evutil-ai-canonname+)

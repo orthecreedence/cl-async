@@ -9,6 +9,14 @@
 (defvar *event-loop-end-functions* nil
   "Functions to call when the event loop closes")
 
+(defvar *dns-base* nil
+  "Holds the evdns-base object used for DNS lookups. One per event loop should
+   suffice.")
+
+(defvar *dns-ref-count* 0
+  "Counts how many open DNS queries there are, and allows freeing the DNS base
+   once there are no more references.")
+
 ;; consider somehow moving these to tcp.lisp without creating circular deps
 ;; (since they are initialized in start-event-loop as thread-local vars)
 (defparameter *buffer-size* 16384
@@ -234,6 +242,8 @@
         (*fn-registry* nil)
         (*data-registry* nil)
         (*event-loop-end-functions* nil)
+        (*dns-base* nil)
+        (*dns-ref-count* 0)
         (*socket-buffer-c* (cffi:foreign-alloc :unsigned-char :count *buffer-size*))
         (*socket-buffer-lisp* (make-array *buffer-size* :element-type '(unsigned-byte 8)))
         (*event-base* (le:event-base-new))

@@ -250,8 +250,8 @@
           (with-ipv4-to-sockaddr (sockaddr host port)
             (le:bufferevent-socket-connect bev sockaddr +sockaddr-size+))
 
-          ;; spawn a DNS base and do an async lookup
-          (let ((dns-base (le:evdns-base-new *event-base* 1)))
+          ;; get a DNS base and do an async lookup
+          (let ((dns-base (get-dns-base)))
             (attach-data-to-pointer data-pointer dns-base)
             (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port))))))
 
