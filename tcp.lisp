@@ -88,10 +88,12 @@
 
 (defun drain-evbuffer (evbuffer)
   "Grab all data in an evbuffer and put it into a byte array (returned)."
-  (let ((body (make-array 0 :element-type '(unsigned-byte 8))))
+  (let ((body nil))
     (read-socket-data evbuffer
                       (lambda (data)
-                        (setf body (append-array body data :element-type '(unsigned-byte 8))))
+                        (if body
+                            (setf body (append-array body data :element-type '(unsigned-byte 8)))
+                            data))
                       :socket-is-evbuffer t)
     body))
 
