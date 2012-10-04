@@ -18,6 +18,7 @@ The documentation is split into a few main sections.
 - [__Function and class documentation__](#functions-and-classes)
 - [__Event callbacks and error handling__](#event-callbacks-and-error-handling-in-general)
 - [__Examples__](#examples)
+- [__Benchmarks__](#benchmarks)
 - [__Implementation notes__](#implementation-notes)
 - [__Drivers__](#drivers)
 - [__License__](#license)
@@ -617,6 +618,64 @@ function definitions and specifications. So here's some more to get you going.
 
 This echos anything back to the client that was sent, until "QUIT" is recieved,
 which closes the socket and ends the event loop, returning to the main thread.
+
+Benchmarks
+----------
+So far, benchmarks are favorable. From my intial profiling, it seems most of the
+time is spent in CFFI (at least on Clozure CL 32bit on Windows). I haven't done
+any profiling on linux, but I have done some benchmarks.
+
+On my (already crowded) Linode 512, cl-async (for both [tcp-server](#tcp-server)
+and (http-server](#http-server)) was able to process about 40K concurrent
+requests with this example before running out of memory:
+
+```common-lisp
+(defun tcp-server-test (&key stats)
+  (as:start-event-loop
+    (lambda ()
+      (format t "Starting TCP server.~%")
+      (as:tcp-server nil 9009
+                     (lambda (socket data)
+                       (as:delay (lambda ()
+                                   (as:write-socket-data
+                                     socket *http-response*
+                                     :write-cb (lambda (socket) (as:close-socket socket))))
+                                 :time 10)
+                       ;; search for "DELETE" in data
+                       (when (search #(68 69 76 69 84 69) data)
+                         (as:close-socket socket)
+                         (as:event-loop-exit)))
+                     (lambda (err)
+                       (format t "tcp server event: ~a~%" err)))
+      (labels ((show-stats ()
+                 (let* ((stats (as:stats))
+                        (incoming (getf stats :incoming-connections))
+                        (outgoing (getf stats :outgoing-connections)))
+                   (format t "incoming: ~a~%outgoing: ~a~%~%" incoming outgoing))
+                 (as:delay #'show-stats :time 1)))
+        (when stats (show-stats))))
+    :catch-app-errors t)
+  (format t "TCP server exited.~%"))
+```
+
+What's happening here is that the server gets a request, delays 10 seconds, then
+responds on the same socket. This allows connections to build up for 10 seconds
+before they start getting released, which is a good way to test how many
+connections it can handle.
+
+On another neighboring Linode, I ran
+```bash
+httperf --server=1.2.3.4 --port=9009 --num-conns=40000 --num-calls=10 --hog --rate=2000
+```
+
+In the `stats` output, I was getting:
+
+    incoming: 40000
+    outgoing: 0
+    
+If this is a stupid benchmark, let me know, but from the looks of it it's fairly
+scalable (on unix, anyway). As far as performance goes, maybe that's another
+story.
 
 Implementation notes
 --------------------
