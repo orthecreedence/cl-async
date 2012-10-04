@@ -102,6 +102,11 @@
       (setf header-ptr (le-a:evkeyval-next header-ptr)))
     (nreverse headers)))
 
+(cffi:defcallback http-client-close-cb :void ((connection :pointer) (data-pointer :pointer))
+  "Called when an HTTP client connection is closed."
+  (decf *open-connection-count*)
+  (free-pointer-data data-pointer))
+
 (cffi:defcallback http-request-cb :void ((request :pointer) (data-pointer :pointer))
   "ALL HTTP requests come through here. They are processed into the http-request
    class and sent off to the appropriate callback."
@@ -109,6 +114,11 @@
   (let* ((callbacks (get-callbacks data-pointer))
          (request-cb (getf callbacks :request-cb))
          (event-cb (getf callbacks :event-cb)))
+    ;; NOTE: this is inaccurate. more than one request could come in on the same
+    ;; connection, so it would be better to track the connection when it's
+    ;; opened. not sure if libevent allows that on evhttp though, so for now
+    ;; this is the next best thing.
+    (incf *open-connection-count*)
     (catch-app-errors event-cb
       (let* ((method (get-method (le:evhttp-request-get-command request)))
              (uri (le:evhttp-request-get-uri request))
@@ -298,6 +308,8 @@
                                                     host
                                                     (getf parsed-uri :port 80)))
          (request (le:evhttp-request-new (cffi:callback http-client-cb) data-pointer)))
+    ;; track when the connection closes
+    (le:evhttp-connection-set-closecb connection (cffi:callback http-client-close-cb) (cffi:null-pointer))
     (save-callbacks connection (list :request-cb request-cb :event-cb event-cb))
     (attach-data-to-pointer data-pointer (list :connection connection :dns-base dns-base))
     (when (numberp timeout)
@@ -305,13 +317,17 @@
     (let ((host-set nil)
           (header-ptr (le:evhttp-request-get-output-headers request)))
       (dolist (header headers)
-        (le:evhttp-add-header header-ptr (car header) (cdr header))
-        (when (string= (string-downcase (car header)) "host")
-          (setf host-set t)))
+        (unless (string= (car header) "Connection")
+          (le:evhttp-add-header header-ptr (car header) (cdr header))
+          (when (string= (string-downcase (car header)) "host")
+            (setf host-set t))))
       (unless host-set
         (le:evhttp-add-header header-ptr "Host" host)))
+    ;; always close
+    (le:evhttp-add-header header-ptr "Connection" "close")
     (when body
       (write-socket-data (le:evhttp-request-get-output-buffer request) body :socket-is-evbuffer t))
+    (incf *open-connection-count*)
     (le:evhttp-make-request connection request (get-method-reverse method) (getf parsed-uri :resource))))
 
 (defun http-server (bind port request-cb event-cb)
@@ -354,5 +370,6 @@
     (if (<= 200 status 299)
         (le:evhttp-send-reply req-c status (lookup-status-text status) evbuffer)
         (le:evhttp-send-error req-c status (lookup-status-text status)))
-    (le:evbuffer-free evbuffer)))
+    (le:evbuffer-free evbuffer)
+    (decf *open-connection-count*)))
 

@@ -27,6 +27,8 @@
   ;; comment tcp-send about data-pointer for a better explanation.
   (let ((bev-data-pointer (deref-data-from-pointer socket))
         (fd (le::bufferevent-getfd socket)))
+    (when (and (numberp fd) (< 0 fd))
+      (decf *open-connection-count*))
     (le:bufferevent-free socket)
     (le:evutil-closesocket fd)
     (free-pointer-data bev-data-pointer)
@@ -193,6 +195,9 @@
         (unless (zerop nonblock)
           (error "Failed to make socket non-blocking: ~a~%" nonblock)))
 
+      ;; track the connection. will be decf'ed when close-socket is called
+      (incf *open-connection-count*)
+
       ;; save the callbacks given to the listener onto each socket individually
       (save-callbacks per-conn-data-pointer callbacks)
       (le:bufferevent-setcb bev
@@ -245,6 +250,7 @@
 
     (unless bev-exists-p
       ;; connect the socket
+      (incf *open-connection-count*)
       (if (ip-address-p host)
           ;; got an IP so just connect directly
           (with-ipv4-to-sockaddr (sockaddr host port)

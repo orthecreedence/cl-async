@@ -10,8 +10,9 @@
            #:connection-eof
            #:connection-timeout
            #:connection-refused
-           #:enable-threading-support
+           ;#:enable-threading-support
            ;#:enable-debug-mode
+           #:stats
            #:start-event-loop
            #:event-loop-exit
 

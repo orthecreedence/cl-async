@@ -26,6 +26,13 @@
 (defvar *socket-buffer-lisp* nil
   "An array in lisp land that holds data copied from a socket.")
 
+(defvar *open-connection-count* 0
+  "Number of open connections (incoming and outgoing).")
+;(defvar *incoming-connection-count* 0
+  ;"Number of incoming commections.")
+;(defvar *outgoing-connection-count* 0
+  ;"Number of outgoing connections.")
+
 (defvar *catch-application-errors* nil
   "When t, permits cl-async to catch uncaught conditions in your application and
    pass them to the event-cb callback given. If no event-cb is given for the
@@ -217,6 +224,19 @@
       (use-win-threads
         (cffi:foreign-funcall-pointer use-win-threads () :void)))))
 
+(defun stats ()
+  "Return statistics about the current event loop."
+  (list (cons 'open-dns-queries *dns-ref-count*)
+        (cons 'fn-registry-count (if (hash-table-p *fn-registry*)
+                                     (hash-table-count *fn-registry*)
+                                     0))
+        (cons 'data-registry-count (if (hash-table-p *data-registry*)
+                                       (hash-table-count *data-registry*)
+                                       0))
+        ;(cons 'incoming-connections *incoming-connection-count*)
+        ;(cons 'outgoing-connections *outgoing-connection-count*)
+        (cons 'open-connections *open-connection-count*)))
+  
 (defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
   "Simple wrapper function that starts an event loop which runs the given
    callback, most likely to init your server/client.
@@ -247,6 +267,7 @@
         (*socket-buffer-c* (cffi:foreign-alloc :unsigned-char :count *buffer-size*))
         (*socket-buffer-lisp* (make-array *buffer-size* :element-type '(unsigned-byte 8)))
         (*event-base* (le:event-base-new))
+        (*open-connection-count* 0)
         (callbacks nil))
     ;; set up a callback for dealing with fatal errors
     (when fatal-cb
@@ -257,6 +278,9 @@
       (setf callbacks (append callbacks (list :logger-cb logger-cb)))
       (le:event-set-log-callback (cffi:callback logger-cb)))
     (delay start-fn)
+    ;; this is the once instance where we assign callbacks to a libevent object
+    ;; instead of a data-pointer since the callbacks don't take any void* args,
+    ;; meaning we have to dereference from the global *event-base* object.
     (save-callbacks *event-base* callbacks)
     (unwind-protect
       (progn
@@ -265,6 +289,7 @@
       ;; cleanup
       (process-event-loop-exit-callbacks)
       (cffi:foreign-free *socket-buffer-c*)
+      (free-pointer-data *event-base* :preserve-pointer t)
       (le:event-base-free *event-base*)
       (setf *event-base* nil))))
 
