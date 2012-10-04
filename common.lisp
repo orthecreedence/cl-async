@@ -224,16 +224,15 @@
 
 (defun stats ()
   "Return statistics about the current event loop."
-  (list (cons 'open-dns-queries *dns-ref-count*)
-        (cons 'fn-registry-count (if (hash-table-p *fn-registry*)
-                                     (hash-table-count *fn-registry*)
-                                     0))
-        (cons 'data-registry-count (if (hash-table-p *data-registry*)
-                                       (hash-table-count *data-registry*)
-                                       0))
-        ;(cons 'incoming-connections *incoming-connection-count*)
-        ;(cons 'outgoing-connections *outgoing-connection-count*)
-        (cons 'open-connections *open-connection-count*)))
+  (list :open-dns-queries *dns-ref-count*
+        :fn-registry-count (if (hash-table-p *fn-registry*)
+                               (hash-table-count *fn-registry*)
+                               0)
+        :data-registry-count (if (hash-table-p *data-registry*)
+                                 (hash-table-count *data-registry*)
+                                 0)
+        :incoming-connections *incoming-connection-count*
+        :outgoing-connections *outgoing-connection-count*))
   
 (defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
   "Simple wrapper function that starts an event loop which runs the given
