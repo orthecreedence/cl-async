@@ -76,6 +76,22 @@
                   (write-to (if (numberp write-sec) write-to (cffi:null-pointer))))
             (le:bufferevent-set-timeouts socket read-to write-to))))))))
 
+(defun enable-socket (socket &key read write)
+  "Enable read/write monitoring on a socket. If :read or :write are nil, they
+   are not disabled, but rather just not enabled."
+  (check-socket-open socket)
+  (let ((bev (socket-c socket)))
+    (le:bufferevent-enable bev (logior (if read le:+ev-read+ 0)
+                                       (if write le:+ev-write+ 0)))))
+
+(defun disable-socket (socket &key read write)
+  "Disable read/write monitoring on a socket. If :read or :write are nil, they
+   are not enabled, but rather just not disabled."
+  (check-socket-open socket)
+  (let ((bev (socket-c socket)))
+    (le:bufferevent-disable bev (logior (if read le:+ev-read+ 0)
+                                        (if write le:+ev-write+ 0)))))
+
 (defun read-socket-data (socket data-cb &key socket-is-evbuffer)
   "Read the data out of a bufferevent (or directly, an evbuffer)."
   (check-socket-open socket)
@@ -91,34 +107,13 @@
         (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :char i)))
       (funcall data-cb (subseq buffer-lisp 0 n)))))
 
-(defun write-socket-data (socket data &key write-cb socket-is-evbuffer)
-  "Write data into libevent socket. Allows specifying if the given socket is
-   actually just a libevent evbuffer, or a socket (aka bufferevent). Also allows
-   assigning of a write-cb, which will be called when the data written to the
-   evbuffer is flushed out to the socket. This can be useful for closing a
-   connection after writing data to it."
-  (check-socket-open socket)
-
-  ;; if a write-cb was passed, set it into the socket's callbacks
-  (when (and (not socket-is-evbuffer) write-cb (functionp write-cb))
-    (let* ((bev (socket-c socket))
-           (bev-data (deref-data-from-pointer bev))
-           (socket-data-pointer (getf bev-data :data-pointer))
-           (callbacks (get-callbacks socket-data-pointer))
-           (read-cb (getf callbacks :read-cb (cffi:null-pointer)))
-           (event-cb (getf callbacks :event-cb (cffi:null-pointer))))
-    (le:bufferevent-enable bev (logior le:+ev-write+))
-    (save-callbacks socket-data-pointer (list :read-cb read-cb :write-cb write-cb :event-cb event-cb))))
-  
-  ;; copy the data into an evbuffer and ship it off to the socket
+(defun write-to-evbuffer (evbuffer data)
+  "Writes data directly to evbuffer."
   (let* ((data (if (stringp data)
                    (babel:string-to-octets data :encoding :utf-8)
                    data))
          (data-length (length data))
          (data-index 0)
-         (evbuffer (if socket-is-evbuffer
-                       socket
-                       (le:bufferevent-get-output (socket-c socket))))
          (buffer-c *socket-buffer-c*))
     ;; copy into evbuffer using existing c buffer
     (loop while (< 0 data-length) do
@@ -128,6 +123,45 @@
         (incf data-index))
       (le:evbuffer-add evbuffer buffer-c bufsize)
       (decf data-length bufsize)))))
+
+(defun write-socket-data (socket data &key read-cb write-cb event-cb)
+  "Write data into a cl-async socket. Allows specifying read/write/event
+   callbacks. Any callback left nil will use that current callback from the
+   socket (so they only override when specified, otherwise keep the current
+   callback)"
+  (check-socket-open socket)
+
+  (format t "WRITING SOCKET DATA!!!11: ~s~%" (babel:octets-to-string data))
+
+  ;; if a write-cb was passed, set it into the socket's callbacks
+  (let ((bev (socket-c socket)))
+    (if (or read-cb write-cb event-cb)
+        ;; we're specifying callbacks. since we're most likely calling this from
+        ;; inside a socket callback and we don't necessarily want to overwrite
+        ;; that socket's callbacks until it finishes, we set a delay here so the
+        ;; callback binding happens after the caller returns to the event loop.
+        (as:delay
+          (lambda ()
+            (let* ((bev-data (deref-data-from-pointer bev))
+                   (socket-data-pointer (getf bev-data :data-pointer))
+                   (callbacks (get-callbacks socket-data-pointer))
+                   (read-cb-current (getf callbacks :read-cb))
+                   (write-cb-current (getf callbacks :write-cb))
+                   (event-cb-current (getf callbacks :event-cb))
+                   (enable-bits 0))
+
+              (when read-cb (setf enable-bits (logior enable-bits le:+ev-read+)))
+              (when write-cb (setf enable-bits (logior enable-bits le:+ev-write+)))
+              (le:bufferevent-enable bev enable-bits)
+
+              (save-callbacks socket-data-pointer
+                              (list :read-cb (if (functionp read-cb) read-cb read-cb-current)
+                                    :write-cb (if (functionp write-cb) write-cb write-cb-current)
+                                    :event-cb (if (functionp event-cb) event-cb event-cb-current))))
+            (write-to-evbuffer (le:bufferevent-get-output bev) data)))
+
+        ;; we're not setting callbacks, so just send the data...
+        (write-to-evbuffer (le:bufferevent-get-output bev) data))))
 
 (defun drain-evbuffer (evbuffer)
   "Grab all data in an evbuffer and put it into a byte array (returned)."
@@ -190,7 +224,7 @@
 
                  ;; socket timeout
                  ((< 0 (logand events le:+bev-event-timeout+))
-                  (setf err (make-instance 'connection-timeout :connection fd :code errcode :msg errstr)))
+                  (setf err (make-instance 'connection-timeout :connection fd :code -1 :msg "Socket timed out")))
 
                  ;; since we don't know what the error was, just spawn a general
                  ;; error.
@@ -248,7 +282,7 @@
     (format t "There was an error and I don't know how to get the code.~%")
     (le:event-base-loopexit event-base (cffi:null-pointer))))
 
-(defun tcp-send (host port data read-cb event-cb &key ((:socket bev)) write-cb (read-timeout 30) (write-timeout 30))
+(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout 30) (write-timeout 30))
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
   (check-event-loop-running)
@@ -261,35 +295,27 @@
   ;; of callbacks/dns-bases to be un-garbage-collectable...disaster). this way
   ;; is messy, but ensures that the bufferevent has only one data-pointer
   ;; attached to it for the duration of its life.
-  (let* ((bev-data (deref-data-from-pointer bev))
-         (data-pointer (getf bev-data :data-pointer))
-         (bev-exists-p bev)
-         (bev (if bev-exists-p
-                  bev
-                  (le:bufferevent-socket-new *event-base* -1 +bev-opt-close-on-free+)))
-         (data-pointer (if bev-exists-p
-                           data-pointer
-                           (create-data-pointer))))
+  (let* ((data-pointer (create-data-pointer))
+         (bev (le:bufferevent-socket-new *event-base* -1 +bev-opt-close-on-free+))
+         (socket (make-instance 'socket :c bev :direction 'out)))
     (le:bufferevent-setcb bev (cffi:callback tcp-read-cb) (cffi:callback tcp-write-cb) (cffi:callback tcp-event-cb) data-pointer)
     (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
     (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :write-cb write-cb))
-    (write-socket-data (le:bufferevent-get-output bev) data :socket-is-evbuffer t)
+    (write-to-evbuffer (le:bufferevent-get-output bev) data)
     (set-socket-timeouts bev read-timeout write-timeout :socket-is-bufferevent t)
+    (attach-data-to-pointer bev (list :data-pointer data-pointer :socket socket))
 
-    (unless bev-exists-p
-      (let ((socket (make-instance 'socket :c bev :direction 'out)))
-        (attach-data-to-pointer bev (list :data-pointer data-pointer :socket socket)))
-      ;; connect the socket
-      (incf *outgoing-connection-count*)
-      (if (ip-address-p host)
-          ;; got an IP so just connect directly
-          (with-ipv4-to-sockaddr (sockaddr host port)
-            (le:bufferevent-socket-connect bev sockaddr +sockaddr-size+))
+    ;; connect the socket
+    (incf *outgoing-connection-count*)
+    (if (ip-address-p host)
+        ;; got an IP so just connect directly
+        (with-ipv4-to-sockaddr (sockaddr host port)
+          (le:bufferevent-socket-connect bev sockaddr +sockaddr-size+))
 
-          ;; get a DNS base and do an async lookup
-          (let ((dns-base (get-dns-base)))
-            (attach-data-to-pointer data-pointer dns-base)
-            (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port))))))
+        ;; get a DNS base and do an async lookup
+        (let ((dns-base (get-dns-base)))
+          (attach-data-to-pointer data-pointer dns-base)
+          (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port)))))
 
 (defun tcp-server (bind-address port read-cb event-cb)
   "Start a TCP listener on the current event loop."

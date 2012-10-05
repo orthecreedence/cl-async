@@ -43,6 +43,8 @@ for more information on these callbacks (and error handling in general).
 - [tcp-server](#tcp-server) _function_
 - [write-socket-data](#write-socket-data) _function_
 - [set-socket-timeouts](#set-socket-timeouts) _function_
+- [enable-socket](#enable-socket) _function_
+- [disable-socket](#disable-socket) _function_
 - [close-socket](#close-socket) _function_
 - [http-client](#http-client) _function_
 - [http-server](#http-server) _function_
@@ -159,21 +161,18 @@ is implemented.
 ```
 
 As mentioned, until IPV6 is implemented, `ip-address-family` will *always* be
-`AF_INET`. To test this, you can use the included libevent2 package's definition
+`AF\_INET`. To test this, you can use the included libevent2 package's definition
 of `libevent2:+af-inet+` or `libevent2:+af-inet-6+` (`le:` for short).
 
 ### tcp-send
 Open an asynchronous TCP connection to a host (IP or hostname) and port, once
 connected send the given data (byte array or string) and process any response
 with the given read callback. Also supports timing out after no data is read /
-written in (in seconds). If a socket is specified via :socket in the args, then
-the provided data will be written to the given socket instead of opening a new
-one, and the given callbacks will be set as the new callbacks for the socket.
-This can be useful if you need to set up a new request/response on an existing
-socket.
+written in (in seconds). 
 
-If you want a simple interface to write data to an existing socket, see
-[write-socket-data](#write-socket-data).
+Note that `tcp-send` always opens a new connection. If you want to send data on
+and existing connection (and also be able to set new read/write/event callbacks
+on it), check out [write-socket-data](#write-socket-data).
 
 Note that the `host` can be an IP address *or* a hostname, the hostname will
 be looked up asynchronously via libevent's DNS implementation.
@@ -284,6 +283,31 @@ throw a [socket-closed](#socket-closed) condition.
 
 ;; example
 (set-socket-timeouts socket 10.5 nil)
+```
+
+### enable-socket
+Enable read/write monitoring on a socket. This is done automatically by
+[tcp-send](#tcp-send) and [write-socket-data](#write-socket-data) so you
+probably don't need to worry too much about when to use it. On the other hand,
+[disable-socket](#disable-socket) will probably be a bit more useful.
+
+```common lisp
+;; definition
+(enable-socket socket &key read write)
+
+;;example
+(enable-socket socket :read t :write t)  ; enable read and write monitoring on this socket
+```
+
+### disable-socket
+Disable read/write monitoring on a socket. This is useful if you get the data
+you need from a socket, but while you're processing the data, you don't want the
+socket's read timeout to fire. This will both disable the timeouts and callbacks
+associated with the socket until enabled again.
+
+```common lisp
+;; definition
+(disable-socket socket &key read write)
 ```
 
 ### close-socket

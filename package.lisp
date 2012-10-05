@@ -26,6 +26,8 @@
            #:write-socket-data
            ;#:read-socket-data
            #:set-socket-timeouts
+           #:enable-socket
+           #:disable-socket
            #:tcp-send
            #:tcp-server
 
