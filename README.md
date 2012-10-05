@@ -725,14 +725,14 @@ too much work into making them pretty and useful. They will most likely stay
 as-is (and undocumented).
 
 ### HTTP server
-The [http-server][#http-server] is a simple way to get a quick HTTP interface
+The [http-server](#http-server) is a simple way to get a quick HTTP interface
 for your app. However, as someone who does a lot of ops as well as dev, I must
 warn you that *I would not trust this to be public-facing*. This is not because
 I am a terrible programmer, but because I don't think libevent's HTTP
 implementation takes into account a lot of things that other HTTP servers have
 been battle tested with.
 
-In other words, put [HAProxy(http://haproxy.1wt.eu/) or [NginX](http://nginx.org/)
+In other words, put [HAProxy](http://haproxy.1wt.eu/) or [NginX](http://nginx.org/)
 (or similar) in front of it. Let someone else bear the brunt of dealing with the
 security flaws of the open web so you can focus on building a solid application.
 
