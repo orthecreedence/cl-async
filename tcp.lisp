@@ -131,8 +131,6 @@
    callback)"
   (check-socket-open socket)
 
-  (format t "WRITING SOCKET DATA!!!11: ~s~%" (babel:octets-to-string data))
-
   ;; if a write-cb was passed, set it into the socket's callbacks
   (let ((bev (socket-c socket)))
     (if (or read-cb write-cb event-cb)
