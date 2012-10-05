@@ -169,18 +169,16 @@
         (values time-sec (floor (* 1000000 time-frac))))
       nil))
 
-(defun append-array (arr1 arr2 &key element-type)
+(defun append-array (arr1 arr2)
   "Create an array, made up of arr1 followed by arr2."
   (let ((arr1-length (length arr1))
         (arr2-length (length arr2)))
     (let ((arr (make-array (+ arr1-length arr2-length)
-                           :element-type element-type)))
-      (dotimes (i arr1-length)
-        (setf (aref arr i) (aref arr1 i)))
-      (dotimes (i arr2-length)
-        (setf (aref arr (+ arr1-length i)) (aref arr2 i)))
+                           :element-type (array-element-type arr1))))
+      (replace arr arr1 :start1 0)
+      (replace arr arr2 :start1 arr1-length)
       arr)))
-
+      
 (defun add-event-loop-exit-callback (fn)
   "Add a function to be run when the event loop exits."
   (push fn *event-loop-end-functions*))
