@@ -132,7 +132,14 @@
   (check-socket-open socket)
 
   ;; if a write-cb was passed, set it into the socket's callbacks
-  (let ((bev (socket-c socket)))
+  (let* ((bev (socket-c socket))
+         ;; since this gets called in multiple places, wrap it in a function
+         (do-send (lambda ()
+                    ;; enable the bufferevent (callbacks and timeouts)
+                    (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
+                    ;; write our data to the sockets buffer
+                    (write-to-evbuffer (le:bufferevent-get-output bev) data))))
+
     (if (or read-cb write-cb event-cb)
         ;; we're specifying callbacks. since we're most likely calling this from
         ;; inside a socket callback and we don't necessarily want to overwrite
@@ -147,19 +154,15 @@
                    (write-cb-current (getf callbacks :write-cb))
                    (event-cb-current (getf callbacks :event-cb))
                    (enable-bits 0))
-
-              (when read-cb (setf enable-bits (logior enable-bits le:+ev-read+)))
-              (when write-cb (setf enable-bits (logior enable-bits le:+ev-write+)))
-              (le:bufferevent-enable bev enable-bits)
-
               (save-callbacks socket-data-pointer
                               (list :read-cb (if (functionp read-cb) read-cb read-cb-current)
                                     :write-cb (if (functionp write-cb) write-cb write-cb-current)
                                     :event-cb (if (functionp event-cb) event-cb event-cb-current))))
-            (write-to-evbuffer (le:bufferevent-get-output bev) data)))
+            (funcall do-send)))
 
-        ;; we're not setting callbacks, so just send the data...
-        (write-to-evbuffer (le:bufferevent-get-output bev) data))))
+        ;; we're not setting callbacks, so just enable the socket and send the
+        ;; data
+        (funcall do-send))))
 
 (defun drain-evbuffer (evbuffer)
   "Grab all data in an evbuffer and put it into a byte array (returned)."
