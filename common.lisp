@@ -37,6 +37,13 @@
    operation that triggered the condition, use *default-event-handler* as the
    event-cb.")
 
+;; define some cached values to save CFFI calls. believe it or not, this does
+;; make a performance difference
+(defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
+(defconstant +evutil-addrinfo-size+ (cffi:foreign-type-size (le::cffi-type le::evutil-addrinfo)))
+(defconstant +timeval-size+ (cffi:foreign-type-size (le::cffi-type le::timeval)))
+(defconstant +bev-opt-close-on-free+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+))
+
 (defvar *default-event-handler*
   (lambda (err)
     ;; throw the error so we can wrap it in a handler-case
@@ -85,20 +92,27 @@
              (t (err) (funcall ,evcb err))))
          (progn ,@body))))
      
-(defmacro make-foreign-type ((var type &key initial) bindings &body body)
+(defmacro make-foreign-type ((var type &key initial type-size) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."
   `(cffi:with-foreign-object (,var ,type)
-     (when ,initial
-       (cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char (cffi:foreign-type-size ,type)))
+     ,(when initial
+        `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size ,type))))
      ,@(loop for binding in bindings collect
          `(setf (cffi:foreign-slot-value ,var ,type ,(car binding)) ,(cadr binding)))
      ,@body))
 
 (defun make-pointer-eql-able (pointer)
-  "Abstraction to make a CFFI pointer #'eql to itself."
+  "Abstraction to make a CFFI pointer #'eql to itself. Does its best to be the
+   most performant for the current implementation."
   (when pointer
-    (cffi:pointer-address pointer)))
+    #+(or ccl sbcl ecl clisp) pointer
+    #-(or ccl sbcl ecl clisp) (cffi:pointer-address pointer)))
+
+(defun create-data-pointer ()
+  "Creates a pointer in C land that can be used to attach data/callbacks to.
+   Note that this must be freed via clear-pointer-data."
+  (cffi:foreign-alloc :char :count 0))
 
 (defun save-callbacks (pointer callbacks)
   "Save a set of callbacks, keyed by the given pointer."
@@ -118,11 +132,6 @@
   "Clear out all callbacks for the given pointer."
   (when *fn-registry*
     (remhash (make-pointer-eql-able pointer) *fn-registry*)))
-
-(defun create-data-pointer ()
-  "Creates a pointer in C land that can be used to attach data/callbacks to.
-   Note that this must be freed via clear-pointer-data."
-  (cffi:foreign-alloc :char :count 0))
 
 (defun attach-data-to-pointer (pointer data)
   "Attach a lisp object to a foreign pointer."

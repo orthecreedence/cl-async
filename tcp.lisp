@@ -1,8 +1,5 @@
 (in-package :cl-async)
 
-(defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in))
-  "Really no sense in computing this OVER AND OVER.")
-
 (define-condition socket-closed (connection-error) ()
   (:report (lambda (c s) (format s "Socket closed: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Thrown when a closed socket is being operated on."))
@@ -217,7 +214,7 @@
          (event-base (le:evconnlistener-get-base listener))
          (bev (le:bufferevent-socket-new event-base
                                          fd
-                                         (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+)))
+                                         +bev-opt-close-on-free+))
          (socket (make-instance 'socket :c bev :direction 'in))
          (callbacks (get-callbacks data-pointer))
          (event-cb (getf callbacks :event-cb)))
@@ -269,7 +266,7 @@
          (bev-exists-p bev)
          (bev (if bev-exists-p
                   bev
-                  (le:bufferevent-socket-new *event-base* -1 (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+))))
+                  (le:bufferevent-socket-new *event-base* -1 +bev-opt-close-on-free+)))
          (data-pointer (if bev-exists-p
                            data-pointer
                            (create-data-pointer))))

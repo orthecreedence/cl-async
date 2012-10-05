@@ -42,3 +42,4 @@
 (defun timer (time-s callback &key event-cb)
   "Deprecated, use delay."
   (delay callback :time time-s :event-cb event-cb))
+

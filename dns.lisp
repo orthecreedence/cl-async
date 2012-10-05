@@ -43,7 +43,7 @@
   "Convert a string IP address and port into a sockaddr-in struct."
   (let ((sockaddr (cffi:foreign-alloc (le::cffi-type le::sockaddr-in))))
     ;; fill it full of holes.
-    (cffi:foreign-funcall "memset" :pointer sockaddr :unsigned-char 0 :unsigned-char (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
+    (cffi:foreign-funcall "memset" :pointer sockaddr :unsigned-char 0 :unsigned-char +sockaddr-size+)
     (setf (le-a:sockaddr-in-sin-family sockaddr) le:+af-inet+
           (le-a:sockaddr-in-sin-port sockaddr) (cffi:foreign-funcall "htons" :int port :unsigned-short)
           (le-a:sockaddr-in-sin-addr sockaddr) (if address
@@ -98,7 +98,7 @@
   (check-event-loop-running)
   (let ((data-pointer (create-data-pointer))
         (dns-base (get-dns-base)))
-    (make-foreign-type (hints (le::cffi-type le::evutil-addrinfo) :initial #x0)
+    (make-foreign-type (hints (le::cffi-type le::evutil-addrinfo) :initial #x0 :type-size +evutil-addrinfo-size+)
                        (('le::ai-family le:+af-inet+)  ;; only want ipv4 for now
                         ('le::ai-flags le:+evutil-ai-canonname+)
                         ('le::ai-socktype le:+sock-stream+)
