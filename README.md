@@ -240,18 +240,24 @@ however it *can* be passed to other cl-async functions that take a `socket` arg.
 ### write-socket-data
 Write data to an existing socket (such as one passed into a read-cb). Data can
 be a byte array or string (converted to a byte array via babel). Supports
-setting a `write-cb`, which replaces any current write-cb on the given socket.
-This can be useful where you have a server that wants to close a connection
-after sending data.
+resetting the callbacks on the given socket. The `write-cb` is useful if you
+want to close the connection after sending data on the socket but want to make
+sure the data sent before closing.
 
 Note that if you call this using a socket that has been closed already, it will
 throw a [socket-closed](#socket-closed) condition.
 
 ```common-lisp
 ;; definition
-(write-socket-data socket data &key write-cb)
+(write-socket-data socket data &key read-cb write-cb event-cb)
 
-;; example
+;; examples
+(write-socket-data socket "thanks for connecting. how are you? (good|bad)"
+                   :read-cb (lambda (socket data)
+                              (my-app:continue-conversation socket data))
+                   :event-cb (lambda (err)
+                               (format t "condition while having convo: ~a~%" err)))
+
 (write-socket-data socket "invalid command, closing connection"
                    :write-cb (lambda (socket) (close-socket socket)))
 ```
