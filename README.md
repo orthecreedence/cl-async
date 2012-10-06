@@ -2,12 +2,15 @@ cl-async - Asynchronous operations for Common Lisp
 ==================================================
 So after trying out various non-blocking libraries and frameworks for CL, I was
 a bit unsatisfied. [USOCKET](https://github.com/mcna/usocket) is probably the
-best thing out there for non-blocking TCP, and it works well on Linux, but in
-my opinion is poorly documented.
+best thing out there for non-blocking TCP, but I had a hard time understanding
+the documentation and using it without beta versions of CFFI. I decided to write
+a library that has very simple to understand concepts and an easy to use
+interface. It uses [Libevent2](http://libevent.org/) as the async backend (see
+my [notes on choosing Libevent](#libevent).
 
-I decided to write a wrapper around [Libevent2](http://libevent.org/) that is,
-above all, easy to use and understand. The concepts are similar to other libs,
-but work much like how I'd want an asynchronous I/O library to work.
+The main goal is to provide an experience that's close to javascript in how it
+handles asynchronous operations with ease,, but with the speed and power of
+lisp.
 
 *Please note that at the moment, I consider this library ALPHA and very likely
 to change...a lot. Please rely on it at your own risk, until things solidify a
