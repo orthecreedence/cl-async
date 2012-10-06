@@ -5,8 +5,9 @@ a bit unsatisfied. [USOCKET](https://github.com/mcna/usocket) is probably the
 best thing out there for non-blocking TCP, but I had a hard time understanding
 the documentation and using it without beta versions of CFFI. I decided to write
 a library that has very simple to understand concepts and an easy to use
-interface. It uses [Libevent2](http://libevent.org/) as the async backend (see
-my [notes on choosing Libevent](#libevent).
+interface. It uses [Libevent2](http://libevent.org/) as the async backend, which
+is a fast, stable, portable library for asynchronous IO (see my [notes on choosing
+Libevent](#libevent)).
 
 The main goal is to provide an experience that's close to javascript in how it
 handles asynchronous operations with ease,, but with the speed and power of
