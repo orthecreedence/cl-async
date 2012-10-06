@@ -738,11 +738,9 @@ Implementation notes
 Libevent was chosen for a few reasons:
  - It provides a socket API. The USOCKET library was too undocumented for me
  to figure out. Plus things like delayed functions/timers were not clear to me.
- - It wraps the socket implementation and buffering in a simple and wonderful
- API. You say bloated, I say "thank god I didn't have to fucking wrap that in
- CFFI."
- - It has a great API, as far as wrapping in CFFI goes. Values are passed by
- reference instead of on the stack. Wonderful.
+ - It wraps the socket implementation and buffering in a [simple and wonderful
+ API](http://www.wangafu.net/~nickm/libevent-book/Ref6_bufferevent.html).
+ - It was very easy to generate bindings for and wrap in CFFI.
  - It works with windows. This is big for me, since I do a ton of development
  on windows. Libraries that assume "Y WOULD U PROGRAM ON WINDOWS?!?!LOL" have
  their place, but most people who say this probably use Ubuntu anyway (sorry,
