@@ -506,7 +506,7 @@ This can happen when an HTTP connection is refused, a TCP socket gets an EOF,
 etc. Sometimes these conditions won't necessarily be errors, but rather pieces
 of information your application might find useful.
 
-The one condition that is thrown by cl-async is [socket-closed](#socket-closed),
+The one condition that is `thrown` by cl-async is [socket-closed](#socket-closed),
 which happens when a closed socket is being operated on by the app.
 
 This goes over some of the conditions you can expect to see when using cl-async.
