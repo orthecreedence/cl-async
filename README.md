@@ -502,10 +502,12 @@ Conditions and events
 ---------------------
 When something unexpected happens, cl-async will _instantiate_ (not throw) a
 condition that explains what happened and pass it into the given event callback.
-The only exception that is actually thrown is [socket-closed](#socket-closed).
 This can happen when an HTTP connection is refused, a TCP socket gets an EOF,
 etc. Sometimes these conditions won't necessarily be errors, but rather pieces
 of information your application might find useful.
+
+The one condition that is thrown by cl-async is [socket-closed](#socket-closed),
+which happens when a closed socket is being operated on by the app.
 
 This goes over some of the conditions you can expect to see when using cl-async.
 For information about how these conditions are handled once create, see the
