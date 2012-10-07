@@ -509,8 +509,8 @@ of information your application might find useful.
 The one condition that is `thrown` by cl-async is [socket-closed](#socket-closed),
 which happens when a closed socket is being operated on by the app.
 
-This goes over some of the conditions you can expect to see when using cl-async.
-For information about how these conditions are handled once create, see the
+This goes over the conditions you can expect to see when using cl-async. For
+information about how these conditions are handled once created, see the
 [section explaining event callbacks and error handling](#event-callbacks-and-error-handling-in-general).
 
 - [connection-info](#connection-info) _condition_
@@ -547,7 +547,7 @@ conditions, in which case errcode will be -1.
 ##### conn-errmsg
 Much like `conn-errcode`, this is generally a system message explaining a
 connection error. If it is a cl-async generated error, it will have a string
-value explaining what happened
+value explaining what happened.
 
 ### dns-error
 _extends [connection-error](#connection-error)_
@@ -568,8 +568,8 @@ _extends [connection-error](#connection-error) and [tcp-info](#tcp-info)_
 Describes a general error on a TCP connection. If this is triggered, the socket
 will generally be closed by cl-async, and the app doesn't need to worry about
 doing this. If the app *does* want to close the socket, it can do so by getting
-it from the [tcp-socket](#tcp-socket) on the condition and using
-[close-socket](#close-socket)/
+it from the [tcp-socket](#tcp-socket) accessor on the condition and using
+[close-socket](#close-socket).
 
 ### tcp-eof
 _extends [tcp-info](#tcp-info)_
