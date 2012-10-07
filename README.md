@@ -663,10 +663,14 @@ this variable will be used as the `event-cb`. The default:
 (lambda (err)
   ;; throw the error so we can wrap it in a handler-case
   (handler-case (error err)
+    ;; got a connection error, throw it (must do this explicitely since
+    ;; connection-error extends connection-info)
+    (connection-error () (error err))
+
     ;; this is just info, let it slide
     (connection-info () nil)
-    ;; this an actual error. throw it back to toplevel (will exit the
-    ;; event loop and cancel any pending events)
+
+    ;; this an actual error. throw it back to toplevel
     (t () (error err))))
 ```
 

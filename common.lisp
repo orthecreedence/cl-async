@@ -44,18 +44,6 @@
 (defconstant +timeval-size+ (cffi:foreign-type-size (le::cffi-type le::timeval)))
 (defconstant +bev-opt-close-on-free+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+))
 
-(defvar *default-event-handler*
-  (lambda (err)
-    ;; throw the error so we can wrap it in a handler-case
-    (handler-case (error err)
-      ;; this is just info, let it slide
-      (connection-info () nil)
-      ;; this an actual error. throw it back to toplevel (will exit the
-      ;; event loop and cancel any pending events)
-      (t () (error err))))
-  "If an event-cb is not specified, this will be used as the event-cb IF
-   *catch-application-errors* is set to t.")
-
 (define-condition connection-info () ()
   (:documentation "Describes the base condition for any action on a connection."))
 
@@ -64,6 +52,22 @@
    (msg :initarg :msg :reader conn-errmsg :initform nil))
   (:report (lambda (c s) (format s "Connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Describes a general connection error."))
+
+(defvar *default-event-handler*
+  (lambda (err)
+    ;; throw the error so we can wrap it in a handler-case
+    (handler-case (error err)
+      ;; got a connection error, throw it (must do this explicitely since
+      ;; connection-error extends connection-info)
+      (connection-error () (error err))
+
+      ;; this is just info, let it slide
+      (connection-info () nil)
+      
+      ;; this an actual error. throw it back to toplevel
+      (t () (error err))))
+  "If an event-cb is not specified, this will be used as the event-cb IF
+   *catch-application-errors* is set to t.")
 
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
