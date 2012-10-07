@@ -56,9 +56,7 @@
   "If an event-cb is not specified, this will be used as the event-cb IF
    *catch-application-errors* is set to t.")
 
-(define-condition connection-info ()
-  ((connection :initarg :connection :reader conn-fd :initform nil))
-  (:report (lambda (c s) (format s "Connection info: ~a" (conn-fd c))))
+(define-condition connection-info () ()
   (:documentation "Describes the base condition for any action on a connection."))
 
 (define-condition connection-error (connection-info)
@@ -66,18 +64,6 @@
    (msg :initarg :msg :reader conn-errmsg :initform nil))
   (:report (lambda (c s) (format s "Connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Describes a general connection error."))
-
-(define-condition connection-eof (connection-info) ()
-  (:report (lambda (c s) (format s "Connection EOF: ~a" (conn-fd c))))
-  (:documentation "Passed to an event callback when a peer closes the connection."))
-
-(define-condition connection-timeout (connection-error) ()
-  (:report (lambda (c s) (format s "Connection timeout: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
-  (:documentation "Passed to an event callback when a connection times out."))
-
-(define-condition connection-refused (connection-error) ()
-  (:report (lambda (c s) (format s "Connection refused: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
-  (:documentation "Passed to an event callback when a connection is refused."))
 
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),

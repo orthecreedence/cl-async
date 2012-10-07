@@ -1,7 +1,7 @@
 (in-package :cl-async)
 
-(define-condition connection-dns-error (connection-error) ()
-  (:report (lambda (c s) (format s "Connection DNS error: ~a, ~a" (conn-fd c) (conn-errmsg c))))
+(define-condition dns-error (connection-error) ()
+  (:report (lambda (c s) (format s "Connection DNS error: ~a, ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
 
 (defparameter *ip-scanner*
@@ -61,29 +61,39 @@
 
 (cffi:defcallback dns-cb :void ((errcode :int) (addrinfo :pointer) (data-pointer :pointer))
   "Callback for DNS lookups."
-  (let* (;(dns-base (deref-data-from-pointer data-pointer))
-         (callbacks (get-callbacks data-pointer))
+  (let* ((callbacks (get-callbacks data-pointer))
          (resolve-cb (getf callbacks :resolve-cb))
          (event-cb (getf callbacks :event-cb)))
     (unwind-protect
       (catch-app-errors event-cb
         (if (not (zerop errcode))
             ;; DNS call failed, get error
-            (funcall event-cb (make-instance 'connection-dns-error :code errcode :msg (le:evutil-gai-strerror errcode)))
+            (funcall event-cb (make-instance 'dns-error :code errcode :msg (le:evutil-gai-strerror errcode)))
+
             ;; success, pull out address
             (let ((family (le-a:evutil-addrinfo-ai-family addrinfo))
                   (addr nil))
               (cond
                 ((eq family le:+af-inet+)
                  (cffi:with-foreign-object (buf :unsigned-char 128)
-                   (let* ((sin-addr (cffi:foreign-slot-pointer (le-a:evutil-addrinfo-ai-addr addrinfo) (le::cffi-type le::sockaddr-in) 'le::sin-addr)))
-                     (setf addr (le:evutil-inet-ntop family sin-addr buf 128)))))
+                   (let ((ai-addr (le-a:evutil-addrinfo-ai-addr addrinfo)))
+                     (unless (cffi:null-pointer-p ai-addr)
+                       (let ((sin-addr (le-a:sockaddr-in-sin-addr ai-addr)))
+                         (cffi:with-foreign-object (addr-pt :unsigned-long 1)
+                           (setf (cffi:mem-aref addr-pt :unsigned-long 0) sin-addr)
+                           (setf addr (le:evutil-inet-ntop family addr-pt buf 128))))))))
                 (t
                   ;; probably ipv6, not supported ATM
                   ))
+
               (if addr
+                  ;; got an address, call resolve-cb
                   (funcall resolve-cb addr family)
-                  (funcall event-cb (make-instance 'connection-dns-error :code -1 :msg (format nil "Error pulling out address from family: ~a" family))))
+                  ;; hmm, didn't get an address. either cam back as ipv6 or 
+                  ;; there was some horrible, horrible error.
+                  (funcall event-cb (make-instance 'dns-error :code -1 :msg (format nil "Error pulling out address from family: ~a" family))))
+
+              ;; clean up
               (unless (cffi:null-pointer-p addrinfo)
                 (le:evutil-freeaddrinfo addrinfo)))))
       (free-pointer-data data-pointer)

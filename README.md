@@ -20,6 +20,7 @@ bit.*
 The documentation is split into a few main sections.
 
 - [__Function and class documentation__](#functions-and-classes)
+- [__Conditions and events__](#conditions-and-events)
 - [__Event callbacks and error handling__](#event-callbacks-and-error-handling-in-general)
 - [__Examples__](#examples)
 - [__Benchmarks__](#benchmarks)
@@ -497,6 +498,119 @@ Data is a plist. Stats might change in the near future.
 (stats)
 ```
 
+Conditions and events
+---------------------
+When something unexpected happens, cl-async will _instantiate_ (not throw) a
+condition that explains what happened and pass it into the given event callback.
+The only exception that is actually thrown is [socket-closed](#socket-closed).
+This can happen when an HTTP connection is refused, a TCP socket gets an EOF,
+etc. Sometimes these conditions won't necessarily be errors, but rather pieces
+of information your application might find useful.
+
+This goes over some of the conditions you can expect to see when using cl-async.
+For information about how these conditions are handled once create, see the
+[section explaining event callbacks and error handling](#event-callbacks-and-error-handling-in-general).
+
+- [connection-info](#connection-info) _condition_
+- [connection-error](#connection-error) _condition_
+  - [conn-errcode](#conn-errcode) _accessor_
+  - [conn-errmsg](#conn-errmsg) _accessor_
+- [dns-error](#dns-error) _condition_
+- [tcp-info](#tcp-info) _condition_
+  - [tcp-socket](#tcp-socket) _accessor_
+- [tcp-error](#tcp-error) _condition_
+- [tcp-eof](#tcp-eof) _condition_
+- [tcp-timeout](#tcp-timeout) _condition_
+- [tcp-refused](#tcp-refused) _condition_
+- [socket-closed](#socket-closed) _condition_
+- [http-info](#http-info) _condition_
+- [http-error](#http-error) _condition_
+- [http-timeout](#http-timeout) _condition_
+- [http-refused](#http-refused) _condition_
+
+### connection-info
+Base connection condition. Signals that "something" happened on a connection.
+Meant to be extended.
+
+### connection-error
+_extends [connection-info](#connection-info)_
+
+Base connection error. Signals that "something bad" happened on a connection.
+
+##### conn-errcode
+The error code associated with the connection error. This is generally retrieved
+from the underlying OS, but sometimes cl-async will generate its own error
+conditions, in which case errcode will be -1.
+
+##### conn-errmsg
+Much like `conn-errcode`, this is generally a system message explaining a
+connection error. If it is a cl-async generated error, it will have a string
+value explaining what happened
+
+### dns-error
+_extends [connection-error](#connection-error)_
+
+This explains a DNS error (for instance if a DNS lookup fails).
+
+### tcp-info
+_extends [connection-info](#connection-info)_
+
+Base TCP condition, says "something" happened on a TCP connection.
+
+##### tcp-socket
+Holds the TCP socket class. Can be used to write to the socket or close it.
+
+### tcp-error
+_extends [connection-error](#connection-error) and [tcp-info](#tcp-info)_
+
+Describes a general error on a TCP connection. If this is triggered, the socket
+will generally be closed by cl-async, and the app doesn't need to worry about
+doing this. If the app *does* want to close the socket, it can do so by getting
+it from the [tcp-socket](#tcp-socket) on the condition and using
+[close-socket](#close-socket)/
+
+### tcp-eof
+_extends [tcp-info](#tcp-info)_
+
+Triggered when the peer on a TCP connection closes the socket.
+
+### tcp-timeout
+_extends [tcp-error](#tcp-error)_
+
+Triggered when a TCP connection times out.
+
+### tcp-refused
+_extends [tcp-error](#tcp-error)_
+
+Triggered when a TCP connection is refused by the peer.
+
+### socket-closed
+_extends [tcp-error](#tcp-error)_
+
+This exception is thrown by cl-async when the app tries to perform an operation
+on a socket that has already been closed via [close-socket](#close-socket).
+
+### http-info
+_extends [connection-info](#connection-info)_
+
+Base HTTP condition.
+
+### http-error
+_extends [connection-error](#connection-error) and [http-info](#http-info)_
+
+Base HTTP error condition.
+
+### http-timeout
+_extends [http-error](#http-error)_
+
+Triggered when an HTTP connection times out.
+
+### http-refused
+_extends [http-error](#http-error)_
+
+Triggered when an HTTP connection is refused by the peer.
+
+
 Event callbacks (and error handling in general)
 -----------------------------------------------
 Any parameter labelled `event-cb` is what's known as an "event callback." Event
@@ -509,9 +623,6 @@ The event conditions generally match conditions in libevent, although they try
 to be as informative as possible. Note that conditions are not actually thrown,
 but rather instantiated via `make-instance` and passed directly to the event
 callback.
-
-- [Application error handling](#application-error-handling)
-- [General cl-async conditions](#general-cl-async-conditions)
 
 ### Application error handling
 cl-async can be set up to catch errors in your application and pass them to
@@ -555,76 +666,6 @@ this variable will be used as the `event-cb`. The default:
 ```
 
 This can be changed by your application if different behavior is desired.
-
-### General cl-async conditions
-
-- [connection-info](#connection-info) _condition_
-  - [conn-fd](#conn-fd) _accessor_
-- [connection-error](#connection-error) _condition_
-  - [conn-errcode](#conn-errcode) _accessor_
-  - [conn-errmsg](#conn-errmsg) _accessor_
-- [connection-eof](#connection-eof) _condition_
-- [connection-timeout](#connection-timeout) _condition_
-- [connection-refused](#connection-refused) _condition_
-- [connection-dns-error](#connection-dns-error) _condition_
-- [socket-closed](#socket-closed) _condition_
-
-### connection-info
-This is the base condition for any connection event. Any other connection
-condition extends it.
-
-##### conn-fd
-Pulls the connection file descriptor out of a connection-info condition. This is
-not necessarily useful to an application, but may be used internally for the
-tracking and cleaning of various objects. Exposed to the API since there are
-instances where it *could* be useful. May be wrapped in a CLOS object at some
-point in the future, so don't rely on it too heavily just yet.
-
-### connection-error
-_extends [connection-info](#connection-info)_
-
-Base connection error condition. Anything considered an error happening on a
-connection will extend this condition. Most of the time, will contain an error
-code and error message. 
-
-##### conn-errcode
-The error code this socket error was triggered with. The code generally refers
-to what the C `errno` code is (`WSAGetLastError` in Windows).
-
-_NOTE:_ In cases where the error is triggered by cl-async, the error code will
-generally be -1. This may change in the future to support cl-async specific
-error codes.
-
-##### conn-errmsg
-The error string corresponding to the code in `conn-errcode`. If the error code
-is -1, then this string will be a cl-async description of the error instead of
-a system-supplied description.
-
-### connection-eof
-_extends [connection-info](#connection-info)_
-
-Describes the condition when the peer closes a connection.
-
-### connection-timeout
-_extends [connection-error](#connection-error)_
-
-Describes the condition when a connection has timed out either connecting or
-waiting for a read/write.
-
-### connection-refused
-_extends [connection-error](#connection-error)_
-
-Describes the condition when a connection has been refused by the peer.
-
-### connection-dns-error
-_extends [connection-error](#connection-error)_
-
-Describes the condition when a DNS lookup has failed.
-
-### socket-closed
-_extends [connection-error](#connection-error)_
-
-This condition is _thrown_ when a socket that has been closed is operated on.
 
 Examples
 --------

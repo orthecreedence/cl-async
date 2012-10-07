@@ -1,13 +1,19 @@
-;;; This file wraps around a lot of the libevent2 evhttp_* functions, providing
-;;; an asynchronous HTTP server that you can build your application on top of.
-;;; Each request is put into an `http-request` class, which is sent off to your
-;;; app.
-;;;
-;;; Once the app is finished processing the request, it passes the request
-;;; object into the http-response function and the response will be send and all
-;;; data cleaned up.
-
 (in-package :cl-async)
+
+(define-condition http-info (connection-info) ()
+  (:documentation "Base HTTP condition. Holds the socket object."))
+
+(define-condition http-error (connection-error http-info) ()
+  (:report (lambda (c s) (format s "HTTP connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:documentation "Describes a general HTTP connection error."))
+
+(define-condition http-timeout (http-error) ()
+  (:report (lambda (c s) (format s "HTTP connection timeout: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:documentation "Passed to an event callback when an HTTP connection times out."))
+
+(define-condition http-refused (http-error) ()
+  (:report (lambda (c s) (format s "HTTP connection refused: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:documentation "Passed to an event callback when an HTTP connection is refused."))
 
 (defclass http-request ()
   ((req-obj :accessor http-request-c :initarg :c :initform nil :documentation
@@ -160,10 +166,10 @@
         (cond
           ;; timeout
           ((cffi:null-pointer-p request)
-           (funcall event-cb (make-instance 'connection-timeout :connection connection)))
+           (funcall event-cb (make-instance 'http-timeout :code -1 :msg "HTTP connection timed out.")))
           ;; connection refused
           ((eq (le:evhttp-request-get-response-code request) 0)
-           (funcall event-cb (make-instance 'connection-refused :connection connection)))
+           (funcall event-cb (make-instance 'http-refused :code -1 "HTTP connection refused.")))
           ;; got response back, parse and send off to request-cb
           (t
            (let ((status (le:evhttp-request-get-response-code request))

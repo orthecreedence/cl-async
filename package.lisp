@@ -3,15 +3,9 @@
   (:export #:*catch-application-errors*
            #:*default-event-handler*
            #:connection-info
-           #:conn-fd
            #:connection-error
            #:conn-errcode
            #:conn-errmsg
-           #:connection-eof
-           #:connection-timeout
-           #:connection-refused
-           ;#:enable-threading-support
-           ;#:enable-debug-mode
            #:stats
            #:start-event-loop
            #:event-loop-exit
@@ -19,18 +13,28 @@
            #:delay
            #:timer
 
-           #:connection-dns-error
+           #:dns-error
            #:dns-lookup
 
+           #:tcp-info
+           #:tcp-socket
+           #:tcp-error
+           #:tcp-eof
+           #:tcp-timeout
+           #:tcp-refused
+           #:socket-closed
            #:close-socket
            #:write-socket-data
-           ;#:read-socket-data
            #:set-socket-timeouts
            #:enable-socket
            #:disable-socket
            #:tcp-send
            #:tcp-server
 
+           #:http-info
+           #:http-error
+           #:http-timeout
+           #:http-refused
            #:http-client
            #:http-response
            #:http-server

@@ -1,7 +1,27 @@
 (in-package :cl-async)
 
-(define-condition socket-closed (connection-error) ()
-  (:report (lambda (c s) (format s "Socket closed: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+(define-condition tcp-info (connection-info)
+  ((socket :initarg :socket :accessor tcp-socket :initform nil))
+  (:documentation "Base TCP condition. Holds the socket object."))
+
+(define-condition tcp-error (connection-error tcp-info) ()
+  (:report (lambda (c s) (format s "TCP connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:documentation "Describes a general TCP connection error."))
+
+(define-condition tcp-eof (tcp-info) ()
+  (:report (lambda (c s) (format s "TCP connection EOF: ~a" (tcp-socket c))))
+  (:documentation "Passed to an event callback when a peer closes a TCP connection."))
+
+(define-condition tcp-timeout (tcp-error) ()
+  (:report (lambda (c s) (format s "TCP connection timeout: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:documentation "Passed to an event callback when a TCP connection times out."))
+
+(define-condition tcp-refused (tcp-error) ()
+  (:report (lambda (c s) (format s "TCP connection refused: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:documentation "Passed to an event callback when a TCP connection is refused."))
+
+(define-condition socket-closed (tcp-error) ()
+  (:report (lambda (c s) (format s "Closed TCP socket being operated on.")))
   (:documentation "Thrown when a closed socket is being operated on."))
 
 (defclass socket ()
@@ -27,6 +47,12 @@
       (values code
               (cffi:foreign-funcall "strerror" :int code :string))))
 
+(defun check-socket-open (socket)
+  "Throw a socket-closed condition if given a socket that's closed."
+  (when (subtypep (type-of socket) 'socket)
+    (when (socket-closed socket)
+      (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket"))))
+
 (defun close-socket (socket)
   "Free a socket (bufferevent) and clear out all associated data."
   ;; grab the data pointer associated with the bufferevent and free it. see
@@ -45,12 +71,6 @@
     (setf (socket-closed socket) t)
     (free-pointer-data bev-data-pointer)
     (free-pointer-data bev :preserve-pointer t)))
-
-(defun check-socket-open (socket)
-  "Throw a socket-closed condition if given a socket that's closed."
-  (when (subtypep (type-of socket) 'socket)
-    (when (socket-closed socket)
-      (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket"))))
 
 (defun free-listener (listener)
   "Free a socket listener and all associated data."
@@ -203,10 +223,9 @@
 (cffi:defcallback tcp-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
    callback system to track failures/disconnects."
-  (let* ((err nil)
+  (let* ((event nil)
          (bev-data (deref-data-from-pointer bev))
          (socket (getf bev-data :socket))
-         (fd (le:bufferevent-getfd bev))
          (event-cb (getf (get-callbacks data-pointer) :event-cb)))
     (catch-app-errors event-cb
       (unwind-protect
@@ -219,27 +238,30 @@
                  ;; DNS error
                  ((and (< 0 (logand events le:+bev-event-error+))
                        (not (zerop dns-err)))
-                  (setf err (make-instance 'connection-dns-error
-                                           :connection fd
-                                           :msg (le:evutil-gai-strerror dns-err))))
+                  (setf event (make-instance 'dns-error
+                                             :code dns-err
+                                             :msg (le:evutil-gai-strerror dns-err))))
 
                  ;; socket timeout
                  ((< 0 (logand events le:+bev-event-timeout+))
-                  (setf err (make-instance 'connection-timeout :connection fd :code -1 :msg "Socket timed out")))
+                  (setf event (make-instance 'tcp-timeout :socket socket :code -1 :msg "Socket timed out")))
 
                  ;; since we don't know what the error was, just spawn a general
                  ;; error.
                  (t
-                  (setf err (make-instance 'connection-error :connection fd :code errcode :msg errstr)))))))
+                  (setf event (make-instance 'tcp-error :socket socket :code errcode :msg errstr)))))))
           ;; peer closed connection.
           ((< 0 (logand events le:+bev-event-eof+))
-           (setf err (make-instance 'connection-eof :connection fd)))
+           (setf event (make-instance 'tcp-eof :socket socket)))
           ((< 0 (logand events le:+bev-event-connected+))
            (release-dns-base)))
-        (when err
+        (when event
           (unwind-protect
-            (when event-cb (funcall event-cb err))
-            (close-socket socket)))))))
+            (when event-cb (funcall event-cb event))
+            ;; if the app closed the socket in the event cb (perfectly fine),
+            ;; make sure we don't trigger an error trying to close it again.
+            (handler-case (close-socket socket)
+              (socket-closed () nil))))))))
 
 (cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (data-pointer :pointer))
   "Called when a connection is accepted. Creates a bufferevent for the socket
