@@ -138,6 +138,9 @@ Yes, even in its infancy, this library has a deprecated function. Use
 [delay](#delay) for running functions asynchronously!
 
 ### dns-lookup
+__Note: this is [broken in 64-bit](https://github.com/orthecreedence/cl-async/issues/15).
+Help fixing would be appreciated, as I can't seem to figure it out.__
+
 Asynchronously lookup an IP address given a hostname. If the hostname is an IP
 address already, the mechanics are the same although the callback is called
 synchronously.
