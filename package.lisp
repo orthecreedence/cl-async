@@ -13,6 +13,10 @@
            #:delay
            #:timer
 
+           #:signal-handler
+           #:free-signal-handler
+           #:clear-signal-handler
+
            #:dns-error
            #:dns-lookup
 

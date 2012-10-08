@@ -43,6 +43,9 @@ for more information on these callbacks (and error handling in general).
 - [event-loop-exit](#event-loop-exit) _function_
 - [delay](#delay) _function_
 - [timer](#timer) _function (deprecated)_
+- [signal-handler](#signal-handler) _function_
+- [free-signal-handler](#free-signal-handler)
+- [clear-signal-handlers](#clear-signal-handlers)
 - [dns-lookup](#dns-lookup) _function_
 - [tcp-send](#tcp-send) _function_
 - [tcp-server](#tcp-server) _function_
@@ -137,6 +140,52 @@ _Deprecated_
 
 Yes, even in its infancy, this library has a deprecated function. Use
 [delay](#delay) for running functions asynchronously!
+
+### signal-handler
+Create a signal handler. This listens for the given `signo` not only in the 
+event loop, but also in the lisp app as well. It replaces the current lisp
+signal handler by calling C's `signal` function. When a signal handler is freed
+via [free-signal-handler](#free-signal-handler), the original lisp signal
+handler is restored as it was before binding the signal handler.
+
+Note that signals that aren't freed via [free-signal-handler](#free-signal-handler)
+or [clear-signal-handlers](#clear-signal-handlers) will linger on even after all
+other events are out fo the event loop, which prevents it from exiting. If you
+want your event loop to exit naturally, you must free your signals when you're
+done with them.
+
+```common lisp
+;; definition
+(signal-handler signo signal-cb event-cb)
+
+;; example
+(signal-handler 2 (lambda (sig) (format t "got SIGINT: ~a~%" sig))
+                  (lambda (err) (foramt t "erro processing signal callback: ~a~%" err)))
+```
+
+`signo` is the POSIX integer signal you want to handle.
+
+In the case of `signal-handler`, `event-cb` will *only* be called when an error
+occurs in the signal callback. There are no cl-async events that occur during
+signal processing.
+
+### free-signal-handler
+Unbinds a signal handler. This deletes the libevent signal listener event and
+also restores the lisp signal handler that existed before calling
+[signal-handler](#signal-handler).
+
+```common lisp
+;; definition
+(free-signal-handler signo)
+```
+
+### clear-signal-handlers
+Clear all cl-async bound signal handlers. This deletes the libevent event
+listeners and restores the original lisp signal handlers for each bound signal.
+
+This is useful if you don't want to track all the signals you've bound and
+[free](#free-signal-handler) them manually, but don't want to [exit the event
+loop forcibly](#event-loop-exit).
 
 ### dns-lookup
 __Note: this is [broken in 64-bit](https://github.com/orthecreedence/cl-async/issues/15).
