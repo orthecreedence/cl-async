@@ -10,7 +10,7 @@ is a fast, stable, portable library for asynchronous IO (see my [notes on choosi
 Libevent](#libevent)).
 
 The main goal is to provide an experience that's close to javascript in how it
-handles asynchronous operations with ease,, but with the speed and power of
+handles asynchronous operations with ease, but with the speed and power of
 lisp.
 
 *Please note that at the moment, I consider this library ALPHA and very likely
@@ -504,7 +504,8 @@ Data is a plist. Stats might change in the near future.
 Conditions and events
 ---------------------
 When something unexpected happens, cl-async will _instantiate_ (not throw) a
-condition that explains what happened and pass it into the given event callback.
+condition that explains what happened and pass it into the given 
+[event callback](#event-callbacks-and-error-handling-in-general).
 This can happen when an HTTP connection is refused, a TCP socket gets an EOF,
 etc. Sometimes these conditions won't necessarily be errors, but rather pieces
 of information your application might find useful.
