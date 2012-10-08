@@ -37,6 +37,10 @@
    operation that triggered the condition, use *default-event-handler* as the
    event-cb.")
 
+(defvar *signal-handlers* nil
+  "Holds all the currently bound signal handlers, which can be used to unbind
+   them all in one swift stroke.")
+
 ;; define some cached values to save CFFI calls. believe it or not, this does
 ;; make a performance difference
 (defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
@@ -96,8 +100,12 @@
   "Abstraction to make a CFFI pointer #'eql to itself. Does its best to be the
    most performant for the current implementation."
   (when pointer
-    #+(or ccl sbcl ecl clisp) pointer
-    #-(or ccl sbcl ecl clisp) (cffi:pointer-address pointer)))
+    #+(or ccl sbcl ecl clisp)
+      pointer
+    #-(or ccl sbcl ecl clisp)
+      (if (cffi:pointerp pointer)
+          (cffi:pointer-address pointer)
+          pointer)))
 
 (defun create-data-pointer ()
   "Creates a pointer in C land that can be used to attach data/callbacks to.
@@ -258,6 +266,7 @@
         (*event-loop-end-functions* nil)
         (*dns-base* nil)
         (*dns-ref-count* 0)
+        (*signal-handlers* nil)
         (*socket-buffer-c* (cffi:foreign-alloc :unsigned-char :count *buffer-size*))
         (*socket-buffer-lisp* (make-array *buffer-size* :element-type '(unsigned-byte 8)))
         (*event-base* (le:event-base-new))
