@@ -296,7 +296,7 @@ server via [close-tcp-server](#close-tcp-server).
 
 ```common-lisp
 ;; definition
-(tcp-server bind-address port read-cb event-cb &key (backlog -1))
+(tcp-server bind-address port read-cb event-cb &key (backlog -1))  =>  tcp-server
 
 ;; example
 (tcp-server "127.0.0.1" 8080
@@ -470,14 +470,9 @@ the [http-response](#http-response) function.
 
 If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
 
-__NOTE:__ `http-server` has one main purpose: parse an incoming HTTP request and
-pass it to your application. It is not concerned with routing, logging, parsing
-request content, etc etc etc. It is meant to be extended by your application and
-built on top of. KISS.
-
 ```common-lisp
 ;; definition
-(http-server bind port request-cb event-cb)
+(http-server bind port request-cb event-cb)  =>  http-server
 
 ;; example
 (http-server "192.168.0.1" 8090
