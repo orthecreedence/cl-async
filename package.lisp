@@ -24,6 +24,7 @@
            #:tcp-refused
            #:socket-closed
            #:close-socket
+           #:close-tcp-server
            #:write-socket-data
            #:set-socket-timeouts
            #:enable-socket
