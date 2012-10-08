@@ -12,7 +12,7 @@
            (data-pointer (deref-data-from-pointer signo-sym))
            (sig-data (deref-data-from-pointer data-pointer))
            (ev (getf sig-data :ev))
-           (original-lisp-signal-handler (get sig-data :original-handler)))
+           (original-lisp-signal-handler (getf sig-data :original-handler)))
       (le:event-del ev)
       (cffi:foreign-funcall "signal" :int signo :pointer original-lisp-signal-handler :pointer)
       (free-pointer-data signo-sym)
@@ -43,7 +43,8 @@
   (let* ((callbacks (get-callbacks data-pointer))
          (signal-cb (getf callbacks :signal-cb))
          (event-cb (getf callbacks :event-cb))
-         (ev (deref-data-from-pointer data-pointer)))
+         (sig-data (deref-data-from-pointer data-pointer))
+         (ev (getf sig-data :ev)))
     (catch-app-errors event-cb
       (funcall signal-cb signo))))
 
