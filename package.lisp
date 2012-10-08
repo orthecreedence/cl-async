@@ -43,6 +43,7 @@
            #:http-client
            #:http-response
            #:http-server
+           #:close-http-server
            #:http-request
            #:http-request-c
            #:http-request-method

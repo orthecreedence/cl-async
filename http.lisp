@@ -62,10 +62,16 @@
   (format s "  body-length: ~s~%" (length (http-request-body request)))
   (format s "------------~%"))
 
-(defun free-http-base (http-base)
-  "Free an HTTP server object and clear any callbacks associated with it."
-  (le:evhttp-free http-base)
-  (free-pointer-data http-base :preserve-pointer t))
+(defclass http-server ()
+  ((c :accessor http-server-c :initarg :c :initform (cffi:null-pointer))
+   (closed :accessor http-server-closed :initarg :closed :initform nil))
+  (:documentation "Wraps around a libevent HTTP listener."))
+
+(defun close-http-server (http-server)
+  "Closes an HTTP server. If already closed, does nothing."
+  (unless (http-server-closed http-server)
+    (le:evhttp-free (http-server-c http-server))
+    (setf (http-server-closed http-server) t)))
 
 (defun get-method (enum)
   "Given a libevent EVHTTP_REQ enum key word, return the appropriate method
@@ -333,26 +339,27 @@
       ;; always close
       (le:evhttp-add-header header-ptr "Connection" "close"))
     (when body
-      (write-socket-data (le:evhttp-request-get-output-buffer request) body :socket-is-evbuffer t))
+      (write-to-evbuffer (le:evhttp-request-get-output-buffer request) body))
     (incf *outgoing-connection-count*)
     (le:evhttp-make-request connection request (get-method-reverse method) (getf parsed-uri :resource))))
 
 (defun http-server (bind port request-cb event-cb)
-  "Start an HTTP server. If `bind` is nil, it bind to 0.0.0.0"
+  "Start an HTTP server. If `bind` is nil, it bind to 0.0.0.0. Returns a wrapper
+   around the HTTP server that allows the app to close it via close-http-server."
   (check-event-loop-running)
-  (let ((data-pointer (create-data-pointer))
-        (http-base (le:evhttp-new *event-base*)))
+  (let* ((data-pointer (create-data-pointer))
+         (http-base (le:evhttp-new *event-base*))
+         (server-class (make-instance 'http-server :c http-base)))
     (when (eq http-base 0)
       (error "Error creating HTTP listener"))
-    (add-event-loop-exit-callback (lambda ()
-                                    (free-http-base http-base)
-                                    (free-pointer-data data-pointer)))
+    (add-event-loop-exit-callback (lambda () (close-http-server server-class)))
     (le:evhttp-set-gencb http-base (cffi:callback http-request-cb) data-pointer)
     (save-callbacks data-pointer (list :request-cb request-cb :event-cb event-cb))
     (let* ((bind (if bind bind "0.0.0.0"))
            (handle (le:evhttp-bind-socket-with-handle http-base bind port)))
       (when (eq handle 0)
-        (error "Couldn't bind HTTP listener to ~a:~a" bind port)))))
+        (error "Couldn't bind HTTP listener to ~a:~a" bind port)))
+    server-class))
 
 (defun http-response (http-request &key (status 200) headers (body ""))
   "Called by the server when a request has been finished and a response is ready
@@ -371,7 +378,7 @@
   (let* ((evbuffer (le:evbuffer-new))
          (req-c (http-request-c http-request))
          (output-headers (le:evhttp-request-get-output-headers req-c)))
-    (write-socket-data evbuffer body :socket-is-evbuffer t)
+    (write-to-evbuffer evbuffer body)
     (dolist (header headers)
       (le:evhttp-add-header output-headers (car header) (cdr header)))
     (if (<= 200 status 299)

@@ -75,11 +75,11 @@
     (free-pointer-data bev-data-pointer)
     (free-pointer-data bev :preserve-pointer t)))
 
-(defun close-tcp-server (listener)
-  "Closes a listener. If already closed, does nothing."
-  (unless (tcp-server-closed listener)
-    (le:evconnlistener-free (tcp-server-c listener))
-    (setf (tcp-server-closed listener) t)))
+(defun close-tcp-server (tcp-server)
+  "Closes a TCP server. If already closed, does nothing."
+  (unless (tcp-server-closed tcp-server)
+    (le:evconnlistener-free (tcp-server-c tcp-server))
+    (setf (tcp-server-closed tcp-server) t)))
 
 (defun set-socket-timeouts (socket read-sec write-sec &key socket-is-bufferevent)
   "Given a pointer to a libevent socket (bufferevent), set the read/write

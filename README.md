@@ -49,14 +49,15 @@ for more information on these callbacks (and error handling in general).
 - [dns-lookup](#dns-lookup) _function_
 - [tcp-send](#tcp-send) _function_
 - [tcp-server](#tcp-server) _function_
+- [close-tcp-server](#close-tcp-server)
 - [write-socket-data](#write-socket-data) _function_
 - [set-socket-timeouts](#set-socket-timeouts) _function_
 - [enable-socket](#enable-socket) _function_
 - [disable-socket](#disable-socket) _function_
 - [close-socket](#close-socket) _function_
-- [close-tcp-server](#close-tcp-server)
 - [http-client](#http-client) _function_
 - [http-server](#http-server) _function_
+- [close-http-server](#close-http-server) _function_
 - [http-response](#http-response) _function_
 - [http-request](#http-request) _class_
   - [http-request-c](#http-request-c) _accessor_
@@ -114,6 +115,13 @@ calling `start-event-loop` is really just a convenience to cut down on `setf`s.
 ### event-loop-exit
 Exit the event loop. This will free up all resources internally and close down
 the event loop.
+
+Note that this doesn't let queued events process, and is the equivelent of
+doing a force close. Unless you really need to do this and return control to
+lisp, try to let your event loop exit of "natural causes" (ie, no events left to
+process). You can do this by freeing your signal handlers, servers, etc. This
+has the added benefit of letting any connection clients finish their requests
+(without accepting new ones) without completely cutting them off.
 
 ```common-lisp
 ;; definition
@@ -284,7 +292,7 @@ If `nil` is passed into the bind address, it effectively binds the listener to
 creating the server via `:backlog`, which defaults to -1.
 
 This function returns a `tcp-server` class, which allows you to close the
-listener via [close-tcp-server](#close-tcp-server).
+server via [close-tcp-server](#close-tcp-server).
 
 ```common-lisp
 ;; definition
@@ -308,6 +316,19 @@ listener via [close-tcp-server](#close-tcp-server).
 
 `socket` should never be dealt with directly as it may change in the future,
 however it *can* be passed to other cl-async functions that take a `socket` arg.
+
+### close-tcp-server
+Takes a `tcp-server` class, created by [tcp-server](#tcp-server) and closes the
+server it wraps. This can be useful if you want to shut down a TCP server
+without forcibly closing all its connections.
+
+If the given server is already closed, this function returns without doing
+anything.
+
+```common-lisp
+;; definition
+(close-tcp-server tcp-server)
+```
 
 ### write-socket-data
 Write data to an existing socket (such as one passed into a read-cb). Data can
@@ -399,19 +420,6 @@ throw a [socket-closed](#socket-closed) condition.
 (close-socket socket)
 ```
 
-### close-tcp-server
-Takes a `tcp-server` class, created by [tcp-server](#tcp-server) and closes the
-listener it wraps. This can be useful if you want to shut down a TCP server
-without forcibly closing all the connections.
-
-If the given listener is already closed, this function returns without doing
-anything.
-
-```common-lisp
-;; definition
-(close-tcp-server listener)
-```
-
 ### http-client
 Asynchronously communicates with an HTTP server. Allows setting the method,
 headers, and body in the request which should be enough to make just about any
@@ -454,6 +462,9 @@ Start a server that asynchronously processes HTTP requests. It takes data out of
 the request and populates the [http-request](#http-request) with it, which is
 passed into the request callback.
 
+This function returns an `http-server` class, which allows you to close the
+server via [close-http-server](#close-http-server).
+
 Once the application is done processing the request, it must respond by calling
 the [http-response](#http-response) function.
 
@@ -482,6 +493,19 @@ built on top of. KISS.
 ```
 
 `http-request` is a on object of type [http-request](#http-request).
+
+### close-http-server
+Takes an `http-server` class, created by [tcp-server](#tcp-server) and closes
+the server it wraps. This can be useful if you want to shut down a HTTP server
+without forcibly closing all its connections.
+
+If the given server is already closed, this function returns without doing
+anything.
+
+```common-lisp
+;; definition
+(close-http-server http-server)
+```
 
 ### http-response
 This is the function called by the application using an [http-server](#http-server)
