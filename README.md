@@ -156,7 +156,7 @@ done with them.
 
 ```common-lisp
 ;; definition
-(signal-handler signo signal-cb event-cb)
+(signal-handler signo signal-cb &key event-cb)
 
 ;; example
 (signal-handler 2 (lambda (sig) (format t "got SIGINT: ~a~%" sig))

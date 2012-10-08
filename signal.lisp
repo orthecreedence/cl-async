@@ -47,7 +47,7 @@
     (catch-app-errors event-cb
       (funcall signal-cb signo))))
 
-(defun signal-handler (signo signal-cb event-cb)
+(defun signal-handler (signo signal-cb &key event-cb)
   "Setup a one-time signal handler for the given signo. This also sets up a
    lisp signal handler, so if a signal comes through while lisp is running
    instead of the event loop, it will run the same callback. All signal handlers
