@@ -169,6 +169,11 @@ In the case of `signal-handler`, `event-cb` will *only* be called when an error
 occurs in the signal callback. There are no cl-async events that occur during
 signal processing.
 
+##### signal-cb definition
+```common-lisp
+(lambda (signo) ...)
+```
+
 ### free-signal-handler
 Unbinds a signal handler. This deletes the libevent signal listener event and
 also restores the lisp signal handler that existed before calling
@@ -395,7 +400,7 @@ throw a [socket-closed](#socket-closed) condition.
 ```
 
 ### close-tcp-server
-Takes a `tcp-server` class, create by [tcp-server](#tcp-server) and closes the
+Takes a `tcp-server` class, created by [tcp-server](#tcp-server) and closes the
 listener it wraps. This can be useful if you want to shut down a TCP server
 without forcibly closing all the connections.
 
