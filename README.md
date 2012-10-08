@@ -154,7 +154,7 @@ other events are out of the event loop, which prevents it from exiting. If you
 want your event loop to exit naturally, you must free your signals when you're
 done with them.
 
-```common lisp
+```common-lisp
 ;; definition
 (signal-handler signo signal-cb event-cb)
 
@@ -174,7 +174,7 @@ Unbinds a signal handler. This deletes the libevent signal listener event and
 also restores the lisp signal handler that existed before calling
 [signal-handler](#signal-handler).
 
-```common lisp
+```common-lisp
 ;; definition
 (free-signal-handler signo)
 ```
@@ -186,6 +186,11 @@ listeners and restores the original lisp signal handlers for each bound signal.
 This is useful if you don't want to track all the signals you've bound and
 [free](#free-signal-handler) them manually, but don't want to [exit the event
 loop forcibly](#event-loop-exit).
+
+```common-lisp
+;; definition
+(clear-signal-handlers)
+```
 
 ### dns-lookup
 __Note: this is [broken in 64-bit](https://github.com/orthecreedence/cl-async/issues/15).
@@ -359,7 +364,7 @@ Enable read/write monitoring on a socket. This is done automatically by
 probably don't need to worry too much about when to use it. On the other hand,
 [disable-socket](#disable-socket) will probably be a bit more useful.
 
-```common lisp
+```common-lisp
 ;; definition
 (enable-socket socket &key read write)
 
@@ -373,7 +378,7 @@ you need from a socket, but while you're processing the data, you don't want the
 socket's read timeout to fire. This will both disable the timeouts and callbacks
 associated with the socket until enabled again.
 
-```common lisp
+```common-lisp
 ;; definition
 (disable-socket socket &key read write)
 ```
