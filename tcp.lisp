@@ -21,7 +21,7 @@
   (:documentation "Passed to an event callback when a TCP connection is refused."))
 
 (define-condition socket-closed (tcp-error) ()
-  (:report (lambda (c s) (format s "Closed TCP socket being operated on.")))
+  (:report (lambda (c s) (format s "Closed TCP socket being operated on: ~a." (tcp-socket c))))
   (:documentation "Thrown when a closed socket is being operated on."))
 
 (defclass socket ()
@@ -29,6 +29,11 @@
    (closed :accessor socket-closed :initarg :closed :initform nil)
    (direction :accessor socket-direction :initarg :direction :initform nil))
   (:documentation "Wraps around a libevent bufferevent socket."))
+
+(defclass tcp-server ()
+  ((c :accessor tcp-server-c :initarg :c :initform (cffi:null-pointer))
+   (closed :accessor tcp-server-closed :initarg :closed :initform nil))
+  (:documentation "Wraps around a libevent connection listener."))
 
 (defun get-last-tcp-err ()
   "Since libevent provides a macro but not a function for getting the last error
@@ -60,22 +65,21 @@
   (check-socket-open socket)
   (let* ((bev (socket-c socket))
          (bev-data (deref-data-from-pointer bev))
-         (bev-data-pointer (getf bev-data :data-pointer))
-         (fd (le::bufferevent-getfd bev)))
+         (bev-data-pointer (getf bev-data :data-pointer)))
     (le:bufferevent-disable bev (logior le:+ev-read+ le:+ev-write+))
     (if (eq (socket-direction socket) 'in)
         (decf *incoming-connection-count*)
         (decf *outgoing-connection-count*))
     (le:bufferevent-free bev)
-    (le:evutil-closesocket fd)
     (setf (socket-closed socket) t)
     (free-pointer-data bev-data-pointer)
     (free-pointer-data bev :preserve-pointer t)))
 
-(defun free-listener (listener)
-  "Free a socket listener and all associated data."
-  (free-pointer-data listener :preserve-pointer t)
-  (le:evconnlistener-free listener))
+(defun close-tcp-server (listener)
+  "Closes a listener. If already closed, does nothing."
+  (unless (tcp-server-closed listener)
+    (le:evconnlistener-free (tcp-server-c listener))
+    (setf (tcp-server-closed listener) t)))
 
 (defun set-socket-timeouts (socket read-sec write-sec &key socket-is-bufferevent)
   "Given a pointer to a libevent socket (bufferevent), set the read/write
@@ -172,8 +176,7 @@
                    (callbacks (get-callbacks socket-data-pointer))
                    (read-cb-current (getf callbacks :read-cb))
                    (write-cb-current (getf callbacks :write-cb))
-                   (event-cb-current (getf callbacks :event-cb))
-                   (enable-bits 0))
+                   (event-cb-current (getf callbacks :event-cb)))
               (save-callbacks socket-data-pointer
                               (list :read-cb (if (functionp read-cb) read-cb read-cb-current)
                                     :write-cb (if (functionp write-cb) write-cb write-cb-current)
@@ -279,11 +282,6 @@
       ;; attach our data-pointer/socket class to the bev
       (attach-data-to-pointer bev (list :data-pointer per-conn-data-pointer :socket socket))
 
-      ;; make sure the socket is non-blocking
-      (let ((nonblock (le:evutil-make-socket-nonblocking (le:bufferevent-getfd bev))))
-        (unless (zerop nonblock)
-          (error "Failed to make socket non-blocking: ~a~%" nonblock)))
-
       ;; track the connection. will be decf'ed when close-socket is called
       (incf *incoming-connection-count*)
 
@@ -340,8 +338,9 @@
           (attach-data-to-pointer data-pointer dns-base)
           (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port)))))
 
-(defun tcp-server (bind-address port read-cb event-cb)
-  "Start a TCP listener on the current event loop."
+(defun tcp-server (bind-address port read-cb event-cb &key (backlog -1))
+  "Start a TCP listener on the current event loop. Returns a tcp-server class
+   which can be closed with close-tcp-server"
   (check-event-loop-running)
   (with-ipv4-to-sockaddr (sockaddr bind-address port)
     (let* ((data-pointer (create-data-pointer))
@@ -349,14 +348,18 @@
                                                   (cffi:callback tcp-accept-cb)
                                                   data-pointer
                                                   (logior le:+lev-opt-reuseable+ le:+lev-opt-close-on-free+)
-                                                  -1
+                                                  backlog
                                                   sockaddr
-                                                  +sockaddr-size+)))
+                                                  +sockaddr-size+))
+           (server-class (make-instance 'tcp-server :c listener)))
       (add-event-loop-exit-callback (lambda ()
-                                      (free-listener listener)
+                                      (close-tcp-server server-class)
                                       (free-pointer-data data-pointer)))
       (when (and (not (cffi:pointerp listener)) (zerop listener))
         (error "Couldn't create listener: ~a~%" listener))
+      ;; NOTE: this segfaults for wahtever reason...
       ;(le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
-      (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb)))))
+      (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb))
+      ;; return the listener, which can be closed by the app if needed
+      server-class)))
 

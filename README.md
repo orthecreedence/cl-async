@@ -51,6 +51,7 @@ for more information on these callbacks (and error handling in general).
 - [enable-socket](#enable-socket) _function_
 - [disable-socket](#disable-socket) _function_
 - [close-socket](#close-socket) _function_
+- [close-tcp-server](#close-tcp-server)
 - [http-client](#http-client) _function_
 - [http-server](#http-server) _function_
 - [http-response](#http-response) _function_
@@ -220,11 +221,15 @@ flushed out to the socket.
 Bind an asynchronous listener to the given bind address/port and start accepting
 connections on it. It takes read and event callbacks (like [tcp-send](#tcp-send)).
 If `nil` is passed into the bind address, it effectively binds the listener to
-"0.0.0.0" (listens from any address).
+"0.0.0.0" (listens from any address). A connection backlog can be specified when
+creating the server via `:backlog`, which defaults to -1.
+
+This function returns a `tcp-server` class, which allows you to close the
+listener via [close-tcp-server](#close-tcp-server).
 
 ```common-lisp
 ;; definition
-(tcp-server bind-address port read-cb event-cb)
+(tcp-server bind-address port read-cb event-cb &key (backlog -1))
 
 ;; example
 (tcp-server "127.0.0.1" 8080
@@ -333,6 +338,19 @@ throw a [socket-closed](#socket-closed) condition.
 ```common-lisp
 ;; definition
 (close-socket socket)
+```
+
+### close-tcp-server
+Takes a `tcp-server` class, create by [tcp-server](#tcp-server) and closes the
+listener it wraps. This can be useful if you want to shut down a TCP server
+without forcibly closing all the connections.
+
+If the given listener is already closed, this function returns without doing
+anything.
+
+```common-lisp
+;; definition
+(close-tcp-server listener)
 ```
 
 ### http-client
