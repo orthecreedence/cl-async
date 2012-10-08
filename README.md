@@ -150,7 +150,7 @@ handler is restored as it was before binding the signal handler.
 
 Note that signals that aren't freed via [free-signal-handler](#free-signal-handler)
 or [clear-signal-handlers](#clear-signal-handlers) will linger on even after all
-other events are out fo the event loop, which prevents it from exiting. If you
+other events are out of the event loop, which prevents it from exiting. If you
 want your event loop to exit naturally, you must free your signals when you're
 done with them.
 
@@ -163,7 +163,7 @@ done with them.
                   (lambda (err) (foramt t "erro processing signal callback: ~a~%" err)))
 ```
 
-`signo` is the POSIX integer signal you want to handle.
+The `signo` arg is the POSIX integer signal you want to handle.
 
 In the case of `signal-handler`, `event-cb` will *only* be called when an error
 occurs in the signal callback. There are no cl-async events that occur during
