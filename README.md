@@ -490,7 +490,7 @@ If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
 `http-request` is a on object of type [http-request](#http-request).
 
 ### close-http-server
-__NOTE: currently, this can only be called if there are no pending requests
+__NOTE: currently, [this can only be called if there are no pending requests](https://github.com/orthecreedence/cl-async/issues/17)
 being served by the `http-server`. This is due to a limitation in libevent, but
 a workaround (*transparent* workaround) is coming soon.__
 
