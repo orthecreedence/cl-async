@@ -490,6 +490,10 @@ If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
 `http-request` is a on object of type [http-request](#http-request).
 
 ### close-http-server
+__NOTE: currently, this can only be called if there are no pending requests
+being served by the `http-server`. This is due to a limitation in libevent, but
+a workaround (*transparent* workaround) is coming soon.__
+
 Takes an `http-server` class, created by [tcp-server](#tcp-server) and closes
 the server it wraps. This can be useful if you want to shut down a HTTP server
 without forcibly closing all its connections.
