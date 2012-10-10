@@ -33,9 +33,9 @@ See the [TODO list](https://github.com/orthecreedence/cl-async/issues).
 Functions and classes
 ----------------------
 You can use cl-async with the prefixes `cl-async:` or `as:`. Throughout the
-functions documentded below, you will see a lot of `event-cb` callback
-arguments. Since any callback labelled `event-cb` has the same specification,
-they are not documented here. Please refer to the
+functions documented below, you will see a lot of `event-cb` callback arguments.
+Since any callback labelled `event-cb` has the same specification, they are not
+documented here. Please refer to the
 [section on error handling](#event-callbacks-and-error-handling-in-general)
 for more information on these callbacks (and error handling in general).
 
@@ -168,7 +168,7 @@ done with them.
 
 ;; example
 (signal-handler 2 (lambda (sig) (format t "got SIGINT: ~a~%" sig))
-                  (lambda (err) (foramt t "erro processing signal callback: ~a~%" err)))
+                  (lambda (err) (foramt t "error processing signal callback: ~a~%" err)))
 ```
 
 The `signo` arg is the POSIX integer signal you want to handle.
@@ -237,7 +237,7 @@ is implemented.
 ```
 
 As mentioned, until IPV6 is implemented, `ip-address-family` will *always* be
-`AF\_INET`. To test this, you can use the included libevent2 package's definition
+`AF_INET`. To test this, you can use the included libevent2 package's definition
 of `libevent2:+af-inet+` or `libevent2:+af-inet-6+` (`le:` for short).
 
 ### tcp-send
@@ -251,7 +251,11 @@ and existing connection (and also be able to set new read/write/event callbacks
 on it), check out [write-socket-data](#write-socket-data).
 
 Note that the `host` can be an IP address *or* a hostname, the hostname will
-be looked up asynchronously via libevent's DNS implementation.
+be looked up asynchronously via libevent's DNS implementation. Also note that
+the DNS lookup does __not++ use [dns-lookup][#dns-lookup], but directly calls
+into the libevent DNS functions, so [IPV6](https://github.com/orthecreedence/cl-async/issues/7) 
+and [x86-64](https://github.com/orthecreedence/cl-async/issues/15) are both
+supported when using DNS.
 
 ```common-lisp
 ;; definition:
@@ -331,11 +335,11 @@ anything.
 ```
 
 ### write-socket-data
-Write data to an existing socket (such as one passed into a read-cb). Data can
-be a byte array or string (converted to a byte array via babel). Supports
-resetting the callbacks on the given socket. The `write-cb` is useful if you
-want to close the connection after sending data on the socket but want to make
-sure the data sent before closing.
+Write data to an existing socket (such as one passed into a `tcp-send` read-cb).
+Data can be a byte array or string (converted to a byte array via babel).
+Supports resetting the callbacks on the given socket. The `write-cb` is useful
+if you want to close the connection after sending data on the socket but want to
+make sure the data sent before closing.
 
 Note that if you call this using a socket that has been closed already, it will
 throw a [socket-closed](#socket-closed) condition.
