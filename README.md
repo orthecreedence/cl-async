@@ -942,13 +942,16 @@ for the complete list of what needs to be done.
 
 Drivers
 -------
-*Once cl-async is more stable, this section will list the drivers built on top
-of it to make it easy for people to find them.*
+I plan on building and releasing a number of drivers on top of cl-async:
 
-I plan on building and releasing a number of drivers on top of this library. The
-first one is going to be an [asynchronous beanstalkd driver](https://github.com/orthecreedence/beanstalk-async).
-Then a MongoDB driver (most likely built on top of [cl-mongo](https://github.com/fons/cl-mongo)).
-And then every driver ever.
+- [beanstalkd](https://github.com/orthecreedence/beanstalk-async)
+- MongoDB
+- Amazon S3/Cloudfront
+- SMTP
+- Redis
+
+Note that these are libraries I use every day, so am in a good position to test
+them in a production environment.
 
 The biggest problem with asynchronous IO in lisp is that there are lots of
 libraries that provide it, but no drivers built on top of the libraries. Nobody
