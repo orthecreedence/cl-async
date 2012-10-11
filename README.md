@@ -13,9 +13,10 @@ The main goal is to provide an experience that's close to javascript in how it
 handles asynchronous operations with ease, but with the speed and power of
 lisp.
 
-*Please note that at the moment, I consider this library ALPHA and very likely
-to change...a lot. Please rely on it at your own risk, until things solidify a
-bit.*
+*Please note that at the moment I consider this library BETA. I'm doing my best
+to solidify the API and eliminate any bugs. cl-async will most likely get a lot
+more fixes and changes once it's put into production, which should hopefully not
+be too far off. Stay tuned.*
 
 The documentation is split into a few main sections.
 
