@@ -639,6 +639,9 @@ information about how these conditions are handled once created, see the
 - [tcp-eof](#tcp-eof) _condition_
 - [tcp-timeout](#tcp-timeout) _condition_
 - [tcp-refused](#tcp-refused) _condition_
+- [tcp-accept-error](#tcp-accept-error) _condition_
+  - [tcp-accept-error-listener](#tcp-accept-error-listener) _accessor_
+  - [tcp-accept-error-tcp-server](#tcp-accept-error-tcp-server) _accessor_
 - [socket-closed](#socket-closed) _condition_
 - [http-info](#http-info) _condition_
 - [http-error](#http-error) _condition_
@@ -700,6 +703,19 @@ Triggered when a TCP connection times out.
 _extends [tcp-error](#tcp-error)_
 
 Triggered when a TCP connection is refused by the peer.
+
+### tcp-accept-error
+_extends [tcp-error](#tcp-error)_
+
+Passed to a [tcp-server](#tcp-server)'s `event-cb` when there is an error
+accepting a client connection.
+
+##### tcp-accept-error-listener
+The libevent listener c object. Provided in case your app needs to process it in
+some way.
+
+##### tcp-accept-error-tcp-server
+The `tcp-server` object that the accept error happened on.
 
 ### socket-closed
 _extends [tcp-error](#tcp-error)_

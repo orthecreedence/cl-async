@@ -20,6 +20,12 @@
   (:report (lambda (c s) (format s "TCP connection refused: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Passed to an event callback when a TCP connection is refused."))
 
+(define-condition tcp-accept-error (tcp-error)
+  ((listener :accessor tcp-accept-error-listener :initarg :listener :initform (cffi:null-pointer))
+   (tcp-server :accessor tcp-accept-error-tcp-server :initarg :tcp-server :initform nil))
+  (:report (lambda (c s) (format s "Error accepting TCP connection: ~a" (tcp-accept-error-listener c))))
+  (:documentation "Passed to a TCP server's event-cb when there's an error accepting a connection."))
+
 (define-condition socket-closed (tcp-error) ()
   (:report (lambda (c s) (format s "Closed TCP socket being operated on: ~a." (tcp-socket c))))
   (:documentation "Thrown when a closed socket is being operated on."))
@@ -295,13 +301,16 @@
       ;(set-socket-timeouts bev 5 5 :socket-is-bufferevent t)
       (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+)))))
 
-(cffi:defcallback tcp-accept-err-cb :void ((listener :pointer) (ctx :pointer))
+(cffi:defcallback tcp-accept-err-cb :void ((listener :pointer) (data-pointer :pointer))
   "Called when an error occurs accepting a connection."
-  (declare (ignore ctx))
-  (let* ((event-base (le:evconnlistener-get-base listener)))
-    ;; TODO: why does the error handler segfault?!?!?
-    (format t "There was an error and I don't know how to get the code.~%")
-    (le:event-base-loopexit event-base (cffi:null-pointer))))
+  (let* ((tcp-server (deref-data-from-pointer data-pointer))
+         (callbacks (get-callbacks data-pointer))
+         (event-cb (getf callbacks :event-cb)))
+    (funcall event-cb (make-instance 'tcp-accept-error
+                                     :code -1
+                                     :msg "Error accepting client connection"
+                                     :listener listener
+                                     :tcp-server tcp-server))))
 
 (defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout 30) (write-timeout 30))
   "Open a TCP connection asynchronously. An event loop must be running for this
@@ -357,8 +366,9 @@
                                       (free-pointer-data data-pointer)))
       (when (and (not (cffi:pointerp listener)) (zerop listener))
         (error "Couldn't create listener: ~a~%" listener))
-      ;; NOTE: this segfaults for wahtever reason...
-      ;(le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
+      (attach-data-to-pointer data-pointer server-class)
+      ;; setup an accept error cb
+      (le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
       (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb))
       ;; return the listener, which can be closed by the app if needed
       server-class)))

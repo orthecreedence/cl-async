@@ -32,6 +32,9 @@
            #:tcp-eof
            #:tcp-timeout
            #:tcp-refused
+           #:tcp-accept-error
+           #:tcp-accept-error-listener
+           #:tcp-accept-error-tcp-server
            #:socket-closed
            ;; tcp functions
            #:close-socket
