@@ -55,6 +55,7 @@ for more information on these callbacks (and error handling in general).
 - [set-socket-timeouts](#set-socket-timeouts) _function_
 - [enable-socket](#enable-socket) _function_
 - [disable-socket](#disable-socket) _function_
+- [socket-closed-p](#socket-closed-p) _function_
 - [close-socket](#close-socket) _function_
 - [http-client](#http-client) _function_
 - [http-server](#http-server) _function_
@@ -412,6 +413,14 @@ associated with the socket until enabled again.
 ```common-lisp
 ;; definition
 (disable-socket socket &key read write)
+```
+
+### socket-closed-p
+Determines if a socket has been closed already.
+
+```common-lisp
+;; definition
+(socket-closed-p socket)
 ```
 
 ### close-socket

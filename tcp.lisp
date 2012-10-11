@@ -64,6 +64,10 @@
     (when (socket-closed socket)
       (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket"))))
 
+(defun socket-closed-p (socket)
+  "Return whether a socket is closed or not."
+  (socket-closed socket))
+
 (defun close-socket (socket)
   "Free a socket (bufferevent) and clear out all associated data."
   ;; grab the data pointer associated with the bufferevent and free it. see

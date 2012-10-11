@@ -37,6 +37,7 @@
            #:tcp-accept-error-tcp-server
            #:socket-closed
            ;; tcp functions
+           #:socket-closed-p
            #:close-socket
            #:close-tcp-server
            #:write-socket-data
