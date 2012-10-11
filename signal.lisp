@@ -28,7 +28,7 @@
 (cffi:defcallback lisp-signal-cb :void ((signo :int))
   "Generic callback for lisp signal handling."
   (declare (ignore signo))
-  (let ((callback (car (get-callbacks (signo-sym signo)))))
+  (let ((callback (car (get-callbacks (signal-sym signo)))))
     (when (functionp callback)
       (funcall callback))))
      
