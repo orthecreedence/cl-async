@@ -10,11 +10,10 @@
            ;; common functions
            #:stats
            #:start-event-loop
-           #:event-loop-exit
+           #:exit-event-loop
 
            ;; timer functions
            #:delay
-           #:timer
 
            ;; signal handling functions
            #:signal-handler

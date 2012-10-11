@@ -305,7 +305,7 @@
       (le:event-base-free *event-base*)
       (setf *event-base* nil))))
 
-(defun event-loop-exit ()
+(defun exit-event-loop ()
   "Exit the event loop if running."
   (if *event-base*
       (le:event-base-loopexit *event-base* (cffi:null-pointer))

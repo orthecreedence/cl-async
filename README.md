@@ -40,7 +40,7 @@ documented here. Please refer to the
 for more information on these callbacks (and error handling in general).
 
 - [start-event-loop](#start-event-loop) _function_
-- [event-loop-exit](#event-loop-exit) _function_
+- [exit-event-loop](#exit-event-loop) _function_
 - [delay](#delay) _function_
 - [timer](#timer) _function (deprecated)_
 - [signal-handler](#signal-handler) _function_
@@ -73,7 +73,7 @@ for more information on these callbacks (and error handling in general).
 Start the event loop, giving a function that will be run inside the event loop
 once started. `start-event-loop` blocks the main thread until the event loop
 returns, which doesn't happen until the loop is empty *or*
-[event-loop-exit](#event-loop-exit) is called inside the loop.
+[exit-event-loop](#exit-event-loop) is called inside the loop.
 
 This function must be called before any other operations in the library are
 allowed. If you try to do an async operation without an event loop running, it
@@ -112,7 +112,7 @@ for complete information on these. They correspond 1 to 1 with
 [\*catch-application-errors\*](#catch-application-errors). Setting them when
 calling `start-event-loop` is really just a convenience to cut down on `setf`s.
 
-### event-loop-exit
+### exit-event-loop
 Exit the event loop. This will free up all resources internally and close down
 the event loop.
 
@@ -125,7 +125,7 @@ has the added benefit of letting any connection clients finish their requests
 
 ```common-lisp
 ;; definition
-(event-loop-exit)
+(exit-event-loop)
 ```
 
 ### delay
@@ -198,7 +198,7 @@ listeners and restores the original lisp signal handlers for each bound signal.
 
 This is useful if you don't want to track all the signals you've bound and
 [free](#free-signal-handler) them manually, but don't want to [exit the event
-loop forcibly](#event-loop-exit).
+loop forcibly](#exit-event-loop).
 
 ```common-lisp
 ;; definition
@@ -805,7 +805,7 @@ function definitions and specifications. So here's some more to get you going.
                      (when (search "QUIT" str)
                        ;; "QUIT" was sent, close the socket and shut down the server
                        (as:close-socket socket)
-                       (as:event-loop-exit)))
+                       (as:exit-event-loop)))
                    ;; echo the data back into the socket
                    (as:write-socket-data socket data))
                  (lambda (err) (format t "listener event: ~a~%" err))))  ; error handler that does nothing
@@ -855,7 +855,7 @@ requests with this example before running out of memory:
                        ;; server (kill switch)
                        (when (search #(68 69 76 69 84 69) data)
                          (as:close-socket socket)
-                         (as:event-loop-exit)))
+                         (as:exit-event-loop)))
                      (lambda (err)
                        (format t "tcp server event: ~a~%" err)))
 
