@@ -185,7 +185,6 @@
   (let* ((pointer-data (deref-data-from-pointer data-pointer))
          (connection (getf pointer-data :connection))
          (callbacks (get-callbacks connection))
-         (dns-base (getf pointer-data :dns-base))
          (request-cb (getf callbacks :request-cb))
          (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
@@ -205,12 +204,11 @@
              ;; This segfaults *sometimes* so are we not supposed to call this?
              ;(le:evhttp-request-free request)
              (funcall request-cb status headers body))))
-        (free-dns-base dns-base)
+        (release-dns-base)
         (free-pointer-data data-pointer)
         ;; free the connection if it exists
         (unless (cffi:null-pointer-p connection)
-          (le:evhttp-connection-free connection)
-          (le:evhttp-request-free request))))))
+          (le:evhttp-connection-free connection))))))
 
 (defun lookup-status-text (status-code)
   "Get the HTTP standard text that goes along with a status code."
@@ -346,7 +344,7 @@
     ;; track when the connection closes
     (le:evhttp-connection-set-closecb connection (cffi:callback http-client-close-cb) (cffi:null-pointer))
     (save-callbacks connection (list :request-cb request-cb :event-cb event-cb))
-    (attach-data-to-pointer data-pointer (list :connection connection :dns-base dns-base))
+    (attach-data-to-pointer data-pointer (list :connection connection))
     (when (numberp timeout)
       (le:evhttp-connection-set-timeout connection timeout))
     (let ((host-set nil)
@@ -362,8 +360,8 @@
       (le:evhttp-add-header header-ptr "Connection" "close"))
     (when body
       (write-to-evbuffer (le:evhttp-request-get-output-buffer request) body))
-    (incf *outgoing-http-count*)
-    (le:evhttp-make-request connection request (get-method-reverse method) (getf parsed-uri :resource))))
+    (le:evhttp-make-request connection request (get-method-reverse method) (getf parsed-uri :resource))
+    (incf *outgoing-http-count*)))
 
 (defun http-server (bind port request-cb event-cb)
   "Start an HTTP server. If `bind` is nil, it bind to 0.0.0.0. Returns a wrapper
