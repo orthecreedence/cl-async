@@ -27,9 +27,13 @@
   "An array in lisp land that holds data copied from a socket.")
 
 (defvar *incoming-connection-count* 0
-  "Number of incoming commections.")
+  "Number of incoming TCP connections.")
 (defvar *outgoing-connection-count* 0
-  "Number of outgoing connections.")
+  "Number of outgoing TCP connections.")
+(defvar *incoming-http-count* 0
+  "Number of incoming HTTP connections.")
+(defvar *outgoing-http-count* 0
+  "Number of outgoing HTTP connections.")
 
 (defvar *catch-application-errors* nil
   "When t, permits cl-async to catch uncaught conditions in your application and
@@ -236,8 +240,10 @@
         :data-registry-count (if (hash-table-p *data-registry*)
                                  (hash-table-count *data-registry*)
                                  0)
-        :incoming-connections *incoming-connection-count*
-        :outgoing-connections *outgoing-connection-count*))
+        :incoming-tcp-connections *incoming-connection-count*
+        :outgoing-tcp-connections *outgoing-connection-count*
+        :incoming-http-connections *incoming-http-count*
+        :outgoing-http-connections *outgoing-http-count*))
   
 (defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
   "Simple wrapper function that starts an event loop which runs the given
@@ -272,6 +278,8 @@
         (*event-base* (le:event-base-new))
         (*incoming-connection-count* 0)
         (*outgoing-connection-count* 0)
+        (*incoming-http-count* 0)
+        (*outgoing-http-count* 0)
         (callbacks nil))
     ;; set up a callback for dealing with fatal errors
     (when fatal-cb

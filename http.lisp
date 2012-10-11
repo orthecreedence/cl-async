@@ -21,6 +21,8 @@
       information from the request if needed via the libevent evhttp_* functions
       if needed, but for the most part it is just used to send the response back
       to the client asynchronously after the app is done processing the request.")
+   (server :accessor http-request-server :initarg :server :initform nil :documentation
+     "Holds the http-server class that this request was accepted from. Private.")
    (method :accessor http-request-method :initarg :method :initform nil :documentation
      "Hold the HTTP request method (GET, POST, PUT, DELETE, etc etc etc)")
    (uri :accessor http-request-uri :initarg :uri :initform nil :documentation
@@ -64,14 +66,31 @@
 
 (defclass http-server ()
   ((c :accessor http-server-c :initarg :c :initform (cffi:null-pointer))
+   (socket :accessor http-server-sock :initarg :sock :initform (cffi:null-pointer))
    (closed :accessor http-server-closed :initarg :closed :initform nil))
   (:documentation "Wraps around a libevent HTTP listener."))
+
+(defun free-http-server (http-server)
+  "Frees an HTTP server (once)."
+  (let ((evhttp (http-server-c http-server)))
+    ;; only free if we haven't already freed, and there are no pending responses
+    (unless (or (cffi:null-pointer-p evhttp)
+                (< 0 *incoming-http-count*))
+      (le:evhttp-free evhttp)
+      (setf (http-server-c http-server) (cffi:null-pointer)))))
 
 (defun close-http-server (http-server)
   "Closes an HTTP server. If already closed, does nothing."
   (unless (http-server-closed http-server)
-    (le:evhttp-free (http-server-c http-server))
-    (setf (http-server-closed http-server) t)))
+    (let ((evhttp (http-server-c http-server))
+          (socket (http-server-sock http-server)))
+      (unless (or (cffi:null-pointer-p evhttp)
+                  (cffi:null-pointer-p socket))
+        (le:evhttp-del-accept-socket evhttp socket)))
+    ;(le:evhttp-free (http-server-c http-server))
+    (setf (http-server-closed http-server) t))
+  ;; free it if we can.
+  (free-http-server http-server))
 
 (defun get-method (enum)
   "Given a libevent EVHTTP_REQ enum key word, return the appropriate method
@@ -117,21 +136,22 @@
 (cffi:defcallback http-client-close-cb :void ((connection :pointer) (data-pointer :pointer))
   "Called when an HTTP client connection is closed."
   (declare (ignore connection))
-  (decf *outgoing-connection-count*)
+  (decf *outgoing-http-count*)
   (free-pointer-data data-pointer))
 
 (cffi:defcallback http-request-cb :void ((request :pointer) (data-pointer :pointer))
   "ALL HTTP requests come through here. They are processed into the http-request
    class and sent off to the appropriate callback."
   ;; TODO: process request body
-  (let* ((callbacks (get-callbacks data-pointer))
+  (let* ((http-server (deref-data-from-pointer data-pointer))
+         (callbacks (get-callbacks data-pointer))
          (request-cb (getf callbacks :request-cb))
          (event-cb (getf callbacks :event-cb)))
     ;; NOTE: this is inaccurate. more than one request could come in on the same
     ;; connection, so it would be better to track the connection when it's
     ;; opened. not sure if libevent allows that on evhttp though, so for now
     ;; this is the next best thing.
-    (incf *incoming-connection-count*)
+    (incf *incoming-http-count*)
     (catch-app-errors event-cb
       (let* ((method (get-method (le:evhttp-request-get-command request)))
              (uri (le:evhttp-request-get-uri request))
@@ -149,6 +169,7 @@
         ;; the callback
         (let ((http-request (make-instance 'http-request
                                            :c request
+                                           :server http-server
                                            :method method
                                            :uri uri
                                            :resource resource
@@ -188,7 +209,8 @@
         (free-pointer-data data-pointer)
         ;; free the connection if it exists
         (unless (cffi:null-pointer-p connection)
-          (le:evhttp-connection-free connection))))))
+          (le:evhttp-connection-free connection)
+          (le:evhttp-request-free request))))))
 
 (defun lookup-status-text (status-code)
   "Get the HTTP standard text that goes along with a status code."
@@ -340,7 +362,7 @@
       (le:evhttp-add-header header-ptr "Connection" "close"))
     (when body
       (write-to-evbuffer (le:evhttp-request-get-output-buffer request) body))
-    (incf *outgoing-connection-count*)
+    (incf *outgoing-http-count*)
     (le:evhttp-make-request connection request (get-method-reverse method) (getf parsed-uri :resource))))
 
 (defun http-server (bind port request-cb event-cb)
@@ -352,13 +374,17 @@
          (server-class (make-instance 'http-server :c http-base)))
     (when (eq http-base 0)
       (error "Error creating HTTP listener"))
-    (add-event-loop-exit-callback (lambda () (close-http-server server-class)))
     (le:evhttp-set-gencb http-base (cffi:callback http-request-cb) data-pointer)
     (save-callbacks data-pointer (list :request-cb request-cb :event-cb event-cb))
+    (attach-data-to-pointer data-pointer server-class)
     (let* ((bind (if bind bind "0.0.0.0"))
-           (handle (le:evhttp-bind-socket-with-handle http-base bind port)))
-      (when (eq handle 0)
-        (error "Couldn't bind HTTP listener to ~a:~a" bind port)))
+           (socket (le:evhttp-bind-socket-with-handle http-base bind port)))
+      (when (eq socket 0)
+        (error "Couldn't bind HTTP listener to ~a:~a" bind port))
+      (setf (http-server-sock server-class) socket)
+      (add-event-loop-exit-callback (lambda ()
+                                      (close-http-server server-class)
+                                      (free-http-server server-class))))
     server-class))
 
 (defun http-response (http-request &key (status 200) headers (body ""))
@@ -377,7 +403,8 @@
    every HTTP request should end with this function."
   (let* ((evbuffer (le:evbuffer-new))
          (req-c (http-request-c http-request))
-         (output-headers (le:evhttp-request-get-output-headers req-c)))
+         (output-headers (le:evhttp-request-get-output-headers req-c))
+         (http-server (http-request-server http-request)))
     (write-to-evbuffer evbuffer body)
     (dolist (header headers)
       (le:evhttp-add-header output-headers (car header) (cdr header)))
@@ -385,5 +412,8 @@
         (le:evhttp-send-reply req-c status (lookup-status-text status) evbuffer)
         (le:evhttp-send-error req-c status (lookup-status-text status)))
     (le:evbuffer-free evbuffer)
-    (decf *incoming-connection-count*)))
+    (decf *incoming-http-count*)
+    (when (and (zerop *incoming-http-count*) (cffi:null-pointer-p (http-server-sock http-server)))
+      (free-http-server http-server))))
+
 

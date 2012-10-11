@@ -494,10 +494,6 @@ If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
 `http-request` is a on object of type [http-request](#http-request).
 
 ### close-http-server
-__NOTE: currently, [this can only be called if there are no pending requests](https://github.com/orthecreedence/cl-async/issues/17)
-being served by the `http-server`. This is due to a limitation in libevent, but
-a workaround (*transparent* workaround) is coming soon.__
-
 Takes an `http-server` class, created by [tcp-server](#tcp-server) and closes
 the server it wraps. This can be useful if you want to shut down a HTTP server
 without forcibly closing all its connections.
@@ -505,9 +501,20 @@ without forcibly closing all its connections.
 If the given server is already closed, this function returns without doing
 anything.
 
+Note: This function closes the listener for new HTTP client requests. Once the
+current requests are finished processing, it frees all resources associated with
+the server. In other words, a graceful exit.
+
 ```common-lisp
 ;; definition
 (close-http-server http-server)
+
+;; example
+(let ((server (http-server "127.0.0.1" 80 ...)))
+  (signal-handler 2 (lambda (sig)
+                      (declare (ignore sig))
+                      ;; close the server when we get SIGINT
+                      (close-http-server server))))
 ```
 
 ### http-response
