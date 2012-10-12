@@ -863,37 +863,46 @@ requests with this example before running out of memory:
       (format s "omglolwtf"))))
 
 (defun tcp-server-test (&key stats)
-  "Asynchronous TCP server, made specifically for testing how many connections
-  the system can handle."
   (as:start-event-loop
     (lambda ()
       (format t "Starting TCP server.~%")
-      (as:tcp-server nil 9009
-                     (lambda (socket data)
-                       ;; after a request comes in, delay 10s before responding
-                       ;; this allows connections to build up (for testing)
-                       (as:delay (lambda ()
-                                   (as:write-socket-data
-                                     socket *http-response*
-                                     :write-cb (lambda (socket) (as:close-socket socket))))
-                                 :time 10)
-                       ;; if "DELETE" is found in the data payload, exit the TCP
-                       ;; server (kill switch)
-                       (when (search #(68 69 76 69 84 69) data)
-                         (as:close-socket socket)
-                         (as:exit-event-loop)))
-                     (lambda (err)
-                       (format t "tcp server event: ~a~%" err)))
-
-      ;; start up secondly statistics reports on the number of connections. for
-      ;; this example, incoming connections is the only thing we care about
-      (labels ((show-stats ()
-                 (let* ((stats (as:stats))
-                        (incoming (getf stats :incoming-connections))
-                        (outgoing (getf stats :outgoing-connections)))
-                   (format t "incoming: ~a~%outgoing: ~a~%~%" incoming outgoing))
-                 (as:delay #'show-stats :time 1)))
-        (when stats (show-stats))))
+      (let ((listener nil)
+            (quit nil)
+            (finished-requests 0)
+            (last-finished 0)
+            (last-time 0))
+        (setf listener
+              (as:tcp-server nil 9009
+                             (lambda (socket data)
+                               (declare (ignore data))
+                               (as:delay (lambda ()
+                                           (unless (as:socket-closed-p socket)
+                                             (as:write-socket-data
+                                               socket *http-response*
+                                               :write-cb (lambda (socket)
+                                                           (as:close-socket socket)
+                                                           (incf finished-requests)))))
+                                         :time 5))
+                             (lambda (err)
+                               (format t "tcp server event: ~a~%" err))))
+        (as:signal-handler 2 (lambda (sig)
+                               (declare (ignore sig))
+                               (setf quit t)
+                               (as:free-signal-handler 2)
+                               (as:close-tcp-server listener)))
+        (labels ((show-stats ()
+                   (let* ((stats (as:stats))
+                          (incoming (getf stats :incoming-tcp-connections))
+                          (outgoing (getf stats :outgoing-tcp-connections))
+                          (now (get-internal-real-time))
+                          (sec (/ (- now last-time) internal-time-units-per-second))
+                          (rate (/ (- finished-requests last-finished) sec)))
+                     (setf last-finished finished-requests
+                           last-time now)
+                     (format t "incoming: ~a~%outgoing: ~a~%finished: ~a~%rate: ~f req/s~%~%" incoming outgoing finished-requests rate))
+                   (unless quit
+                     (as:delay #'show-stats :time 1))))
+          (when stats (show-stats)))))
     :catch-app-errors t)
   (format t "TCP server exited.~%"))
 
@@ -908,17 +917,19 @@ connections it can handle.
 
 On another neighboring Linode, I ran
 ```shell
-httperf --server=1.2.3.4 --port=9009 --num-conns=40000 --num-calls=10 --hog --rate=2000
+httperf --server=1.2.3.4 --port=9009 --num-conns=40000 --num-calls=10 --hog --rate=6000
 ```
 
 In the `stats` output, I was getting:
 
-    incoming: 40000
+    incoming: 12645
     outgoing: 0
+    finished: 7330
+    rate: 6026.183 req/s
     
-If this is a stupid benchmark, let me know, but from the looks of it it's fairly
-scalable (on unix, anyway). As far as performance goes, maybe that's another
-story.
+So I was getting ~6000k req/s, and in some tests (longer delay value) I was able
+to get the "incoming" connections to 40K. 6000/s seems to be the limit of the
+machine `httperf` was running on, not the server, but I can't confirm this yet.
 
 Implementation notes
 --------------------
