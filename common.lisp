@@ -114,7 +114,7 @@
 (defun create-data-pointer ()
   "Creates a pointer in C land that can be used to attach data/callbacks to.
    Note that this must be freed via clear-pointer-data."
-  (cffi:foreign-alloc :char :count 0))
+  (cffi:foreign-alloc :char :count 1))
 
 (defun save-callbacks (pointer callbacks)
   "Save a set of callbacks, keyed by the given pointer."
