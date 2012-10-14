@@ -97,7 +97,9 @@
   (check-socket-open socket)
   (let ((socket (if socket-is-bufferevent
                     socket
-                    (socket-c socket))))
+                    (socket-c socket)))
+        (read-sec (if (numberp read-sec) read-sec -1))
+        (write-sec (if (numberp write-sec) write-sec -1)))
     (multiple-value-bind (read-sec read-usec) (split-usec-time read-sec)
       (multiple-value-bind (write-sec write-usec) (split-usec-time write-sec)
         (make-foreign-type (read-to (le::cffi-type le::timeval))
@@ -106,9 +108,9 @@
           (make-foreign-type (write-to (le::cffi-type le::timeval))
                              (('le::tv-sec write-sec)
                               ('le::tv-usec write-usec))
-            (let ((read-to (if (numberp read-sec) read-to (cffi:null-pointer)))
-                  (write-to (if (numberp write-sec) write-to (cffi:null-pointer))))
-            (le:bufferevent-set-timeouts socket read-to write-to))))))))
+            (let ((read-to (if (< 0 read-sec) read-to (cffi:null-pointer)))
+                  (write-to (if (< 0 write-sec) write-to (cffi:null-pointer))))
+              (le:bufferevent-set-timeouts socket read-to write-to))))))))
 
 (defun enable-socket (socket &key read write)
   "Enable read/write monitoring on a socket. If :read or :write are nil, they
