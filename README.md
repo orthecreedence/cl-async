@@ -108,11 +108,14 @@ application error handling.
 `loglevel` corresponds to syslog levels.
 
 ##### default-event-cb and catch-app-errors
-Please see the [Application error handling](#application-error-handling) section
+Please see the [application error handling](#application-error-handling) section
 for complete information on these. They correspond 1 to 1 with
 [\*default-event-handler\*](#default-event-handler) and
 [\*catch-application-errors\*](#catch-application-errors). Setting them when
-calling `start-event-loop` is really just a convenience to cut down on `setf`s.
+calling `start-event-loop` not only cuts down on `setf`s you have to do when
+starting your evented app, but also uses thread-local versions of the vars,
+meaning you can start multiple event loops in multiple threads wiithout using
+the same values for each thread.
 
 ### exit-event-loop
 Exit the event loop. This will free up all resources internally and close down
@@ -122,7 +125,7 @@ Note that this doesn't let queued events process, and is the equivelent of
 doing a force close. Unless you really need to do this and return control to
 lisp, try to let your event loop exit of "natural causes" (ie, no events left to
 process). You can do this by freeing your signal handlers, servers, etc. This
-has the added benefit of letting any connection clients finish their requests
+has the added benefit of letting any connected clients finish their requests
 (without accepting new ones) without completely cutting them off.
 
 ```common-lisp
@@ -192,6 +195,11 @@ also restores the lisp signal handler that existed before calling
 ```common-lisp
 ;; definition
 (free-signal-handler signo)
+
+;; example
+(signal-handler 2 (lambda (sig)
+                    (close-server *my-app-server*)
+                    (free-signal-handler 2)))
 ```
 
 ### clear-signal-handlers
@@ -254,7 +262,7 @@ on it), check out [write-socket-data](#write-socket-data).
 
 Note that the `host` can be an IP address *or* a hostname, the hostname will
 be looked up asynchronously via libevent's DNS implementation. Also note that
-the DNS lookup does __not++ use [dns-lookup][#dns-lookup], but directly calls
+the DNS lookup does __not__ use [dns-lookup](#dns-lookup), but directly calls
 into the libevent DNS functions, so [IPV6](https://github.com/orthecreedence/cl-async/issues/7) 
 and [x86-64](https://github.com/orthecreedence/cl-async/issues/15) are both
 supported when using DNS.
@@ -362,7 +370,7 @@ throw a [socket-closed](#socket-closed) condition.
 ```
 
 If you were to close the socket right after sending the data to the buffer,
-there's no guarantee it would be sent out. Setting a write-cb guarantees that
+there's no guarantee it would be sent out. Setting a `write-cb` guarantees that
 the data is sent when called.
 
 ##### write-cb definition
@@ -441,7 +449,8 @@ HTTP request. This functionality wraps the libevent HTTP client.
 
 If a "Host" header isn't passed in, it is automatically set with whatever host
 is pulled out of the `uri`. Also, any "Connection" header passed in will be
-ignored...for right now, every request is sent out with `Connection: close`.
+ignored...for right now, every request is sent out with `Connection: close`,
+but this [will probably change to be customizable soon](https://github.com/orthecreedence/cl-async/issues/19).
 
 The `timeout` arg is in seconds.
 
@@ -504,7 +513,7 @@ If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
 `http-request` is a on object of type [http-request](#http-request).
 
 ### close-http-server
-Takes an `http-server` class, created by [tcp-server](#tcp-server) and closes
+Takes an `http-server` class, created by [http-server](#http-server) and closes
 the server it wraps. This can be useful if you want to shut down a HTTP server
 without forcibly closing all its connections.
 
@@ -826,26 +835,28 @@ function definitions and specifications. So here's some more to get you going.
   (format t "Starting server.~%")
   (as:tcp-server nil 9003  ; nil is "0.0.0.0"
                  (lambda (socket data)
-                   ;; convert the data into a string
-                   (let ((str (babel:octets-to-string data :encoding :utf-8)))
-                     (when (search "QUIT" str)
-                       ;; "QUIT" was sent, close the socket and shut down the server
-                       (as:close-socket socket)
-                       (as:exit-event-loop)))
                    ;; echo the data back into the socket
                    (as:write-socket-data socket data))
-                 (lambda (err) (format t "listener event: ~a~%" err))))  ; error handler that does nothing
+                 (lambda (err) (format t "listener event: ~a~%" err)))
+  ;; catch sigint
+  (as:signal-handler 2 (lambda (sig)
+                         (declare (ignore sig))
+                         (as:exit-event-loop))))
+
 (as:start-event-loop #'my-echo-server)
 ```
 
-This echos anything back to the client that was sent, until "QUIT" is recieved,
-which closes the socket and ends the event loop, returning to the main thread.
+This echos anything back to the client that was sent, until SIGINT is recieved,
+which forcibly closes the event loop and returns to the main thread.
 
 Benchmarks
 ----------
 So far, benchmarks are favorable. From my intial profiling, it seems most of the
-time is spent in CFFI (at least on Clozure CL 32bit on Windows). I haven't done
-any profiling on linux, but I have done some benchmarks.
+time is spent in CFFI when on Windows, but in linux (of course) CFFI is a minor
+speed bump, and the actual cl-async:* functions are the main slowdown (which is
+good). Because of this, I really recommend running any production server on
+linux. This isn't so much because Windows sucks, but because I feel like most
+lisp implementations focus on linux performance a lot more than Windows.
 
 On my (already crowded) Linode 512, cl-async (for both [tcp-server](#tcp-server)
 and [http-server](#http-server)) was able to process about 40K concurrent
@@ -910,8 +921,8 @@ requests with this example before running out of memory:
 (tcp-server-test :stats t)
 ```
 
-What's happening here is that the server gets a request, delays 10 seconds, then
-responds on the same socket. This allows connections to build up for 10 seconds
+What's happening here is that the server gets a request, delays 5 seconds, then
+responds on the same socket. This allows connections to build up for 5 seconds
 before they start getting released, which is a good way to test how many
 connections it can handle.
 
@@ -930,6 +941,9 @@ In the `stats` output, I was getting:
 So I was getting ~6000k req/s, and in some tests (longer delay value) I was able
 to get the "incoming" connections to 40K. 6000/s seems to be the limit of the
 machine `httperf` was running on, not the server, but I can't confirm this yet.
+From the tests I ran, memory seems to be the number one constraining factor in
+scalability of number of connections. The more memory, the more connections can
+be handled.
 
 Implementation notes
 --------------------
@@ -940,10 +954,10 @@ Libevent was chosen for a few reasons:
  - It wraps the socket implementation and buffering in a [simple and wonderful
  API](http://www.wangafu.net/~nickm/libevent-book/Ref6_bufferevent.html).
  - It was very easy to generate bindings for and wrap in CFFI.
- - It works with windows. This is big for me, since I do a ton of development
- on windows. Libraries that assume "Y WOULD U PROGRAM ON WINDOWS?!?!LOL" have
+ - It works with Windows. This is big for me, since I do a ton of development
+ on Windows. Libraries that assume "Y WOULD U PROGRAM ON WINDOWS?!?!LOL" have
  their place, but most people who say this probably use Ubuntu anyway (sorry,
- it just slipped out). Libevent can be compiled on windows just fine, and
+ it just slipped out). Libevent can be compiled on Windows just fine, and
  with a bit of work, I'm assuming this wrapper could be programmed to use the
  IOCP parts of libevent (I think for now it uses select())
  - It comes with asynchronous HTTP client/server implementations. These are not
@@ -958,8 +972,8 @@ as-is (and undocumented).
 ### HTTP server
 The [http-server](#http-server) is a simple way to get a quick HTTP interface
 for your app. However, as someone who does a lot of ops as well as dev, I must
-warn you that *I would not trust this to be public-facing*. This is not because
-I am a terrible programmer, but because I don't think libevent's HTTP
+warn you that **I would not trust this to be public-facing**. This is not
+because I am a terrible programmer, but because I don't think libevent's HTTP
 implementation takes into account a lot of things that other HTTP servers have
 been battle tested with.
 
