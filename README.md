@@ -1,7 +1,7 @@
 cl-async - Asynchronous operations for Common Lisp
 ==================================================
 So after trying out various non-blocking libraries and frameworks for CL, I was
-a bit unsatisfied. [USOCKET](https://github.com/mcna/usocket) is probably the
+a bit unsatisfied. [IOLib](http://common-lisp.net/project/iolib/) is probably the
 best thing out there for non-blocking TCP, but I had a hard time understanding
 the documentation and using it without beta versions of CFFI. I decided to write
 a library that has very simple to understand concepts and an easy to use
@@ -949,7 +949,7 @@ Implementation notes
 --------------------
 ### Libevent
 Libevent was chosen for a few reasons:
- - It provides a socket API. The USOCKET library was too undocumented for me
+ - It provides a socket API. The IOLib library was too undocumented for me
  to figure out. Plus things like delayed functions/timers were not clear to me.
  - It wraps the socket implementation and buffering in a [simple and wonderful
  API](http://www.wangafu.net/~nickm/libevent-book/Ref6_bufferevent.html).
