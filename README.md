@@ -1004,12 +1004,16 @@ I plan on building and releasing a number of drivers on top of cl-async:
 
 - [beanstalkd](https://github.com/orthecreedence/beanstalk-async)
 - MongoDB
+- Drakma (async port)
 - Amazon S3/Cloudfront
 - SMTP
 - Redis
 
 Note that these are libraries I use every day, so am in a good position to test
-them in a production environment.
+them in a production environment. Also, even though cl-async includes a simple
+HTTP client, [Drakma](http://weitz.de/drakma/) is a lot more badass and has a
+ton more features. Porting it to be asynchronous would be very valuable, and
+also would make porting other drivers that work over HTTP to cl-async easier.
 
 The biggest problem with asynchronous IO in lisp is that there are lots of
 libraries that provide it, but no drivers built on top of the libraries. Nobody
