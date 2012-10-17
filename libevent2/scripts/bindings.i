@@ -47,6 +47,31 @@ struct sockaddr_in {
     char sin_zero_7;
 };
 
+struct sockaddr_in6 {
+    unsigned short sin6_family;
+    unsigned short port;
+    unsigned int sin6_flowinfo;
+    /* struct sin6_addr */
+    /* unsigned char s6_addr[16] */
+    unsigned char sin6_addr_0;
+    unsigned char sin6_addr_1;
+    unsigned char sin6_addr_2;
+    unsigned char sin6_addr_3;
+    unsigned char sin6_addr_4;
+    unsigned char sin6_addr_5;
+    unsigned char sin6_addr_6;
+    unsigned char sin6_addr_7;
+    unsigned char sin6_addr_8;
+    unsigned char sin6_addr_9;
+    unsigned char sin6_addr_10;
+    unsigned char sin6_addr_11;
+    unsigned char sin6_addr_12;
+    unsigned char sin6_addr_13;
+    unsigned char sin6_addr_14;
+    unsigned char sin6_addr_15;
+    unsigned int sin6_scope_id;
+};
+
 struct evkeyval {
     struct evkeyval *next;
     struct evkeyval **prev;

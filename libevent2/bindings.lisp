@@ -37,6 +37,28 @@
 	(#.(lispify "sin_zero_6" 'slotname) :char)
 	(#.(lispify "sin_zero_7" 'slotname) :char))
 
+(cffi:defcstruct #.(lispify "sockaddr_in6" 'classname)
+	(#.(lispify "sin6_family" 'slotname) :unsigned-short)
+	(#.(lispify "port" 'slotname) :unsigned-short)
+	(#.(lispify "sin6_flowinfo" 'slotname) :unsigned-int)
+	(#.(lispify "sin6_addr_0" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_1" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_2" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_3" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_4" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_5" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_6" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_7" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_8" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_9" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_10" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_11" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_12" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_13" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_14" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_addr_15" 'slotname) :unsigned-char)
+	(#.(lispify "sin6_scope_id" 'slotname) :unsigned-int))
+
 (cffi:defcstruct #.(lispify "evkeyval" 'classname)
 	(#.(lispify "next" 'slotname) :pointer)
 	(#.(lispify "prev" 'slotname) :pointer)
@@ -61,21 +83,7 @@
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_CLOCK_GETTIME" 'constant) 1)
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_DECL_CTL_KERN" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_DECL_KERN_ARND" 'constant) 0)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_DECL_KERN_RANDOM" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_DECL_RANDOM_UUID" 'constant) 1)
-
 (cl:defconstant #.(lispify "_EVENT_HAVE_DLFCN_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_EPOLL" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_EPOLL_CTL" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_EVENTFD" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_FCNTL" 'constant) 1)
 
@@ -88,10 +96,6 @@
 (cl:defconstant #.(lispify "_EVENT_HAVE_GETEGID" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_GETEUID" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_GETHOSTBYNAME_R" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_GETHOSTBYNAME_R_6_ARG" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_GETNAMEINFO" 'constant) 1)
 
@@ -119,8 +123,6 @@
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_NETINET_IN_H" 'constant) 1)
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_OPENSSL" 'constant) 1)
-
 (cl:defconstant #.(lispify "_EVENT_HAVE_PIPE" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_POLL" 'constant) 1)
@@ -135,8 +137,6 @@
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SELECT" 'constant) 1)
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_SENDFILE" 'constant) 1)
-
 (cl:defconstant #.(lispify "_EVENT_HAVE_SETENV" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SETFD" 'constant) 1)
@@ -144,8 +144,6 @@
 (cl:defconstant #.(lispify "_EVENT_HAVE_SIGACTION" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SIGNAL" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SPLICE" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_STDARG_H" 'constant) 1)
 
@@ -158,6 +156,8 @@
 (cl:defconstant #.(lispify "_EVENT_HAVE_STRINGS_H" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_STRING_H" 'constant) 1)
+
+(cl:defconstant #.(lispify "_EVENT_HAVE_STRLCPY" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_STRSEP" 'constant) 1)
 
@@ -177,10 +177,6 @@
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_STRUCT_SOCKADDR_STORAGE_SS_FAMILY" 'constant) 1)
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_EPOLL_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_EVENTFD_H" 'constant) 1)
-
 (cl:defconstant #.(lispify "_EVENT_HAVE_SYS_IOCTL_H" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SYS_MMAN_H" 'constant) 1)
@@ -191,13 +187,9 @@
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SYS_SELECT_H" 'constant) 1)
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_SENDFILE_H" 'constant) 1)
-
 (cl:defconstant #.(lispify "_EVENT_HAVE_SYS_SOCKET_H" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SYS_STAT_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_SYSCTL_H" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SYS_TIME_H" 'constant) 1)
 
@@ -237,17 +229,17 @@
 
 (cl:defconstant #.(lispify "_EVENT_SIZEOF_INT" 'constant) 4)
 
-(cl:defconstant #.(lispify "_EVENT_SIZEOF_LONG" 'constant) 8)
+(cl:defconstant #.(lispify "_EVENT_SIZEOF_LONG" 'constant) 4)
 
 (cl:defconstant #.(lispify "_EVENT_SIZEOF_LONG_LONG" 'constant) 8)
 
-(cl:defconstant #.(lispify "_EVENT_SIZEOF_PTHREAD_T" 'constant) 8)
+(cl:defconstant #.(lispify "_EVENT_SIZEOF_PTHREAD_T" 'constant) 4)
 
 (cl:defconstant #.(lispify "_EVENT_SIZEOF_SHORT" 'constant) 2)
 
-(cl:defconstant #.(lispify "_EVENT_SIZEOF_SIZE_T" 'constant) 8)
+(cl:defconstant #.(lispify "_EVENT_SIZEOF_SIZE_T" 'constant) 4)
 
-(cl:defconstant #.(lispify "_EVENT_SIZEOF_VOID_P" 'constant) 8)
+(cl:defconstant #.(lispify "_EVENT_SIZEOF_VOID_P" 'constant) 4)
 
 (cl:defconstant #.(lispify "_EVENT_STDC_HEADERS" 'constant) 1)
 
