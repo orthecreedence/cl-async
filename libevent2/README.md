@@ -30,7 +30,7 @@ Becomes:
        (ev (le:event-new base -1 0 (cffi:callback my-cb) (cffi:null-pointer))))
   (le:event-active ev 0 0)
   (le:event-base-dispatch base)
-  (le:event-del(ev)))
+  (le:event-del ev))
 ```
 
 (re)Generating
