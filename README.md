@@ -1,17 +1,17 @@
 cl-async - Asynchronous operations for Common Lisp
 ==================================================
 So after trying out various non-blocking libraries and frameworks for CL, I was
-a bit unsatisfied. [USOCKET](https://github.com/mcna/usocket) is probably the
-best thing out there for non-blocking TCP, but I had a hard time understanding
-the documentation and using it without beta versions of CFFI. I decided to write
-a library that has very simple to understand concepts and an easy to use
-interface. It uses [Libevent2](http://libevent.org/) as the async backend, which
-is a fast, stable, portable library for asynchronous IO (see my [notes on choosing
-Libevent](#libevent)).
+a bit unsatisfied. [IOLib](http://common-lisp.net/project/iolib/) is probably the
+best thing out there for non-blocking TCP, but I had a hard time with the 
+interface and using it without beta versions of CFFI. I decided to write a
+library that has very simple to understand concepts, an easy to use interface,
+and is portable across Linux and Windows. It uses [Libevent2](http://libevent.org/)
+as the async backend, which is a fast, stable, portable library for asynchronous
+IO (see my [notes on choosing Libevent](#libevent)).
 
 The main goal is to provide an experience that's close to javascript in how it
 handles asynchronous operations with ease, but with the speed and power of
-lisp.
+lisp. Portability and ease of use are favored over raw speed.
 
 *Please note that at the moment I consider this library BETA. I'm doing my best
 to solidify the API and eliminate any bugs. cl-async will most likely get a lot
@@ -949,7 +949,7 @@ Implementation notes
 --------------------
 ### Libevent
 Libevent was chosen for a few reasons:
- - It provides a socket API. The USOCKET library was too undocumented for me
+ - It provides a socket API. The IOLib library was too undocumented for me
  to figure out. Plus things like delayed functions/timers were not clear to me.
  - It wraps the socket implementation and buffering in a [simple and wonderful
  API](http://www.wangafu.net/~nickm/libevent-book/Ref6_bufferevent.html).
@@ -1004,12 +1004,16 @@ I plan on building and releasing a number of drivers on top of cl-async:
 
 - [beanstalkd](https://github.com/orthecreedence/beanstalk-async)
 - MongoDB
+- Drakma (async port, would essentially replace [http-client](#http-client))
 - Amazon S3/Cloudfront
 - SMTP
 - Redis
 
 Note that these are libraries I use every day, so am in a good position to test
-them in a production environment.
+them in a production environment. Also, even though cl-async includes a simple
+HTTP client, [Drakma](http://weitz.de/drakma/) is a lot more badass and has a
+ton more features. Porting it to be asynchronous would be very valuable, and
+also would make porting other drivers that work over HTTP to cl-async easier.
 
 The biggest problem with asynchronous IO in lisp is that there are lots of
 libraries that provide it, but no drivers built on top of the libraries. Nobody
