@@ -323,14 +323,6 @@
    to work."
   (check-event-loop-running)
 
-  ;; this may get nasty...create a reference where data-pointer points to the
-  ;; callbacks and dns-base for the current bufferevent, and the current
-  ;; bufferevent has a reference to the current data-pointer. this is so that
-  ;; when a bufferevent is re-used with new callbacks, the original data-pointer
-  ;; isn't lost (since this would essentially be a memory leak, and cause a lot
-  ;; of callbacks/dns-bases to be un-garbage-collectable...disaster). this way
-  ;; is messy, but ensures that the bufferevent has only one data-pointer
-  ;; attached to it for the duration of its life.
   (let* ((data-pointer (create-data-pointer))
          (bev (le:bufferevent-socket-new *event-base* -1 +bev-opt-close-on-free+))
          (socket (make-instance 'socket :c bev :direction 'out)))
@@ -339,6 +331,8 @@
     (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :write-cb write-cb))
     (write-to-evbuffer (le:bufferevent-get-output bev) data)
     (set-socket-timeouts bev read-timeout write-timeout :socket-is-bufferevent t)
+
+    ;; allow the data pointer/socket class to be referenced directly by the bev
     (attach-data-to-pointer bev (list :data-pointer data-pointer :socket socket))
 
     ;; connect the socket
