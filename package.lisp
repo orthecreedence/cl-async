@@ -15,6 +15,38 @@
            ;; timer functions
            #:delay
 
+           ;; signal numbers
+           #:+sighup+
+           #:+sigint+
+           #:+sigquit+
+           #:+sigill+
+           #:+sigtrap+
+           #:+sigabrt+
+           #:+sigemt+
+           #:+sigfpe+
+           #:+sigkill+
+           #:+sigbus+
+           #:+sigsegv+
+           #:+sigsys+
+           #:+sigpipe+
+           #:+sigalrm+
+           #:+sigterm+
+           #:+sigurg+
+           #:+sigstop+
+           #:+sigtstp+
+           #:+sigcont+
+           #:+sigchld+
+           #:+sigttin+
+           #:+sigttou+
+           #:+sigio+
+           #:+sigxcpu+
+           #:+sigxfsz+
+           #:+sigvtalrm+
+           #:+sigprof+
+           #:+sigwinch+
+           #:+siginfo+
+           #:+sigusr1+
+           #:+sigusr2+
            ;; signal handling functions
            #:signal-handler
            #:free-signal-handler
