@@ -79,6 +79,8 @@
 
 ;; fix some broken shit with addrinfo on windows vs linux...
 (defmacro win32-switch (form-if-win form-if-not-win)
+  "Given two forms, returns the first if we're running on windows, and the
+   second form otherwise."
   #+(or windows win32)
     form-if-win
   #-(or windows win32)
@@ -87,9 +89,12 @@
 (defparameter *addrinfo*
   (win32-switch
     (le::cffi-type le::evutil-addrinfo)
-    (le::cffi-type le::addrinfo)))
+    (le::cffi-type le::addrinfo))
+  "Determines the correct type of addrinfo for the current platform.")
 
 (defmacro addrinfo-ai-addr (pt)
+  "A wrapper around addrinfo's ai-addr accessor (there is one for windows that
+   uses evutil_addrinfo, and one for linux that uses addrinfo)."
   (win32-switch
     `(le-a:evutil-addrinfo-ai-addr ,pt)
     `(le-a:addrinfo-ai-addr ,pt)))
