@@ -34,6 +34,10 @@ struct timeval {
 struct sockaddr_in {
     short   sin_family;
     unsigned short sin_port;
+
+    /* NOTE: should be unsigned long, but CFFI adds +4 to the offset if this
+       is a long, which really shouldn't happen. unsigned int seems to work on
+       all platforms, so until otherwise noted, this is how it's going to stay */
     unsigned int sin_addr;
     /*struct  in_addr sin_addr;*/
     /*char    sin_zero[8];*/
