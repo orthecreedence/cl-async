@@ -17,15 +17,12 @@ for at least a few more weeks. If you do use the quicklisp version, please check
 the [closed issues list](https://github.com/orthecreedence/cl-async/issues?state=closed)
 before complaining about something being broken.
 
-*Please note that at the moment I consider this library BETA. I'm doing my best
-to solidify the API and eliminate any bugs. cl-async will most likely get a lot
-more fixes and changes once it's put into production, which should hopefully not
-be too far off. Stay tuned.*
-
 Also note that while the current style of this library is
 [CPS](http://en.wikipedia.org/wiki/Continuation-passing_style), in the future a
 syntactic layer may be built on top of it using [cl-cont](http://common-lisp.net/project/cl-cont/)
 or futures. For now, you're stuck with nested callback HELL __>:)__
+
+*This library's current status is BETA*
 
 The documentation is split into a few main sections.
 
