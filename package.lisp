@@ -1,6 +1,11 @@
 (defpackage :cl-async
   (:use :cl)
-  (:export #:*catch-application-errors*
+  (:export #:+af-inet+
+           #:+af-inet6+
+           #:+af-unspec+
+           #:+af-unix+
+
+           #:*catch-application-errors*
            #:*default-event-handler*
            ;; common conditions/accessors
            #:connection-info

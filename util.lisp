@@ -2,6 +2,11 @@
 
 (in-package :cl-async)
 
+(defconstant +af-inet+ le:+af-inet+)
+(defconstant +af-inet6+ le:+af-inet-6+)
+(defconstant +af-unspec+ le:+af-unspec+)
+(defconstant +af-unix+ le:+af-unix+)
+
 ;; define some cached values to save CFFI calls. believe it or not, this does
 ;; make a performance difference
 (defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
@@ -44,7 +49,7 @@
      (let ((sockaddr (cffi:foreign-alloc (le::cffi-type le::sockaddr-in))))
        ;; fill it full of holes.
        (cffi:foreign-funcall "memset" :pointer sockaddr :unsigned-char 0 :unsigned-char +sockaddr-size+)
-       (setf (le-a:sockaddr-in-sin-family sockaddr) le:+af-inet+
+       (setf (le-a:sockaddr-in-sin-family sockaddr) +af-inet+
              (le-a:sockaddr-in-sin-port sockaddr) (cffi:foreign-funcall "htons" :int port :unsigned-short)
              (le-a:sockaddr-in-sin-addr sockaddr) (if address
                                                       (cffi:foreign-funcall "inet_addr" :string address :unsigned-long)
@@ -53,10 +58,10 @@
     ((ipv6-address-p address)
      (let ((sockaddr6 (cffi:foreign-alloc (le::cffi-type le::sockaddr-in-6))))
        (cffi:foreign-funcall "memset" :pointer sockaddr6 :unsigned-char 0 :unsigned-char +sockaddr6-size+)
-       (setf (le-a:sockaddr-in-6-sin-6-family sockaddr6) le:+af-inet-6+
+       (setf (le-a:sockaddr-in-6-sin-6-family sockaddr6) +af-inet6+
              (le-a:sockaddr-in-6-sin-6-port sockaddr6) (cffi:foreign-funcall "htons" :int port :unsigned-short))
        (cffi:foreign-funcall "inet_pton"
-                             :short le:+af-inet-6+
+                             :short +af-inet6+
                              :string address
                              :pointer (cffi:foreign-slot-pointer sockaddr6 (le::cffi-type le::sockaddr-in-6) 'le::sin-6-addr-0))
        (values sockaddr6 +sockaddr6-size+)))
