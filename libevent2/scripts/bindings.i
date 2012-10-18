@@ -24,7 +24,7 @@
 #define SOCK_STREAM 1
 #define IPPROTO_TCP 6
 
-typedef unsigned int size_t;
+typedef unsigned long size_t;
 
 struct timeval {
   long tv_sec;
@@ -72,6 +72,27 @@ struct sockaddr_in6 {
     unsigned int sin6_scope_id;
 };
 
+struct addrinfo {
+    int     ai_flags;
+    int     ai_family;
+    int     ai_socktype;
+    int     ai_protocol;
+    size_t  ai_addrlen;
+    struct sockaddr  *ai_addr;
+    char   *ai_canonname;
+    struct evutil_addrinfo  *ai_next;
+};
+struct evutil_addrinfo {
+    int     ai_flags;     /* AI_PASSIVE, AI_CANONNAME, AI_NUMERICHOST */
+    int     ai_family;    /* PF_xxx */
+    int     ai_socktype;  /* SOCK_xxx */
+    int     ai_protocol;  /* 0 or IPPROTO_xxx for IPv4 and IPv6 */
+    size_t  ai_addrlen;   /* length of ai_addr */
+    char   *ai_canonname; /* canonical name for nodename */
+    struct sockaddr  *ai_addr; /* binary address */
+    struct evutil_addrinfo  *ai_next; /* next structure in linked list */
+};
+
 struct evkeyval {
     struct evkeyval *next;
     struct evkeyval **prev;
@@ -83,17 +104,6 @@ struct evkeyval {
 struct evkeyvalq {
     struct evkeyval *thq_first;
     struct evkeyval **thq_last;
-};
-
-struct evutil_addrinfo {
-    int     ai_flags;     /* AI_PASSIVE, AI_CANONNAME, AI_NUMERICHOST */
-    int     ai_family;    /* PF_xxx */
-    int     ai_socktype;  /* SOCK_xxx */
-    int     ai_protocol;  /* 0 or IPPROTO_xxx for IPv4 and IPv6 */
-    size_t  ai_addrlen;   /* length of ai_addr */
-    char   *ai_canonname; /* canonical name for nodename */
-    struct sockaddr  *ai_addr; /* binary address */
-    struct evutil_addrinfo  *ai_next; /* next structure in linked list */
 };
 
 %include "/usr/local/include/event2/event-config.h"
