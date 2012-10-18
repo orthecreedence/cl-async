@@ -34,7 +34,7 @@ struct timeval {
 struct sockaddr_in {
     short   sin_family;
     unsigned short sin_port;
-    unsigned long sin_addr;
+    unsigned int sin_addr;
     /*struct  in_addr sin_addr;*/
     /*char    sin_zero[8];*/
     char sin_zero_0;

@@ -27,7 +27,7 @@
 (cffi:defcstruct #.(lispify "sockaddr_in" 'classname)
 	(#.(lispify "sin_family" 'slotname) :short)
 	(#.(lispify "sin_port" 'slotname) :unsigned-short)
-	(#.(lispify "sin_addr" 'slotname) :unsigned-long)
+	(#.(lispify "sin_addr" 'slotname) :unsigned-int)
 	(#.(lispify "sin_zero_0" 'slotname) :char)
 	(#.(lispify "sin_zero_1" 'slotname) :char)
 	(#.(lispify "sin_zero_2" 'slotname) :char)

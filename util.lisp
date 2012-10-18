@@ -88,8 +88,6 @@
   (win32-switch
     (le::cffi-type le::evutil-addrinfo)
     (le::cffi-type le::addrinfo)))
-(defparameter *addrinfo-ai-addr-offset*
-  (win32-switch 0 -4))
 
 (defmacro addrinfo-ai-addr (pt)
   (win32-switch

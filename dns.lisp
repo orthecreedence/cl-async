@@ -61,25 +61,15 @@
               ;  (format t "addr: ~a~%addr: ~a~%diff: ~a~%" addr-pt addr-pt-off (- addr-pt-off addr-pt)))
 
               (cffi:with-foreign-object (buf :unsigned-char 128)
-                (let* ((ai-addr (addrinfo-ai-addr addrinfo))
-                       ;; this is a nasty hack based off of observation. the
-                       ;; address pointer is either at the wrong offset due to
-                       ;; differing definitions of addrinfo in windows/unix
-                       ;; systems, OR the addrinfo->ai_addr is filled in 4 bytes
-                       ;; too high.
-                       ;; NOTE: that this will probably need to be tested
-                       ;; extensively on different platforms before it's marked
-                       ;; as working...
-                       (ai-addr (if (cffi:null-pointer-p ai-addr)
-                                    (let ((pt (cffi:make-pointer (+ (cffi:pointer-address addrinfo) 24))))
-                                      (cffi:mem-aref pt :pointer))
-                                    (cffi:make-pointer (+ (cffi:pointer-address ai-addr) *addrinfo-ai-addr-offset*)))))
+                ;; note here, we use the OS-dependent addrinfo-ai-addr macro
+                ;; defined un util.lisp
+                (let* ((ai-addr (addrinfo-ai-addr addrinfo)))
                   (unless (cffi:null-pointer-p ai-addr)
                     (cond
                       ((eq family +af-inet+)
                        (let ((sin-addr (cffi:foreign-slot-pointer ai-addr (le::cffi-type le::sockaddr-in) 'le::sin-addr)))
-                         (dotimes (i +sockaddr-size+)
-                           (format t "byte ~a: ~a~%" i (cffi:mem-aref ai-addr :unsigned-char i)))
+                         ;(dotimes (i +sockaddr-size+)
+                           ;(format t "byte ~a: ~a~%" i (cffi:mem-aref ai-addr :unsigned-char i)))
                          (setf addr (le:evutil-inet-ntop family sin-addr buf 128))))
                       ((eq family +af-inet6+)
                        (let ((sin6-addr (cffi:foreign-slot-pointer ai-addr (le::cffi-type le::sockaddr-in-6) 'le::sin-6-addr-0)))
