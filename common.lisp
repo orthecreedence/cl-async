@@ -45,13 +45,6 @@
   "Holds all the currently bound signal handlers, which can be used to unbind
    them all in one swift stroke.")
 
-;; define some cached values to save CFFI calls. believe it or not, this does
-;; make a performance difference
-(defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
-(defconstant +evutil-addrinfo-size+ (cffi:foreign-type-size (le::cffi-type le::evutil-addrinfo)))
-(defconstant +timeval-size+ (cffi:foreign-type-size (le::cffi-type le::timeval)))
-(defconstant +bev-opt-close-on-free+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+))
-
 (define-condition connection-info () ()
   (:documentation "Describes the base condition for any action on a connection."))
 

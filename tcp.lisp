@@ -339,8 +339,8 @@
     (incf *outgoing-connection-count*)
     (if (ip-address-p host)
         ;; got an IP so just connect directly
-        (with-ipv4-to-sockaddr (sockaddr host port)
-          (le:bufferevent-socket-connect bev sockaddr +sockaddr-size+))
+        (with-ip-to-sockaddr ((sockaddr sockaddr-size) host port)
+          (le:bufferevent-socket-connect bev sockaddr sockaddr-size))
 
         ;; get a DNS base and do an async lookup
         (let ((dns-base (get-dns-base)))
@@ -351,7 +351,7 @@
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (check-event-loop-running)
-  (with-ipv4-to-sockaddr (sockaddr bind-address port)
+  (with-ip-to-sockaddr ((sockaddr sockaddr-size) bind-address port)
     (let* ((data-pointer (create-data-pointer))
            (listener (le:evconnlistener-new-bind *event-base*
                                                   (cffi:callback tcp-accept-cb)
@@ -359,7 +359,7 @@
                                                   (logior le:+lev-opt-reuseable+ le:+lev-opt-close-on-free+)
                                                   backlog
                                                   sockaddr
-                                                  +sockaddr-size+))
+                                                  sockaddr-size))
            (server-class (make-instance 'tcp-server :c listener)))
       (add-event-loop-exit-callback (lambda ()
                                       (close-tcp-server server-class)

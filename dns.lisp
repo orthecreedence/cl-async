@@ -4,16 +4,6 @@
   (:report (lambda (c s) (format s "Connection DNS error: ~a, ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
 
-(defparameter *ip-scanner*
-  (cl-ppcre:create-scanner
-    "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$"
-    :case-insensitive-mode t)
-  "Scanner that detects if a string is an IP.")
-
-(defun ip-address-p (host)
-  "Determine if the given host is an IP or a hostname."
-  (cl-ppcre:scan *ip-scanner* host))
-
 (defun get-dns-base ()
   "Grabs the current DNS base (or instantiates if it doesn't exist) and also
    tracks how many open DNS base queries there are."
@@ -38,26 +28,6 @@
     (unless (cffi:null-pointer-p dns-base)
       (le:evdns-base-free dns-base 0)
       (free-pointer-data dns-base))))
-
-(defun ipv4-str-to-sockaddr (address port)
-  "Convert a string IP address and port into a sockaddr-in struct."
-  (let ((sockaddr (cffi:foreign-alloc (le::cffi-type le::sockaddr-in))))
-    ;; fill it full of holes.
-    (cffi:foreign-funcall "memset" :pointer sockaddr :unsigned-char 0 :unsigned-char +sockaddr-size+)
-    (setf (le-a:sockaddr-in-sin-family sockaddr) le:+af-inet+
-          (le-a:sockaddr-in-sin-port sockaddr) (cffi:foreign-funcall "htons" :int port :unsigned-short)
-          (le-a:sockaddr-in-sin-addr sockaddr) (if address
-                                                   (cffi:foreign-funcall "inet_addr" :string address :unsigned-long)
-                                                   (cffi:foreign-funcall "htonl" :unsigned-long 0 :unsigned-long)))
-    sockaddr))
-
-(defmacro with-ipv4-to-sockaddr ((bind address port) &body body)
-  "Wraps around ipv4-str-to-sockaddr. Converts a string address and port and
-   creates a sockaddr-in object, runs the body with it bound, and frees it."
-  `(let ((,bind (ipv4-str-to-sockaddr ,address ,port)))
-     (unwind-protect
-       (progn ,@body)
-       (cffi:foreign-free ,bind))))
 
 (cffi:defcallback dns-cb :void ((errcode :int) (addrinfo :pointer) (data-pointer :pointer))
   "Callback for DNS lookups."
