@@ -263,6 +263,10 @@
                  ((< 0 (logand events le:+bev-event-timeout+))
                   (setf event (make-instance 'tcp-timeout :socket socket :code -1 :msg "Socket timed out")))
 
+                 ;; connection reset by peer
+                 ((eq errcode 104)
+                  (setf event (make-instance 'tcp-eof :socket socket)))
+
                  ;; since we don't know what the error was, just spawn a general
                  ;; error.
                  (t
