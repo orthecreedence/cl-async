@@ -357,7 +357,7 @@ store arbitrary, app-specific data in the socket.
 This accessor allows you to set arbitrary data into the [socket](#socket) class,
 which can be useful if your app needs to match specific data to a socket (for
 instance if you are proxying, you could use `socket-data` to store a reference
-to the outgoing socket inside the incoming socket.
+to the outgoing socket inside the incoming socket).
 
 ### write-socket-data
 Write data to an existing socket (such as one passed into a `tcp-send` read-cb).
