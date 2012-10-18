@@ -72,6 +72,7 @@ struct sockaddr_in6 {
     unsigned int sin6_scope_id;
 };
 
+/* for linux */
 struct addrinfo {
     int     ai_flags;
     int     ai_family;
@@ -82,6 +83,8 @@ struct addrinfo {
     char   *ai_canonname;
     struct evutil_addrinfo  *ai_next;
 };
+
+/* for windows */
 struct evutil_addrinfo {
     int     ai_flags;     /* AI_PASSIVE, AI_CANONNAME, AI_NUMERICHOST */
     int     ai_family;    /* PF_xxx */
