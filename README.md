@@ -13,6 +13,13 @@ The main goal is to provide an experience that makes general asynchronous
 programming in lisp a delight instead of a chore. Portability and ease of use
 are favored over raw speed.
 
+Although this library is quicklisp-loadable, I _strongly urge you_ to use the
+master branch of this repo until otherwise noted. A lot has been changed/fixed
+since it was included, and I suspect this trend will continue for at least a
+few more weeks. If you do use the quicklisp version, please check the [closed
+issues list](https://github.com/orthecreedence/cl-async/issues?state=closed)
+before complaining about something being broken.
+
 *Please note that at the moment I consider this library BETA. I'm doing my best
 to solidify the API and eliminate any bugs. cl-async will most likely get a lot
 more fixes and changes once it's put into production, which should hopefully not
