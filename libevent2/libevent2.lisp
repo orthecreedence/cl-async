@@ -16,6 +16,7 @@
                 "/usr/local/lib/libevent.so"
                 ; brew's install of libevent on Mac OX X
                 "/usr/local/lib/libevent.dylib"))
+    (:windows (:or "libevent.dll" "libevent64.dll"))
     (t (:default "libevent")))
   (unless (foreign-library-loaded-p 'libevent2)
     (use-foreign-library libevent2)))

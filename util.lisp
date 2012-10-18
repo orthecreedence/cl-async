@@ -11,7 +11,7 @@
 ;; make a performance difference
 (defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
 (defconstant +sockaddr6-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in-6)))
-(defconstant +evutil-addrinfo-size+ (cffi:foreign-type-size (le::cffi-type le::evutil-addrinfo)))
+(defconstant +addrinfo-size+ (cffi:foreign-type-size (le::cffi-type le::addrinfo)))
 (defconstant +timeval-size+ (cffi:foreign-type-size (le::cffi-type le::timeval)))
 (defconstant +bev-opt-close-on-free+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+))
 
@@ -76,4 +76,23 @@
        (progn ,@body)
        (cffi:foreign-free ,bind))))
 
+
+;; fix some broken shit with addrinfo on windows vs linux...
+(defmacro win32-switch (form-if-win form-if-not-win)
+  #+(or windows win32)
+    form-if-win
+  #-(or windows win32)
+    form-if-not-win)
+
+(defparameter *addrinfo*
+  (win32-switch
+    (le::cffi-type le::evutil-addrinfo)
+    (le::cffi-type le::addrinfo)))
+(defparameter *addrinfo-ai-addr-offset*
+  (win32-switch 0 -4))
+
+(defmacro addrinfo-ai-addr (pt)
+  (win32-switch
+    `(le-a:evutil-addrinfo-ai-addr ,pt)
+    `(le-a:addrinfo-ai-addr ,pt)))
 

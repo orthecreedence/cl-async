@@ -59,6 +59,26 @@
 	(#.(lispify "sin6_addr_15" 'slotname) :unsigned-char)
 	(#.(lispify "sin6_scope_id" 'slotname) :unsigned-int))
 
+(cffi:defcstruct #.(lispify "addrinfo" 'classname)
+	(#.(lispify "ai_flags" 'slotname) :int)
+	(#.(lispify "ai_family" 'slotname) :int)
+	(#.(lispify "ai_socktype" 'slotname) :int)
+	(#.(lispify "ai_protocol" 'slotname) :int)
+	(#.(lispify "ai_addrlen" 'slotname) :unsigned-long)
+	(#.(lispify "ai_addr" 'slotname) :pointer)
+	(#.(lispify "ai_canonname" 'slotname) :string)
+	(#.(lispify "ai_next" 'slotname) :pointer))
+
+(cffi:defcstruct #.(lispify "evutil_addrinfo" 'classname)
+	(#.(lispify "ai_flags" 'slotname) :int)
+	(#.(lispify "ai_family" 'slotname) :int)
+	(#.(lispify "ai_socktype" 'slotname) :int)
+	(#.(lispify "ai_protocol" 'slotname) :int)
+	(#.(lispify "ai_addrlen" 'slotname) :unsigned-long)
+	(#.(lispify "ai_canonname" 'slotname) :string)
+	(#.(lispify "ai_addr" 'slotname) :pointer)
+	(#.(lispify "ai_next" 'slotname) :pointer))
+
 (cffi:defcstruct #.(lispify "evkeyval" 'classname)
 	(#.(lispify "next" 'slotname) :pointer)
 	(#.(lispify "prev" 'slotname) :pointer)
@@ -68,16 +88,6 @@
 (cffi:defcstruct #.(lispify "evkeyvalq" 'classname)
 	(#.(lispify "thq_first" 'slotname) :pointer)
 	(#.(lispify "thq_last" 'slotname) :pointer))
-
-(cffi:defcstruct #.(lispify "evutil_addrinfo" 'classname)
-	(#.(lispify "ai_flags" 'slotname) :int)
-	(#.(lispify "ai_family" 'slotname) :int)
-	(#.(lispify "ai_socktype" 'slotname) :int)
-	(#.(lispify "ai_protocol" 'slotname) :int)
-	(#.(lispify "ai_addrlen" 'slotname) :unsigned-int)
-	(#.(lispify "ai_canonname" 'slotname) :string)
-	(#.(lispify "ai_addr" 'slotname) :pointer)
-	(#.(lispify "ai_next" 'slotname) :pointer))
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_ARPA_INET_H" 'constant) 1)
 
@@ -276,13 +286,13 @@
 
 (cffi:defcfun ("evutil_snprintf" #.(lispify "evutil_snprintf" 'function)) :int
   (buf :string)
-  (buflen :unsigned-int)
+  (buflen :unsigned-long)
   (format :string)
   &rest)
 
 (cffi:defcfun ("evutil_vsnprintf" #.(lispify "evutil_vsnprintf" 'function)) :int
   (buf :string)
-  (buflen :unsigned-int)
+  (buflen :unsigned-long)
   (format :string)
   (ap :pointer))
 
@@ -290,7 +300,7 @@
   (af :int)
   (src :pointer)
   (dst :string)
-  (len :unsigned-int))
+  (len :unsigned-long))
 
 (cffi:defcfun ("evutil_inet_pton" #.(lispify "evutil_inet_pton" 'function)) :int
   (af :int)
@@ -314,7 +324,7 @@
 (cffi:defcfun ("evutil_ascii_strncasecmp" #.(lispify "evutil_ascii_strncasecmp" 'function)) :int
   (str1 :string)
   (str2 :string)
-  (n :unsigned-int))
+  (n :unsigned-long))
 
 (cl:defconstant #.(lispify "EVUTIL_EAI_ADDRFAMILY" 'constant) -901)
 
@@ -368,13 +378,13 @@
 
 (cffi:defcfun ("evutil_secure_rng_get_bytes" #.(lispify "evutil_secure_rng_get_bytes" 'function)) :void
   (buf :pointer)
-  (n :unsigned-int))
+  (n :unsigned-long))
 
 (cffi:defcfun ("evutil_secure_rng_init" #.(lispify "evutil_secure_rng_init" 'function)) :int)
 
 (cffi:defcfun ("evutil_secure_rng_add_bytes" #.(lispify "evutil_secure_rng_add_bytes" 'function)) :void
   (dat :string)
-  (datlen :unsigned-int))
+  (datlen :unsigned-long))
 
 (cffi:defcfun ("event_enable_debug_mode" #.(lispify "event_enable_debug_mode" 'function)) :void)
 
@@ -556,7 +566,7 @@
   (callback_out :pointer)
   (arg_out :pointer))
 
-(cffi:defcfun ("event_get_struct_event_size" #.(lispify "event_get_struct_event_size" 'function)) :unsigned-int)
+(cffi:defcfun ("event_get_struct_event_size" #.(lispify "event_get_struct_event_size" 'function)) :unsigned-long)
 
 (cffi:defcfun ("event_get_version" #.(lispify "event_get_version" 'function)) :string)
 
@@ -912,16 +922,16 @@
 (cffi:defcfun ("bufferevent_write" #.(lispify "bufferevent_write" 'function)) :int
   (bufev :pointer)
   (data :pointer)
-  (size :unsigned-int))
+  (size :unsigned-long))
 
 (cffi:defcfun ("bufferevent_write_buffer" #.(lispify "bufferevent_write_buffer" 'function)) :int
   (bufev :pointer)
   (buf :pointer))
 
-(cffi:defcfun ("bufferevent_read" #.(lispify "bufferevent_read" 'function)) :unsigned-int
+(cffi:defcfun ("bufferevent_read" #.(lispify "bufferevent_read" 'function)) :unsigned-long
   (bufev :pointer)
   (data :pointer)
-  (size :unsigned-int))
+  (size :unsigned-long))
 
 (cffi:defcfun ("bufferevent_read_buffer" #.(lispify "bufferevent_read_buffer" 'function)) :int
   (bufev :pointer)
@@ -952,8 +962,8 @@
 (cffi:defcfun ("bufferevent_setwatermark" #.(lispify "bufferevent_setwatermark" 'function)) :void
   (bufev :pointer)
   (events :short)
-  (lowmark :unsigned-int)
-  (highmark :unsigned-int))
+  (lowmark :unsigned-long)
+  (highmark :unsigned-long))
 
 (cffi:defcfun ("bufferevent_lock" #.(lispify "bufferevent_lock" 'function)) :void
   (bufev :pointer))
@@ -993,10 +1003,10 @@
   (bev :pointer))
 
 (cffi:defcfun ("ev_token_bucket_cfg_new" #.(lispify "ev_token_bucket_cfg_new" 'function)) :pointer
-  (read_rate :unsigned-int)
-  (read_burst :unsigned-int)
-  (write_rate :unsigned-int)
-  (write_burst :unsigned-int)
+  (read_rate :unsigned-long)
+  (read_burst :unsigned-long)
+  (write_rate :unsigned-long)
+  (write_burst :unsigned-long)
   (tick_len :pointer))
 
 (cffi:defcfun ("ev_token_bucket_cfg_free" #.(lispify "ev_token_bucket_cfg_free" 'function)) :void
@@ -1016,7 +1026,7 @@
 
 (cffi:defcfun ("bufferevent_rate_limit_group_set_min_share" #.(lispify "bufferevent_rate_limit_group_set_min_share" 'function)) :int
   (arg0 :pointer)
-  (arg1 :unsigned-int))
+  (arg1 :unsigned-long))
 
 (cffi:defcfun ("bufferevent_rate_limit_group_free" #.(lispify "bufferevent_rate_limit_group_free" 'function)) :void
   (arg0 :pointer))
@@ -1071,8 +1081,8 @@
   (grp :pointer))
 
 (cffi:defcstruct #.(lispify "event_watermark" 'classname)
-	(#.(lispify "low" 'slotname) :unsigned-int)
-	(#.(lispify "high" 'slotname) :unsigned-int))
+	(#.(lispify "low" 'slotname) :unsigned-long)
+	(#.(lispify "high" 'slotname) :unsigned-long))
 
 (cffi:defcstruct #.(lispify "bufferevent" 'classname)
 	(#.(lispify "ev_base" 'slotname) :pointer)
@@ -1097,7 +1107,7 @@
 
 (cffi:defcstruct #.(lispify "evbuffer_ptr__internal" 'classname)
 	(#.(lispify "chain" 'slotname) :pointer)
-	(#.(lispify "pos_in_chain" 'slotname) :unsigned-int))
+	(#.(lispify "pos_in_chain" 'slotname) :unsigned-long))
 
 (cffi:defcfun ("evbuffer_new" #.(lispify "evbuffer_new" 'function)) :pointer)
 
@@ -1114,15 +1124,15 @@
 (cffi:defcfun ("evbuffer_unlock" #.(lispify "evbuffer_unlock" 'function)) :void
   (buf :pointer))
 
-(cffi:defcfun ("evbuffer_get_length" #.(lispify "evbuffer_get_length" 'function)) :unsigned-int
+(cffi:defcfun ("evbuffer_get_length" #.(lispify "evbuffer_get_length" 'function)) :unsigned-long
   (buf :pointer))
 
-(cffi:defcfun ("evbuffer_get_contiguous_space" #.(lispify "evbuffer_get_contiguous_space" 'function)) :unsigned-int
+(cffi:defcfun ("evbuffer_get_contiguous_space" #.(lispify "evbuffer_get_contiguous_space" 'function)) :unsigned-long
   (buf :pointer))
 
 (cffi:defcfun ("evbuffer_expand" #.(lispify "evbuffer_expand" 'function)) :int
   (buf :pointer)
-  (datlen :unsigned-int))
+  (datlen :unsigned-long))
 
 (cffi:defcfun ("evbuffer_reserve_space" #.(lispify "evbuffer_reserve_space" 'function)) :int
   (buf :pointer)
@@ -1138,22 +1148,22 @@
 (cffi:defcfun ("evbuffer_add" #.(lispify "evbuffer_add" 'function)) :int
   (buf :pointer)
   (data :pointer)
-  (datlen :unsigned-int))
+  (datlen :unsigned-long))
 
 (cffi:defcfun ("evbuffer_remove" #.(lispify "evbuffer_remove" 'function)) :int
   (buf :pointer)
   (data :pointer)
-  (datlen :unsigned-int))
+  (datlen :unsigned-long))
 
 (cffi:defcfun ("evbuffer_copyout" #.(lispify "evbuffer_copyout" 'function)) :pointer
   (buf :pointer)
   (data_out :pointer)
-  (datlen :unsigned-int))
+  (datlen :unsigned-long))
 
 (cffi:defcfun ("evbuffer_remove_buffer" #.(lispify "evbuffer_remove_buffer" 'function)) :int
   (src :pointer)
   (dst :pointer)
-  (datlen :unsigned-int))
+  (datlen :unsigned-long))
 
 (cffi:defcenum #.(lispify "evbuffer_eol_style" 'enumname)
 	#.(lispify "EVBUFFER_EOL_ANY" 'enumvalue :keyword)
@@ -1173,7 +1183,7 @@
 (cffi:defcfun ("evbuffer_add_reference" #.(lispify "evbuffer_add_reference" 'function)) :int
   (outbuf :pointer)
   (data :pointer)
-  (datlen :unsigned-int)
+  (datlen :unsigned-long)
   (cleanupfn :pointer)
   (extra :pointer))
 
@@ -1195,7 +1205,7 @@
 
 (cffi:defcfun ("evbuffer_drain" #.(lispify "evbuffer_drain" 'function)) :int
   (buf :pointer)
-  (len :unsigned-int))
+  (len :unsigned-long))
 
 (cffi:defcfun ("evbuffer_write" #.(lispify "evbuffer_write" 'function)) :int
   (buffer :pointer)
@@ -1214,13 +1224,13 @@
 (cffi:defcfun ("evbuffer_search" #.(lispify "evbuffer_search" 'function)) #.(lispify "evbuffer_ptr" 'classname)
   (buffer :pointer)
   (what :string)
-  (len :unsigned-int)
+  (len :unsigned-long)
   (start :pointer))
 
 (cffi:defcfun ("evbuffer_search_range" #.(lispify "evbuffer_search_range" 'function)) #.(lispify "evbuffer_ptr" 'classname)
   (buffer :pointer)
   (what :string)
-  (len :unsigned-int)
+  (len :unsigned-long)
   (start :pointer)
   (end :pointer))
 
@@ -1231,7 +1241,7 @@
 (cffi:defcfun ("evbuffer_ptr_set" #.(lispify "evbuffer_ptr_set" 'function)) :int
   (buffer :pointer)
   (pos :pointer)
-  (position :unsigned-int)
+  (position :unsigned-long)
   (how #.(lispify "evbuffer_ptr_how" 'enumname)))
 
 (cffi:defcfun ("evbuffer_search_eol" #.(lispify "evbuffer_search_eol" 'function)) #.(lispify "evbuffer_ptr" 'classname)
@@ -1241,9 +1251,9 @@
   (eol_style #.(lispify "evbuffer_eol_style" 'enumname)))
 
 (cffi:defcstruct #.(lispify "evbuffer_cb_info" 'classname)
-	(#.(lispify "orig_size" 'slotname) :unsigned-int)
-	(#.(lispify "n_added" 'slotname) :unsigned-int)
-	(#.(lispify "n_deleted" 'slotname) :unsigned-int))
+	(#.(lispify "orig_size" 'slotname) :unsigned-long)
+	(#.(lispify "n_added" 'slotname) :unsigned-long)
+	(#.(lispify "n_deleted" 'slotname) :unsigned-long))
 
 (cffi:defcfun ("evbuffer_peek" #.(lispify "evbuffer_peek" 'function)) :int
   (buffer :pointer)
@@ -1285,7 +1295,7 @@
 (cffi:defcfun ("evbuffer_prepend" #.(lispify "evbuffer_prepend" 'function)) :int
   (buf :pointer)
   (data :pointer)
-  (size :unsigned-int))
+  (size :unsigned-long))
 
 (cffi:defcfun ("evbuffer_prepend_buffer" #.(lispify "evbuffer_prepend_buffer" 'function)) :int
   (dst :pointer)
@@ -1709,6 +1719,6 @@
 (cffi:defcfun ("evhttp_uri_join" #.(lispify "evhttp_uri_join" 'function)) :string
   (uri :pointer)
   (buf :string)
-  (limit :unsigned-int))
+  (limit :unsigned-long))
 
 
