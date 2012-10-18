@@ -18,9 +18,10 @@ to solidify the API and eliminate any bugs. cl-async will most likely get a lot
 more fixes and changes once it's put into production, which should hopefully not
 be too far off. Stay tuned.*
 
-Also note that while the current style of this library is CPS, in the future a
+Also note that while the current style of this library is
+[CPS](http://en.wikipedia.org/wiki/Continuation-passing_style), in the future a
 syntactic layer may be built on top of it using [cl-cont](http://common-lisp.net/project/cl-cont/)
-or futures. For now, you're stuck with nested callback HELL >:)
+or futures. For now, you're stuck with nested callback HELL __>:)__
 
 The documentation is split into a few main sections.
 
