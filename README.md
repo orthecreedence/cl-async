@@ -9,14 +9,18 @@ and is portable across Linux and Windows. It uses [Libevent2](http://libevent.or
 as the async backend, which is a fast, stable, portable library for asynchronous
 IO (see my [notes on choosing Libevent](#libevent)).
 
-The main goal is to provide an experience that's close to javascript in how it
-handles asynchronous operations with ease, but with the speed and power of
-lisp. Portability and ease of use are favored over raw speed.
+The main goal is to provide an experience that makes general asynchronous 
+programming in lisp a delight instead of a chore. Portability and ease of use
+are favored over raw speed.
 
 *Please note that at the moment I consider this library BETA. I'm doing my best
 to solidify the API and eliminate any bugs. cl-async will most likely get a lot
 more fixes and changes once it's put into production, which should hopefully not
 be too far off. Stay tuned.*
+
+Also note that while the current style of this library is CPS, in the future a
+syntactic layer may be built on top of it using [cl-cont](http://common-lisp.net/project/cl-cont/)
+or futures. For now, you're stuck with nested callback HELL >:)
 
 The documentation is split into a few main sections.
 
