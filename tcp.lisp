@@ -239,6 +239,7 @@
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
    callback system to track failures/disconnects."
   (let* ((event nil)
+         (dns-base (deref-data-from-pointer data-pointer))
          (bev-data (deref-data-from-pointer bev))
          (socket (getf bev-data :socket))
          (event-cb (getf (get-callbacks data-pointer) :event-cb)))
@@ -268,7 +269,9 @@
           ;; peer closed connection.
           ((< 0 (logand events le:+bev-event-eof+))
            (setf event (make-instance 'tcp-eof :socket socket)))
-          ((< 0 (logand events le:+bev-event-connected+))
+          ((< 0 (and dns-base
+                     (logand events le:+bev-event-connected+)
+                     (not (cffi:null-pointer-p dns-base))))
            (release-dns-base)))
         (when event
           (unwind-protect
