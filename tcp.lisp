@@ -141,7 +141,7 @@
     (loop for n = (le:evbuffer-remove input buffer-c bufsize)
           while (< 0 n) do
       (dotimes (i n)
-        (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :char i)))
+        (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :unsigned-char i)))
       (funcall data-cb (subseq buffer-lisp 0 n)))))
 
 (defun write-to-evbuffer (evbuffer data)
