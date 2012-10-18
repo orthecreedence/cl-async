@@ -57,6 +57,8 @@ for more information on these callbacks (and error handling in general).
 - [tcp-send](#tcp-send) _function_
 - [tcp-server](#tcp-server) _function_
 - [close-tcp-server](#close-tcp-server)
+- [socket](#socket) _class_
+  - [socket-data](#socket-data) _accessor_
 - [write-socket-data](#write-socket-data) _function_
 - [set-socket-timeouts](#set-socket-timeouts) _function_
 - [enable-socket](#enable-socket) _function_
@@ -341,6 +343,21 @@ anything.
 ;; definition
 (close-tcp-server tcp-server)
 ```
+
+### socket
+This class is a wrapper around the libevent socket class. It is passed to tcp
+callback functions, and allows you to perform certain actions on the socket
+(such as [closing it](#close-socket), [setting read/write timeouts](#set-socket-timeouts),
+[writing data to it](#write-socket-data), etc).
+
+It also exposes an accessor, [socket-data](#socket-data), which allows you to
+store arbitrary, app-specific data in the socket.
+
+##### socket-data
+This accessor allows you to set arbitrary data into the [socket](#socket) class,
+which can be useful if your app needs to match specific data to a socket (for
+instance if you are proxying, you could use `socket-data` to store a reference
+to the outgoing socket inside the incoming socket.
 
 ### write-socket-data
 Write data to an existing socket (such as one passed into a `tcp-send` read-cb).

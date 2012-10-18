@@ -32,6 +32,7 @@
 
 (defclass socket ()
   ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
+   (data :accessor socket-data :initarg data :initform nil)
    (closed :accessor socket-closed :initarg :closed :initform nil)
    (direction :accessor socket-direction :initarg :direction :initform nil))
   (:documentation "Wraps around a libevent bufferevent socket."))
