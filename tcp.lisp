@@ -269,9 +269,9 @@
           ;; peer closed connection.
           ((< 0 (logand events le:+bev-event-eof+))
            (setf event (make-instance 'tcp-eof :socket socket)))
-          ((< 0 (and dns-base
-                     (logand events le:+bev-event-connected+)
-                     (not (cffi:null-pointer-p dns-base))))
+          ((and dns-base
+                (< 0 (logand events le:+bev-event-connected+))         
+                (not (cffi:null-pointer-p dns-base)))
            (release-dns-base)))
         (when event
           (unwind-protect
