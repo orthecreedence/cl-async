@@ -10,6 +10,7 @@
 
 (eval-when (:load-toplevel)
   (define-foreign-library libevent2
+    (:darwin (:or "libevent.dylib"))
     (:unix (:or "libevent.so"
                 "libevent-2.0.so.5"
                 "/usr/lib/libevent.so"
