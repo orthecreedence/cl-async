@@ -242,9 +242,7 @@ The `:family` keyword can be one of `+af-inet+`, `+af-inet6+`, `+af-unspec+`.
 (lambda (ip-address-string ip-address-family) ...)
 ```
 
-As mentioned, until IPV6 is implemented, `ip-address-family` will *always* be
-`AF_INET`. To test this, you can use the included libevent2 package's definition
-of `libevent2:+af-inet+` or `libevent2:+af-inet-6+` (`le:` for short).
+`ip-address-family` will be either `+af-inet+` or `+af-inet6+`.
 
 ### tcp-send
 Open an asynchronous TCP connection to a host (IP or hostname) and port, once
@@ -259,9 +257,8 @@ on it), check out [write-socket-data](#write-socket-data).
 Note that the `host` can be an IP address *or* a hostname, the hostname will
 be looked up asynchronously via libevent's DNS implementation. Also note that
 the DNS lookup does __not__ use [dns-lookup](#dns-lookup), but directly calls
-into the libevent DNS functions, so [IPV6](https://github.com/orthecreedence/cl-async/issues/7) 
-and [x86-64](https://github.com/orthecreedence/cl-async/issues/15) are both
-supported when using DNS.
+into the libevent DNS functions, so [x86-64](https://github.com/orthecreedence/cl-async/issues/15)
+is supported when using DNS.
 
 ```common-lisp
 ;; definition:
