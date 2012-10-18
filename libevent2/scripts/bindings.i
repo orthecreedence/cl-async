@@ -49,7 +49,7 @@ struct sockaddr_in {
 
 struct sockaddr_in6 {
     unsigned short sin6_family;
-    unsigned short port;
+    unsigned short sin6_port;
     unsigned int sin6_flowinfo;
     /* struct sin6_addr */
     /* unsigned char s6_addr[16] */

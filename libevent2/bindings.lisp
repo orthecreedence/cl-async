@@ -39,7 +39,7 @@
 
 (cffi:defcstruct #.(lispify "sockaddr_in6" 'classname)
 	(#.(lispify "sin6_family" 'slotname) :unsigned-short)
-	(#.(lispify "port" 'slotname) :unsigned-short)
+	(#.(lispify "sin6_port" 'slotname) :unsigned-short)
 	(#.(lispify "sin6_flowinfo" 'slotname) :unsigned-int)
 	(#.(lispify "sin6_addr_0" 'slotname) :unsigned-char)
 	(#.(lispify "sin6_addr_1" 'slotname) :unsigned-char)
