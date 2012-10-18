@@ -254,11 +254,10 @@ Note that `tcp-send` always opens a new connection. If you want to send data on
 and existing connection (and also be able to set new read/write/event callbacks
 on it), check out [write-socket-data](#write-socket-data).
 
-Note that the `host` can be an IP address *or* a hostname, the hostname will
+Note that the `host` can be an IP address *or* a hostname. The hostname will
 be looked up asynchronously via libevent's DNS implementation. Also note that
 the DNS lookup does __not__ use [dns-lookup](#dns-lookup), but directly calls
-into the libevent DNS functions, so [x86-64](https://github.com/orthecreedence/cl-async/issues/15)
-is supported when using DNS.
+into the libevent DNS functions.
 
 ```common-lisp
 ;; definition:
