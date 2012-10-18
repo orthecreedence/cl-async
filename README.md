@@ -1,23 +1,20 @@
 cl-async - Asynchronous operations for Common Lisp
 ==================================================
-So after trying out various non-blocking libraries and frameworks for CL, I was
-a bit unsatisfied. [IOLib](http://common-lisp.net/project/iolib/) is probably the
-best thing out there for non-blocking TCP, but I had a hard time with the 
-interface and using it without beta versions of CFFI. I decided to write a
-library that has very simple to understand concepts, an easy to use interface,
-and is portable across Linux and Windows. It uses [Libevent2](http://libevent.org/)
-as the async backend, which is a fast, stable, portable library for asynchronous
-IO (see my [notes on choosing Libevent](#libevent)).
+Cl-async is a library for general purpose, non-blocking programming in Common
+Lisp. I tried other non-blocking libraries, but they either required a large
+number of dependencies, weren't portable, or were too specialized to one task.
+Cl-async uses [Libevent2](http://libevent.org/) as the async backend, which is
+a fast, stable, portable library for asynchronous IO (see my [notes on choosing Libevent](#libevent)).
 
 The main goal is to provide an experience that makes general asynchronous 
 programming in lisp a delight instead of a chore. Portability and ease of use
 are favored over raw speed.
 
-Although this library is quicklisp-loadable, I _strongly urge you_ to use the
-master branch of this repo until otherwise noted. A lot has been changed/fixed
-since it was included, and I suspect this trend will continue for at least a
-few more weeks. If you do use the quicklisp version, please check the [closed
-issues list](https://github.com/orthecreedence/cl-async/issues?state=closed)
+__Quicklisp note:__ Although this library is quicklisp-loadable, I _strongly
+urge you_ to use the master branch of this repo until otherwise noted. A lot has
+been changed/fixed since it was included, and I suspect this trend will continue
+for at least a few more weeks. If you do use the quicklisp version, please check
+the [closed issues list](https://github.com/orthecreedence/cl-async/issues?state=closed)
 before complaining about something being broken.
 
 *Please note that at the moment I consider this library BETA. I'm doing my best
