@@ -223,15 +223,11 @@ Asynchronously lookup an IP address given a hostname. If the hostname is an IP
 address already, the mechanics are the same although the callback is called
 synchronously.
 
-Please note that at this time, IPV6 is not supported. Libevent has support for
-it, but I don't feel like wrapping up the necessary classes just yet. I'd rather
-get IPV4 going and then focus on IPV6 when everything's working. While the
-`resolve-cb` supports a family parameter, it will always be `AF_INET` until this
-is implemented.
+The `:family` keyword can be one of `+af-inet+`, `+af-inet6+`, `+af-unspec+`.
 
 ```common-lisp
 ;; definition
-(dns-lookup host resolve-cb event-cb)
+(dns-lookup host resolve-cb event-cb &key (family +af-unspec+))
 
 ;; example
 (dns-lookup "www.google.com"
