@@ -1,34 +1,28 @@
 cl-async - Asynchronous operations for Common Lisp
 ==================================================
-So after trying out various non-blocking libraries and frameworks for CL, I was
-a bit unsatisfied. [IOLib](http://common-lisp.net/project/iolib/) is probably the
-best thing out there for non-blocking TCP, but I had a hard time with the 
-interface and using it without beta versions of CFFI. I decided to write a
-library that has very simple to understand concepts, an easy to use interface,
-and is portable across Linux and Windows. It uses [Libevent2](http://libevent.org/)
-as the async backend, which is a fast, stable, portable library for asynchronous
-IO (see my [notes on choosing Libevent](#libevent)).
+Cl-async is a library for general purpose, non-blocking programming in Common
+Lisp. I tried other non-blocking libraries, but they either required a large
+number of dependencies, weren't portable, or were too specialized to one task.
+Cl-async uses [Libevent2](http://libevent.org/) as the async backend, which is
+a fast, stable, portable library for asynchronous IO (see my [notes on choosing Libevent](#libevent)).
 
 The main goal is to provide an experience that makes general asynchronous 
 programming in lisp a delight instead of a chore. Portability and ease of use
 are favored over raw speed.
 
-Although this library is quicklisp-loadable, I _strongly urge you_ to use the
-master branch of this repo until otherwise noted. A lot has been changed/fixed
-since it was included, and I suspect this trend will continue for at least a
-few more weeks. If you do use the quicklisp version, please check the [closed
-issues list](https://github.com/orthecreedence/cl-async/issues?state=closed)
+__Quicklisp note:__ Although this library is quicklisp-loadable, I _strongly
+urge you_ to use the master branch of this repo until otherwise noted. A lot has
+been changed/fixed since it was included, and I suspect this trend will continue
+for at least a few more weeks. If you do use the quicklisp version, please check
+the [closed issues list](https://github.com/orthecreedence/cl-async/issues?state=closed)
 before complaining about something being broken.
-
-*Please note that at the moment I consider this library BETA. I'm doing my best
-to solidify the API and eliminate any bugs. cl-async will most likely get a lot
-more fixes and changes once it's put into production, which should hopefully not
-be too far off. Stay tuned.*
 
 Also note that while the current style of this library is
 [CPS](http://en.wikipedia.org/wiki/Continuation-passing_style), in the future a
 syntactic layer may be built on top of it using [cl-cont](http://common-lisp.net/project/cl-cont/)
 or futures. For now, you're stuck with nested callback HELL __>:)__
+
+*This library's current status is BETA*
 
 The documentation is split into a few main sections.
 
@@ -63,6 +57,8 @@ for more information on these callbacks (and error handling in general).
 - [tcp-send](#tcp-send) _function_
 - [tcp-server](#tcp-server) _function_
 - [close-tcp-server](#close-tcp-server)
+- [socket](#socket) _class_
+  - [socket-data](#socket-data) _accessor_
 - [write-socket-data](#write-socket-data) _function_
 - [set-socket-timeouts](#set-socket-timeouts) _function_
 - [enable-socket](#enable-socket) _function_
@@ -347,6 +343,21 @@ anything.
 ;; definition
 (close-tcp-server tcp-server)
 ```
+
+### socket
+This class is a wrapper around the libevent socket class. It is passed to tcp
+callback functions, and allows you to perform certain actions on the socket
+(such as [closing it](#close-socket), [setting read/write timeouts](#set-socket-timeouts),
+[writing data to it](#write-socket-data), etc).
+
+It also exposes an accessor, [socket-data](#socket-data), which allows you to
+store arbitrary, app-specific data in the socket.
+
+##### socket-data
+This accessor allows you to set arbitrary data into the [socket](#socket) class,
+which can be useful if your app needs to match specific data to a socket (for
+instance if you are proxying, you could use `socket-data` to store a reference
+to the outgoing socket inside the incoming socket).
 
 ### write-socket-data
 Write data to an existing socket (such as one passed into a `tcp-send` read-cb).

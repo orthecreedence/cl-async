@@ -43,6 +43,7 @@
 
 (defun version<= (str-version str-cmp)
   ;; fuck it
+  ;(asdf:version-satisfies (asdf:find-system :cffi) "0.10.7.0")
   t)
 
 (defmacro cffi-type (type)

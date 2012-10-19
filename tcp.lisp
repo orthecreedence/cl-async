@@ -32,6 +32,7 @@
 
 (defclass socket ()
   ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
+   (data :accessor socket-data :initarg data :initform nil)
    (closed :accessor socket-closed :initarg :closed :initform nil)
    (direction :accessor socket-direction :initarg :direction :initform nil))
   (:documentation "Wraps around a libevent bufferevent socket."))
@@ -140,7 +141,7 @@
     (loop for n = (le:evbuffer-remove input buffer-c bufsize)
           while (< 0 n) do
       (dotimes (i n)
-        (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :char i)))
+        (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :unsigned-char i)))
       (funcall data-cb (subseq buffer-lisp 0 n)))))
 
 (defun write-to-evbuffer (evbuffer data)
@@ -262,6 +263,10 @@
                  ((< 0 (logand events le:+bev-event-timeout+))
                   (setf event (make-instance 'tcp-timeout :socket socket :code -1 :msg "Socket timed out")))
 
+                 ;; connection reset by peer
+                 ((eq errcode 104)
+                  (setf event (make-instance 'tcp-eof :socket socket)))
+
                  ;; since we don't know what the error was, just spawn a general
                  ;; error.
                  (t
@@ -307,7 +312,7 @@
                             (cffi:callback tcp-write-cb)
                             (cffi:callback tcp-event-cb)
                             per-conn-data-pointer)
-      ;(set-socket-timeouts bev 5 5 :socket-is-bufferevent t)
+      (set-socket-timeouts bev -1 -1 :socket-is-bufferevent t)
       (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+)))))
 
 (cffi:defcallback tcp-accept-err-cb :void ((listener :pointer) (data-pointer :pointer))
@@ -321,7 +326,7 @@
                                      :listener listener
                                      :tcp-server tcp-server))))
 
-(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout 30) (write-timeout 30))
+(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1))
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
   (check-event-loop-running)

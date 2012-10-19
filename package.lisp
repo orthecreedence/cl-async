@@ -73,6 +73,9 @@
            #:tcp-accept-error-listener
            #:tcp-accept-error-tcp-server
            #:socket-closed
+           ;; socket class/accessors
+           #:socket
+           #:socket-data
            ;; tcp functions
            #:socket-closed-p
            #:close-socket

@@ -1,7 +1,7 @@
 (asdf:defsystem cl-async
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
-  :version "0.2.1"
+  :version "0.2.4"
   :description "Asynchronous operations for Common Lisp."
   :depends-on (#:cffi #:libevent2 #:babel #:cl-ppcre)
   :components
