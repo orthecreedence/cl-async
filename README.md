@@ -258,6 +258,11 @@ connected send the given data (byte array or string) and process any response
 with the given read callback. Also supports timing out after no data is read /
 written in (in seconds). 
 
+`tcp-send` returns a [socket](#socket) class. If you just want to connect and
+worry about sending data later, you can call `tcp-send` with `data = nil`
+and then later use [write-socket-data](#write-socket-data) to write to the
+socket that `tcp-send` returns.
+
 Note that `tcp-send` always opens a new connection. If you want to send data on
 and existing connection (and also be able to set new read/write/event callbacks
 on it), check out [write-socket-data](#write-socket-data).
@@ -269,7 +274,7 @@ into the libevent DNS functions.
 
 ```common-lisp
 ;; definition:
-(tcp-send host port data read-cb event-cb &key read-timeout write-timeout)
+(tcp-send host port data read-cb event-cb &key read-timeout write-timeout)  =>  socket
 
 ;; example:
 (tcp-send "www.google.com" 80
