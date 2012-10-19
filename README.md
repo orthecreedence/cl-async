@@ -958,12 +958,9 @@ Libevent was chosen for a few reasons:
  - It wraps the socket implementation and buffering in a [simple and wonderful
  API](http://www.wangafu.net/~nickm/libevent-book/Ref6_bufferevent.html).
  - It was very easy to generate bindings for and wrap in CFFI.
- - It works with Windows. This is big for me, since I do a ton of development
- on Windows. Libraries that assume "Y WOULD U PROGRAM ON WINDOWS?!?!LOL" have
- their place, but most people who say this probably use Ubuntu anyway (sorry,
- it just slipped out). Libevent can be compiled on Windows just fine, and
- with a bit of work, I'm assuming this wrapper could be programmed to use the
- IOCP parts of libevent (I think for now it uses select())
+ - It is portable to Windows, and with a bit of work, I'm assuming cl-async
+ could be programmed to use the IOCP parts of libevent (I think for now it uses
+ select()).
  - It comes with asynchronous HTTP client/server implementations. These are not
  trivial, and if libevent makes it easier to have an asynchronous CL webserver
  or client, then hell let's use it.
