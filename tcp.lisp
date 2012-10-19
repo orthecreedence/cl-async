@@ -312,7 +312,7 @@
                             (cffi:callback tcp-write-cb)
                             (cffi:callback tcp-event-cb)
                             per-conn-data-pointer)
-      ;(set-socket-timeouts bev 5 5 :socket-is-bufferevent t)
+      (set-socket-timeouts bev -1 -1 :socket-is-bufferevent t)
       (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+)))))
 
 (cffi:defcallback tcp-accept-err-cb :void ((listener :pointer) (data-pointer :pointer))
@@ -326,7 +326,7 @@
                                      :listener listener
                                      :tcp-server tcp-server))))
 
-(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout 30) (write-timeout 30))
+(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1))
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
   (check-event-loop-running)
