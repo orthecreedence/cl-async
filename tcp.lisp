@@ -353,7 +353,8 @@
         ;; get a DNS base and do an async lookup
         (let ((dns-base (get-dns-base)))
           (attach-data-to-pointer data-pointer dns-base)
-          (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port)))))
+          (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port)))
+    socket))
 
 (defun tcp-server (bind-address port read-cb event-cb &key (backlog -1))
   "Start a TCP listener on the current event loop. Returns a tcp-server class
