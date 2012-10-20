@@ -144,6 +144,29 @@
         (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :unsigned-char i)))
       (funcall data-cb (subseq buffer-lisp 0 n)))))
 
+(defun read-bytes-from-socket (socket num-bytes &key socket-is-evbuffer)
+  "Read num-bytes out of a socket's buffer and return them. If the evbuffer has
+   less bytes than num-bytes, returns nil (ie, try again later)."
+  (let ((bufsize *buffer-size*)
+        (buffer-c *socket-buffer-c*)
+        (buffer-lisp *socket-buffer-lisp*)
+        (input (if socket-is-evbuffer
+                   socket
+                   (le:bufferevent-get-input (socket-c socket))))
+        (data-final nil))
+    (when (<= num-bytes (le:evbuffer-get-length input))
+      (loop for n = (le:evbuffer-remove input buffer-c bufsize)
+            for bytes-to-read = (min num-bytes *buffer-size*)
+            while (< 0 n) do
+        (dotimes (i n)
+          (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :unsigned-char i)))
+        (let ((read-bytes (subseq buffer-lisp 0 n)))
+          (setf data-final (if data-final
+                               (append-array data-final read-bytes)
+                               read-bytes)))
+        (decf num-bytes n))
+      data-final)))
+
 (defun write-to-evbuffer (evbuffer data)
   "Writes data directly to evbuffer."
   (let* ((data (if (stringp data)
@@ -326,7 +349,7 @@
                                      :listener listener
                                      :tcp-server tcp-server))))
 
-(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1))
+(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1) dont-drain-read-buffer)
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
   (check-event-loop-running)
