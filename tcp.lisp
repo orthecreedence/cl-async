@@ -240,9 +240,10 @@
          (socket (getf bev-data :socket))
          (callbacks (get-callbacks data-pointer))
          (read-cb (getf callbacks :read-cb))
-         (event-cb (getf callbacks :event-cb)))
+         (event-cb (getf callbacks :event-cb))
+         (drain-read (socket-drain-read-buffer socket)))
     (catch-app-errors event-cb
-      (cond ((and read-cb (socket-drain-read-buffer socket))
+      (cond ((and read-cb drain-read)
              ;; we have a drain callback, so grab the data form the socket and
              ;; send it in
              (read-socket-data socket (lambda (data) (funcall read-cb socket data))))
@@ -250,10 +251,14 @@
              ;; we got a non-draining callback, let the read-cb know that we
              ;; have data without emptying the read buffer
              (funcall read-cb socket nil))
+            (drain-read
+             ;; no callback associated, and we're asking to drain, to clean out
+             ;; the evbuffer without calling a cb
+             (le:evbuffer-drain (le:bufferevent-get-input bev) *buffer-size*))
             (t
-             ;; no callback associated, so just drain the buffer so it doesn't
-             ;; pile up
-             (le:evbuffer-drain (le:bufferevent-get-input bev) *buffer-size*))))))
+             ;; we're not draining and we don't have a callback, so this is
+             ;; probably sme sort of stream operation
+             nil)))))
 
 (cffi:defcallback tcp-write-cb :void ((bev :pointer) (data-pointer :pointer))
   "Called when data is finished being written to a socket."
