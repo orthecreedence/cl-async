@@ -1,12 +1,4 @@
-(ql:quickload :cl-async)
-(ql:quickload :trivial-gray-streams)
-(ql:quickload :chunga)
-(ql:quickload :flexi-streams)
-(ql:quickload :drakma)
-
-(defpackage :stream-test
-  (:use :cl :trivial-gray-streams :chunga :flexi-streams))
-(in-package :stream-test)
+(in-package :cl-async)
 
 (defclass async-stream (trivial-gray-stream-mixin)
   ((socket :accessor stream-socket :initarg :socket :initform nil)))
@@ -14,6 +6,7 @@
 (defclass async-input-stream (fundamental-binary-input-stream async-stream) ())
 (defclass async-io-stream (async-input-stream async-output-stream) ())
 
+;; -----------------------------------------------------------------------------
 ;; base stream
 ;; -----------------------------------------------------------------------------
 (defmethod stream-output-type ((stream async-stream))
@@ -21,34 +14,70 @@
 
 (defmethod open-stream-p ((stream async-stream))
   (let ((socket (stream-socket stream)))
-    (and (subtypep (type-of socket) 'as:socket)
-         (not (as:socket-closed-p socket)))))
+    (not (as:socket-closed-p socket))))
 
 (defmethod close ((stream async-stream) &key abort)
-  (format t "CLOSE STREAM: abort: ~a~%" abort))
+  (declare (ignore abort))
+  (as:close-socket (stream-socket stream)))
 
+;; -----------------------------------------------------------------------------
 ;; output stream
 ;; -----------------------------------------------------------------------------
-(defmethod stream-clear-output ((stream async-output-stream)) t)
-(defmethod stream-finish-output ((stream async-output-stream)) t)
-(defmethod stream-force-output ((stream async-output-stream)) t)
+(defmethod stream-clear-output ((stream async-output-stream))
+  (when (open-stream-p stream)
+    (let* ((socket (stream-socket stream))
+           (bev (socket-c socket))
+           (bev-output (le::bufferevent-get-output bev)))
+      (loop while (< 0 (le:evbuffer-get-length bev-output)) do
+        (le:evbuffer-drain bev-output 9999999)))))
+
+(defmethod stream-force-output ((stream async-output-stream))
+  (when (open-stream-p stream)
+    (let* ((socket (stream-socket stream))
+           (bev (socket-c socket))
+           (bev-output (le:bufferevent-get-output bev))
+           (fd (le:bufferevent-getfd bev)))
+      (le:evbuffer-write bev-output fd))))
+
+(defmethod stream-finish-output ((stream async-output-stream))
+  (stream-force-output stream))
 
 (defmethod stream-write-byte ((stream async-output-stream) byte)
   (when (open-stream-p stream)
-    (format t "WRITE BYTE: ~s~%" (code-char byte))))
+    (write-socket-data (stream-socket stream) (vector byte))))
   
 (defmethod stream-write-sequence ((stream async-stream) sequence start end &key)
-  (format t "WRITE SEQ: ~a -> ~a~%~a~%------~%" start end (babel:octets-to-string sequence :encoding :utf-8)))
+  (when (open-stream-p stream)
+    (let ((seq (subseq sequence start end)))
+      (format t "seq: ~a~%" seq)
+      (write-socket-data (stream-socket stream) seq))))
 
+;; -----------------------------------------------------------------------------
 ;; input stream
 ;; -----------------------------------------------------------------------------
-(defmethod stream-clear-input ((stream async-input-stream)) t)
+(defmethod stream-clear-input ((stream async-input-stream))
+  (when (open-stream-p stream)
+    (let* ((socket (stream-socket stream))
+           (bev (socket-c socket))
+           (bev-input (le::bufferevent-get-input bev)))
+      (loop while (< 0 (le:evbuffer-get-length bev-input)) do
+        (le:evbuffer-drain bev-input 9999999)))))
+
 (defmethod stream-read-byte ((stream async-input-stream))
-  (format t "READ BYTE~%"))
+  (let ((byte (as::read-bytes-from-socket (stream-socket stream) 1)))
+    (if byte
+        (aref byte 0)
+        :eof)))
+
 (defmethod stream-read-sequence ((stream async-input-stream) sequence start end &key)
-  (format t "READ SEQ: ~a -> ~a~%" start end))
+  (let ((seq (as::read-bytes-from-socket (stream-socket stream) (- end start))))
+    (if seq
+        (progn
+          (replace sequence seq)
+          end)
+        start)))
 
-(defparameter *as-stream* (make-instance 'async-io-stream :socket (make-instance 'as:socket)))
-(defparameter *fl-stream* (make-flexi-stream (make-chunked-stream *as-stream*)))
+;(defparameter *as-stream* (make-instance 'async-io-stream :socket (make-instance 'as:socket)))
+;(defparameter *fl-stream* (make-flexi-stream (make-chunked-stream *as-stream*)))
 
-(drakma:http-request "http://api.musio.com/" :stream *fl-stream*)
+;(drakma:http-request "http://api.musio.com/" :stream *fl-stream*)

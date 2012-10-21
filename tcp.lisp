@@ -34,7 +34,8 @@
   ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
    (data :accessor socket-data :initarg data :initform nil)
    (closed :accessor socket-closed :initarg :closed :initform nil)
-   (direction :accessor socket-direction :initarg :direction :initform nil))
+   (direction :accessor socket-direction :initarg :direction :initform nil)
+   (drain-read-buffer :accessor socket-drain-read-buffer :initarg :drain-read-buffer :initform t))
   (:documentation "Wraps around a libevent bufferevent socket."))
 
 (defclass tcp-server ()
@@ -155,8 +156,8 @@
                    (le:bufferevent-get-input (socket-c socket))))
         (data-final nil))
     (when (<= num-bytes (le:evbuffer-get-length input))
-      (loop for n = (le:evbuffer-remove input buffer-c bufsize)
-            for bytes-to-read = (min num-bytes *buffer-size*)
+      (loop for bytes-to-read = (min num-bytes bufsize)
+            for n = (le:evbuffer-remove input buffer-c bytes-to-read)
             while (< 0 n) do
         (dotimes (i n)
           (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :unsigned-char i)))
@@ -243,11 +244,18 @@
          (read-cb (getf callbacks :read-cb))
          (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
-      (if read-cb
-          ;; we have a callback, so grab the data form the socket and send it in
-          (read-socket-data socket (lambda (data) (funcall read-cb socket data)))
-          ;; no callback associated, so just drain the buffer so it doesn't pile up
-          (le:evbuffer-drain (le:bufferevent-get-input bev) *buffer-size*)))))
+      (cond ((and read-cb (socket-drain-read-buffer socket))
+             ;; we have a drain callback, so grab the data form the socket and
+             ;; send it in
+             (read-socket-data socket (lambda (data) (funcall read-cb socket data))))
+            (read-cb
+             ;; we got a non-draining callback, let the read-cb know that we
+             ;; have data without emptying the read buffer
+             (funcall read-cb socket nil))
+            (t
+             ;; no callback associated, so just drain the buffer so it doesn't
+             ;; pile up
+             (le:evbuffer-drain (le:bufferevent-get-input bev) *buffer-size*))))))
 
 (cffi:defcallback tcp-write-cb :void ((bev :pointer) (data-pointer :pointer))
   "Called when data is finished being written to a socket."
@@ -356,7 +364,7 @@
 
   (let* ((data-pointer (create-data-pointer))
          (bev (le:bufferevent-socket-new *event-base* -1 +bev-opt-close-on-free+))
-         (socket (make-instance 'socket :c bev :direction 'out)))
+         (socket (make-instance 'socket :c bev :direction 'out :drain-read-buffer (not dont-drain-read-buffer))))
     (le:bufferevent-setcb bev (cffi:callback tcp-read-cb) (cffi:callback tcp-write-cb) (cffi:callback tcp-event-cb) data-pointer)
     (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
     (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :write-cb write-cb))
