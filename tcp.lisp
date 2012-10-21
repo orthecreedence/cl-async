@@ -155,18 +155,17 @@
                    socket
                    (le:bufferevent-get-input (socket-c socket))))
         (data-final nil))
-    (when (<= num-bytes (le:evbuffer-get-length input))
-      (loop for bytes-to-read = (min num-bytes bufsize)
-            for n = (le:evbuffer-remove input buffer-c bytes-to-read)
-            while (< 0 n) do
-        (dotimes (i n)
-          (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :unsigned-char i)))
-        (let ((read-bytes (subseq buffer-lisp 0 n)))
-          (setf data-final (if data-final
-                               (append-array data-final read-bytes)
-                               read-bytes)))
-        (decf num-bytes n))
-      data-final)))
+    (loop for bytes-to-read = (min num-bytes bufsize (le:evbuffer-get-length input))
+          for n = (le:evbuffer-remove input buffer-c bytes-to-read)
+          while (< 0 n) do
+      (dotimes (i n)
+        (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :unsigned-char i)))
+      (let ((read-bytes (subseq buffer-lisp 0 n)))
+        (setf data-final (if data-final
+                             (append-array data-final read-bytes)
+                             read-bytes)))
+      (decf num-bytes n))
+    data-final))
 
 (defun write-to-evbuffer (evbuffer data)
   "Writes data directly to evbuffer."

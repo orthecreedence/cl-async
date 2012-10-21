@@ -83,18 +83,18 @@
 
 (defmethod stream-read-byte ((stream async-input-stream))
   "Read one byte from the underlying socket."
-  (let ((byte (as::read-bytes-from-socket (stream-socket stream) 1)))
+  (let ((byte (read-bytes-from-socket (stream-socket stream) 1)))
     (if byte
         (aref byte 0)
         :eof)))
 
 (defmethod stream-read-sequence ((stream async-input-stream) sequence start end &key)
   "Attempt to read a sequence of bytes from the underlying socket."
-  (let ((seq (as::read-bytes-from-socket (stream-socket stream) (- end start))))
+  (let ((seq (read-bytes-from-socket (stream-socket stream) (- end start))))
     (if seq
         (progn
           (replace sequence seq)
-          end)
+          (length seq))
         start)))
 
 ;(defparameter *as-stream* (make-instance 'async-io-stream :socket (make-instance 'as:socket)))
