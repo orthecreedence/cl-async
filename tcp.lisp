@@ -178,11 +178,11 @@
     ;; copy into evbuffer using existing c buffer
     (loop while (< 0 data-length) do
       (let ((bufsize (min data-length *buffer-size*)))
-      (dotimes (i bufsize)
-        (setf (cffi:mem-aref buffer-c :unsigned-char i) (aref data data-index))
-        (incf data-index))
-      (le:evbuffer-add evbuffer buffer-c bufsize)
-      (decf data-length bufsize)))))
+        (dotimes (i bufsize)
+          (setf (cffi:mem-aref buffer-c :unsigned-char i) (aref data data-index))
+          (incf data-index))
+        (le:evbuffer-add evbuffer buffer-c bufsize)
+        (decf data-length bufsize)))))
 
 (defun write-socket-data (socket data &key read-cb write-cb event-cb)
   "Write data into a cl-async socket. Allows specifying read/write/event
@@ -191,7 +191,6 @@
    callback)"
   (check-socket-open socket)
 
-  ;; if a write-cb was passed, set it into the socket's callbacks
   (let* ((bev (socket-c socket))
          ;; since this gets called in multiple places, wrap it in a function
          (do-send (lambda ()
