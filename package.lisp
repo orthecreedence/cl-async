@@ -105,5 +105,13 @@
            #:http-request-resource
            #:http-request-querystring
            #:http-request-headers
-           #:http-request-body)
+           #:http-request-body
+
+           ;; futures
+           #:future
+           #:make-future
+           #:futurep
+           #:finish
+           #:attach-cb
+           #:attach)
   (:nicknames :as))
