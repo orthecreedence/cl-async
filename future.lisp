@@ -23,7 +23,7 @@
   (when (future-finished future)
     (let ((callbacks (future-callbacks future))
           (values (future-values future)))
-      (dolist (cb callbacks)
+      (dolist (cb (reverse callbacks))
         (apply cb values)))
     ;; clear out the callbacks if specified
     (when clear (setf (future-callbacks future) nil))
