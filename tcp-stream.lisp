@@ -45,7 +45,7 @@
         (le:evbuffer-drain bev-output 9999999)))))
 
 (defmethod stream-force-output ((stream async-output-stream))
-  "Force an output stream to send its dat to the underlying fd."
+  "Force an output stream to send its data to the underlying fd."
   (when (open-stream-p stream)
     (let* ((socket (stream-socket stream))
            (bev (socket-c socket))
@@ -62,11 +62,10 @@
   (when (open-stream-p stream)
     (write-socket-data (stream-socket stream) (vector byte))))
   
-(defmethod stream-write-sequence ((stream async-stream) sequence start end &key)
+(defmethod stream-write-sequence ((stream async-output-stream) sequence start end &key)
   "Write a sequence of bytes to the underlying socket."
   (when (open-stream-p stream)
     (let ((seq (subseq sequence start end)))
-      (format t "seq: ~a~%" seq)
       (write-socket-data (stream-socket stream) seq))))
 
 ;; -----------------------------------------------------------------------------
