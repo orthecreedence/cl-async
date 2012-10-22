@@ -96,7 +96,3 @@
           (length seq))
         start)))
 
-;(defparameter *as-stream* (make-instance 'async-io-stream :socket (make-instance 'as:socket)))
-;(defparameter *fl-stream* (make-flexi-stream (make-chunked-stream *as-stream*)))
-
-;(drakma:http-request "http://api.musio.com/" :stream *fl-stream*)
