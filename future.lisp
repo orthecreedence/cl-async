@@ -3,7 +3,7 @@
 (defclass future ()
   ((callbacks :accessor future-callbacks :initform nil
     :documentation "A list that holds all callbacks associated with this future.")
-   (preserve-callbacks :accessor future-preserve-callbacks :initarg :preserve-callbacks :iniftform nil
+   (preserve-callbacks :accessor future-preserve-callbacks :initarg :preserve-callbacks :initform nil
     :documentation "When nil (the default) detaches callbacks after running
                     future.")
    (finished :accessor future-finished :initform nil
