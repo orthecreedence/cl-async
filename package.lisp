@@ -110,6 +110,8 @@
            ;; futures
            #:future
            #:make-future
+           #:set-event-handler
+           #:signal-event
            #:futurep
            #:finish
            #:attach-cb

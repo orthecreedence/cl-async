@@ -3,11 +3,18 @@
 (defclass future ()
   ((callbacks :accessor future-callbacks :initform nil
     :documentation "A list that holds all callbacks associated with this future.")
+   (event-handler :accessor future-event-handler :initarg :event-handler :initform nil
+    :documentation "Holds a callback that will handle events as they happen on
+                    the future. If events occur and there is no handler, they
+                    will be saved, in order, and sent to the handler once one is
+                    attached.")
    (preserve-callbacks :accessor future-preserve-callbacks :initarg :preserve-callbacks :initform nil
     :documentation "When nil (the default) detaches callbacks after running
                     future.")
    (finished :accessor future-finished :initform nil
     :documentation "Marks if a future has been finished or not.")
+   (events :accessor future-events :initform nil
+    :documentation "Holds events for this future, to be handled with event-handler.")
    (values :accessor future-values :initform nil
     :documentation "Holds the finished value(s) of the computer future. Will be
                     apply'ed to the callbacks."))
@@ -23,6 +30,29 @@
 (defun futurep (future)
   "Is this a future?"
   (subtypep (type-of future) 'future))
+
+(defun run-event-handler (future)
+  "If an event handler exists for this future, run all events through the
+   handler and clear the events out once run."
+  (let ((event-handler (future-event-handler future)))
+    (when event-handler
+      (dolist (event (nreverse (future-events future)))
+        (funcall event-handler event))
+      (setf (future-events future) nil))))
+
+(defun set-event-handler (future cb)
+  "Sets the event handler for a future. If the handler is attached after events
+   have already been caught, they will be passed into the handler, in order,
+   directly after it is added."
+  (setf (future-event-handler future) cb)
+  (run-event-handler future))
+
+(defun signal-event (future condition)
+  "Signal that an event has happened on a future. If the future has an event
+   handler, the given condition will be passed to it, otherwise the event will
+   be saved until an event handler has been attached."
+  (push condition (future-events future))
+  (run-event-handler future))
 
 (defun run-future (future)
   "Run all callbacks on a future *IF* the future is finished (and has computed
