@@ -308,14 +308,16 @@ Bind an asynchronous listener to the given bind address/port and start accepting
 connections on it. It takes read and event callbacks (like [tcp-send](#tcp-send)).
 If `nil` is passed into the bind address, it effectively binds the listener to
 "0.0.0.0" (listens from any address). A connection backlog can be specified when
-creating the server via `:backlog`, which defaults to -1.
+creating the server via `:backlog`, which defaults to -1. A `connect-cb` can
+be passed in as a keyword arg, which sets a callback to be called whenever a new
+connection comes in.
 
 This function returns a `tcp-server` class, which allows you to close the
 server via [close-tcp-server](#close-tcp-server).
 
 ```common-lisp
 ;; definition
-(tcp-server bind-address port read-cb event-cb &key (backlog -1))  =>  tcp-server
+(tcp-server bind-address port read-cb event-cb &key connect-cb (backlog -1))  =>  tcp-server
 
 ;; example
 (tcp-server "127.0.0.1" 8080
@@ -335,6 +337,12 @@ server via [close-tcp-server](#close-tcp-server).
 
 `socket` should never be dealt with directly as it may change in the future,
 however it *can* be passed to other cl-async functions that take a `socket` arg.
+
+##### connect-cb definition
+
+```common-lisp
+(lambda (socket) ...)
+```
 
 ### close-tcp-server
 Takes a `tcp-server` class, created by [tcp-server](#tcp-server) and closes the
