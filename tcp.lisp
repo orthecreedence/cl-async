@@ -304,6 +304,11 @@
       ;; track the connection. will be decf'ed when close-socket is called
       (incf *incoming-connection-count*)
 
+      ;; if we have a read cb, let it know a connection has happened by calling
+      ;; with nil data.
+      (let ((connect-cb (getf callbacks :connect-cb)))
+        (when connect-cb (funcall connect-cb socket)))
+
       ;; save the callbacks given to the listener onto each socket individually
       (save-callbacks per-conn-data-pointer callbacks)
       (le:bufferevent-setcb bev
@@ -355,7 +360,7 @@
           (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port)))
     socket))
 
-(defun tcp-server (bind-address port read-cb event-cb &key (backlog -1))
+(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1))
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (check-event-loop-running)
@@ -377,7 +382,7 @@
       (attach-data-to-pointer data-pointer server-class)
       ;; setup an accept error cb
       (le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
-      (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb))
+      (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
       ;; return the listener, which can be closed by the app if needed
       server-class)))
 
