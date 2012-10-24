@@ -53,9 +53,3 @@ assigned libevent objects) using the data pointer and do what it needs to with
 them. Data pointers (and the data attached to them in the function/data hash
 tables) are freed once no longer needed. This is managed completely by cl-async.
 
-<a id="todo"></a>
-### TODO
-Please see the [Issues list](https://github.com/orthecreedence/cl-async/issues)
-for the complete list of what needs to be done.
-
-

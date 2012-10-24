@@ -3,36 +3,37 @@ title: Home
 layout: default
 ---
 
-test page
+cl-async - Asynchronous operations for Common Lisp
+==================================================
+Cl-async is a library for general purpose, non-blocking programming library for
+Common Lisp. I tried other non-blocking libraries, but they either require a
+large number of dependencies, aren't portable, or are too specialized to one task.
+Cl-async uses [Libevent2](http://libevent.org/) as the async backend, which is
+a fast, stable, portable library for asynchronous IO (see my
+[notes on choosing Libevent](/cl-async/implementation-notes#libevent)).
 
-{% highlight cl %}
-(defun lol ()
-  (format t "Testing.~%"))
-(as:delay (lambda () (lol)) :time 6)
-{% endhighlight %}
+The main goal is to provide an experience that makes general asynchronous 
+programming in lisp a delight instead of a chore. Portability and ease of use
+are favored over raw speed.
 
-- bullet 1
-- bullet 2
-  - sub bullet omg lol wtf
-  - poop
-- can i haz ur coat
+[__Full documentation__](/cl-async/documentation)
 
-__bold__ text and *italic* text r cool, but
-[links are teh shizzz](/cl-async/base).
+__Quicklisp note:__ Although this library is quicklisp-loadable, I _strongly
+urge you_ to use the master branch of this repo until otherwise noted. A lot has
+been changed/fixed since it was included, and I suspect this trend will continue
+for at least a few more weeks. If you do use the quicklisp version, please check
+the [closed issues list](https://github.com/orthecreedence/cl-async/issues?state=closed)
+before complaining about something being broken.
 
-<a id="header-brah"></a>
-header, brah
-============
-this is a paragraph that should look ok. some paragraphs look like
-smelly butthole but this paragraph trumps all others in style and
-designs. steez, baby.
+Also note that while the current style of this library is
+[CPS](http://en.wikipedia.org/wiki/Continuation-passing_style), in the future a
+syntactic layer may be built on top of it using [cl-cont](http://common-lisp.net/project/cl-cont/)
+or futures. For now, you're stuck with nested callback HELL __>:)__
 
-this tests the wonderful spacing in paragraphs. it is the bomb.
-omg lol wtf.
+*This library's current status is BETA*
 
-subheader
----------
-damn, that h2 is lookin fiiiiiiine.
+<a id="todo"></a>
+### cl-async TODO
+Please see the [Issues list](https://github.com/orthecreedence/cl-async/issues)
+for the complete list of what needs to be done.
 
-### docs r funlol
-help
