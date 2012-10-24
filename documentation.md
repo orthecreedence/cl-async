@@ -8,10 +8,10 @@ Documentation
 =============
 cl-async is broken into a few sections.
 
-* [Base system](/cl-async/base-system)
+* [Base system](/cl-async/base)
 * [Timers](/cl-async/timers)
 * [Signal handling](/cl-async/signal-handling)
 * [DNS](/cl-async/dns)
 * [TCP](/cl-async/tcp)
 * [HTTP](/cl-async/http)
-* [Misc functionality](/cl-async/misc)
+* [Stats](/cl-async/stats)
