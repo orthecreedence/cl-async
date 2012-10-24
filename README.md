@@ -44,10 +44,10 @@ before complaining about something being broken.
 See the [TODO list](https://github.com/orthecreedence/cl-async/issues).
 
 ### Notes
-Note that while the current style of this library is
-[CPS](http://en.wikipedia.org/wiki/Continuation-passing_style), in the future a
-syntactic layer may be built on top of it using [cl-cont](http://common-lisp.net/project/cl-cont/)
-or futures. For now, you're stuck with nested callback HELL __>:)__
+While the current style of this library is [CPS](http://en.wikipedia.org/wiki/Continuation-passing_style),
+in the future a syntactic layer may be built on top of it using
+[cl-cont](http://common-lisp.net/project/cl-cont/) or futures. For now, you're
+stuck with nested callback HELL __>:)__
 
 ### License
 As always, my code is MIT licenced. Do whatever the hell you want with it. Enjoy!
