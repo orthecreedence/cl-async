@@ -1,11 +1,31 @@
-body {margin: 0 0; font-family: arial; font-size: 14px; line-height: 1.6; color: #000; background: #fff;}
+body {margin: 0; padding: 0; font-family: arial; font-size: 14px; line-height: 1.6; color: #000; background: #fff;}
 
-div#container {width: 800px; margin: 0 auto; padding: 20px; background: #fff; border-radius: 6px;}
+.clear:after {content: "."; display: block; height: 0; clear: both; visibility: hidden;}
+.clear {display: inline-block;}
+/* hide IE mac \*/
+* html .clear {height: 1%;}
+.clear {display: block;}
+/* */
 
-nav ul {margin: 0; padding: 0 8px; list-style: none; background: #666; border: px solid #333; border-radius: 3px;}
+div#container {width: 600px; margin: 0 auto; padding: 0 20px; background: #fff; border-radius: 6px;}
+
+header {margin: 0 0 32px 0; padding: 0 0px; border-top: 10px solid #41a3a4;}
+header h1 {float: left; margin: 0; padding: 0; font-size: 24px;}
+header h1 a {color: #666;}
+header h1 a:hover {color: #333; text-decoration: none;}
+
+nav {float: right; margin: 13px 0 0 0;}
+nav ul {margin: 0 0 0 0; padding: 0 0; list-style: none; line-height: 1;}
 nav ul li {display: inline;}
-nav ul li a {display: inline-block; margin: 0 10px 0 0; padding: 2px 6px; font-size: 10px; text-transform: uppercase; color: #eee;}
-nav ul li a:hover {background: #333;}
+nav ul li a {display: inline-block; margin: 0 0 0 0; padding: 2px 8px; font-weight: bold; color: #41a3a4; font-size: 11px; text-transform: uppercase;}
+nav ul li:last-child a {padding-right: 0px; }
+nav ul li a:hover {color: #000; text-decoration: none;}
+
+footer {margin: 32px 0 0 0; padding: 4px 0; font-size: 11px; border-top: 2px solid #ddd;}
+footer ul {float: left; list-style: none; margin: 0; padding: 0;}
+footer ul li {display: inline-block; padding: 0 6px 0 9px; line-height: 1; border-left: 1px solid #ccc;}
+footer ul li:first-child {border-left: 0; padding-left: 0;}
+footer p {float: right; margin: 0; padding: 0;}
 
 a {color: #4183C4; text-decoration: none;}
 a:hover {text-decoration: underline;}
@@ -81,4 +101,5 @@ p {margin: 15px 0;}
 .highlight .vi{color:#008080}
 .highlight .il{color:#009999}
 .highlight .gc{color:#999;background-color:#EAF2F5}
+
 
