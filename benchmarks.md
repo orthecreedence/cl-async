@@ -7,10 +7,11 @@ Benchmarks
 ==========
 So far, benchmarks are favorable. From my intial profiling, it seems most of the
 time is spent in CFFI when on Windows, but in linux (of course) CFFI is a minor
-speed bump, and the actual cl-async:* functions are the main slowdown (which is
+speed bump, and the actual `cl-async:*` functions are the main slowdown (which is
 good). Because of this, I really recommend running any production server on
 linux. This isn't so much because Windows sucks, but because I feel like most
-lisp implementations focus on linux performance a lot more than Windows.
+lisp implementations focus on linux performance a lot more than Windows (at
+least when it comes to CFFI).
 
 On my (already crowded) Linode 512, cl-async (for both [tcp-server](#tcp-server)
 and [http-server](#http-server)) was able to process about 40K concurrent
