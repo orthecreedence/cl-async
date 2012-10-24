@@ -87,7 +87,7 @@ On another neighboring Linode, I ran
 httperf --server=1.2.3.4 --port=9009 --num-conns=40000 --num-calls=10 --hog --rate=6000
 {% endhighlight %}
 
-In the `stats` output, I was getting:
+In the [stats](/cl-async/stats#stats) output, I was getting:
 
     incoming: 12645
     outgoing: 0
