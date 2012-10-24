@@ -1,6 +1,6 @@
-body {background: #f8f8f8; font-family: arial; font-size: 14px; line-height: 1.6; color: #000;}
+body {margin: 30px 0; font-family: arial; font-size: 14px; line-height: 1.6; color: #000; background: #fff;}
 
-div#container {width: 800px; margin: 0 auto; padding: 20px; background: #fff: border-radius: 6px;}
+div#container {width: 800px; margin: 0 auto; padding: 20px; background: #fff; border-radius: 6px;}
 
 a {color: #4183C4; text-decoration: none;}
 a:hover {text-decoration: underline;}
