@@ -24,7 +24,7 @@ Please see the [documentation page](/cl-async/documentation). Also, for example
 usage see the [examples section](/cl-async/examples).
 
 <a id="todo"></a>
-### cl-async TODO
+### TODO
 Please see the [Issues list](https://github.com/orthecreedence/cl-async/issues)
 for the complete list of what needs to be done.
 
