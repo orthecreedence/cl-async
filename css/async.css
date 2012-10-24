@@ -1,6 +1,9 @@
-body {margin: 30px 0; font-family: arial; font-size: 14px; line-height: 1.6; color: #000; background: #fff;}
+body {margin: 0 0; font-family: arial; font-size: 14px; line-height: 1.6; color: #000; background: #fff;}
 
 div#container {width: 800px; margin: 0 auto; padding: 20px; background: #fff; border-radius: 6px;}
+
+header ul {margin: 0; padding: 0; list-style: none; background: #666; border: px solid #444; border-radius: 3px;}
+header ul li a {color: #ccc;}
 
 a {color: #4183C4; text-decoration: none;}
 a:hover {text-decoration: underline;}
@@ -13,7 +16,7 @@ h5 {font-size: 14px;}
 ul {margin: 15px 0; padding: 0 0 0 30px;}
 p {margin: 15px 0;}
 
-/* highlighting */
+/* highlighting, stole direct off github's css */
 .highlight pre {background-color:#f8f8f8; border: 1px solid #ccc; font-size: 13px; line-height: 19px; overflow: auto; padding: 6px 10px; border-radius: 3px}
 .highlight .c{color:#999988;font-style:italic}
 .highlight .err{color:#a61717;background-color:#e3d2d2}
