@@ -1,5 +1,5 @@
 html {overflow-y: scroll; overflow-x: auto;}
-body {margin: 0; padding: 0; font-family: arial; font-size: 14px; line-height: 1.6; color: #000; background: #fff;}
+body {margin: 0; padding: 0; font-family: arial; font-size: 14px; line-height: 1.6; color: #222; background: #fff;}
 
 .clear:after {content: "."; display: block; height: 0; clear: both; visibility: hidden;}
 .clear {display: inline-block;}
