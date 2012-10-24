@@ -18,9 +18,10 @@ test page
 - can i haz ur coat
 
 __bold__ text and *italic* text r cool, but
-[links are teh shizzz](http://asdf.com).
+[links are teh shizzz](/cl-async/base).
 
-header, brah<a id="header-brah"></a>
+<a id="header-brah"></a>
+header, brah
 ============
 this is a paragraph that should look ok. some paragraphs look like
 smelly butthole but this paragraph trumps all others in style and
