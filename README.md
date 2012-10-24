@@ -19,7 +19,6 @@ full documentation, examples, etc.
 Quick links:
 
 - [Documentation](http://orthecreedence.github.com/cl-async/documentation)
-  - API Documentation
     - [Base system](http://orthecreedence.github.com/cl-async/base)<br/>
     - [Timers](http://orthecreedence.github.com/cl-async/timers)<br/>
     - [Signal handling](http://orthecreedence.github.com/cl-async/signal-handling)<br/>
@@ -27,7 +26,7 @@ Quick links:
     - [TCP](http://orthecreedence.github.com/cl-async/tcp)<br/>
     - [HTTP](http://orthecreedence.github.com/cl-async/http)<br/>
     - [Stats](http://orthecreedence.github.com/cl-async/stats)<br/>
-  - [Event callbacks and error handling](http://orthecreedence.github.com/cl-async/event-handling)
+    - [Event callbacks and error handling](http://orthecreedence.github.com/cl-async/event-handling)
 - [Examples](http://orthecreedence.github.com/cl-async/examples)
 - [Benchmarks](http://orthecreedence.github.com/cl-async/benchmarks)
 - [Implementation notes](http://orthecreedence.github.com/cl-async/implementation-notes)
