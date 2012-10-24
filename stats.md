@@ -8,6 +8,7 @@ Stastistics
 
 - [stats](#stats) _function_
 
+<a id="stats"></a>
 ### stats
 This function returns data on the current state of the cl-async internals. How
 many incoming/outgoing connections, how many registered callbacks, how many

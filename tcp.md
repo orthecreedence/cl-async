@@ -28,6 +28,7 @@ TCP
   - [tcp-accept-error-tcp-server](#tcp-accept-error-tcp-server) _accessor_
 - [socket-closed](#socket-closed) _condition_
 
+<a id="tcp-send"></a>
 ### tcp-send
 Open an asynchronous TCP connection to a host (IP or hostname) and port, once
 connected send the given data (byte array or string) and process any response
@@ -61,6 +62,7 @@ directly calls into the libevent DNS functions.
           #'my-app-error-handler)
 {% endhighlight %}
 
+<a id="tcp-send-read-cb"></a>
 ##### read-cb definition
 
 {% highlight cl %}
@@ -70,6 +72,7 @@ directly calls into the libevent DNS functions.
 `socket` should never be dealt with directly as it may change in the future,
 however it *can* be passed to other cl-async functions that take a `socket` arg.
 
+<a id="tcp-send-write-cb"></a>
 ##### write-cb definition
 
 {% highlight cl %}
@@ -79,6 +82,7 @@ however it *can* be passed to other cl-async functions that take a `socket` arg.
 The `write-cb` will be called after data written to the socket's buffer is
 flushed out to the socket.
 
+<a id="tcp-server"></a>
 ### tcp-server
 Bind an asynchronous listener to the given bind address/port and start accepting
 connections on it. It takes read and event callbacks (like [tcp-send](#tcp-send)).
@@ -105,6 +109,7 @@ server via [close-tcp-server](#close-tcp-server).
             nil)  ;; use *default-event-handler* as the event handler for this operation
 {% endhighlight %}
 
+<a id="tcp-server-read-cb"></a>
 ##### read-cb definition
 
 {% highlight cl %}
@@ -114,12 +119,14 @@ server via [close-tcp-server](#close-tcp-server).
 `socket` should never be dealt with directly as it may change in the future,
 however it *can* be passed to other cl-async functions that take a `socket` arg.
 
+<a id="tcp-server-connect-cb"></a>
 ##### connect-cb definition
 
 {% highlight cl %}
 (lambda (socket) ...)
 {% endhighlight %}
 
+<a id="close-tcp-server"></a>
 ### close-tcp-server
 Takes a `tcp-server` class, created by [tcp-server](#tcp-server) and closes the
 server it wraps. This can be useful if you want to shut down a TCP server
@@ -133,6 +140,7 @@ anything.
 (close-tcp-server tcp-server)
 {% endhighlight %}
 
+<a id="socket"></a>
 ### socket
 This class is a wrapper around the libevent socket class. It is passed to tcp
 callback functions, and allows you to perform certain actions on the socket
@@ -142,12 +150,14 @@ callback functions, and allows you to perform certain actions on the socket
 It also exposes an accessor, [socket-data](#socket-data), which allows you to
 store arbitrary, app-specific data in the socket.
 
+<a id="socket-data"></a>
 ##### socket-data
 This accessor allows you to set arbitrary data into the [socket](#socket) class,
 which can be useful if your app needs to match specific data to a socket (for
 instance if you are proxying, you could use `socket-data` to store a reference
 to the outgoing socket inside the incoming socket).
 
+<a id="write-socket-data"></a>
 ### write-socket-data
 Write data to an existing socket (such as one passed into a `tcp-send` read-cb).
 Data can be a byte array or string (converted to a byte array via babel).
@@ -177,12 +187,10 @@ If you were to close the socket right after sending the data to the buffer,
 there's no guarantee it would be sent out. Setting a `write-cb` guarantees that
 the data is sent when called.
 
-##### write-cb definition
+Note that `write-socket-data`'s callbacks are identical to [tcp-send](#tcp-send)'s
+and if specified, will override those set by [tcp-send](#tcp-send).
 
-{% highlight cl %}
-(lambda (socket) ...)
-{% endhighlight %}
-
+<a id="set-socket-timeouts"></a>
 ### set-socket-timeouts
 Set the read/write timeouts (in seconds) on a socket. If nil, the timeout is
 cleared, otherwise if a number, the timeout is set into the socket such that
@@ -202,6 +210,7 @@ throw a [socket-closed](#socket-closed) condition.
 (set-socket-timeouts socket 10.5 nil)
 {% endhighlight %}
 
+<a id="enable-socket"></a>
 ### enable-socket
 Enable read/write monitoring on a socket. This is done automatically by
 [tcp-send](#tcp-send) and [write-socket-data](#write-socket-data) so you
@@ -216,6 +225,7 @@ probably don't need to worry too much about when to use it. On the other hand,
 (enable-socket socket :read t :write t)  ; enable read and write monitoring on this socket
 {% endhighlight %}
 
+<a id="disable-socket"></a>
 ### disable-socket
 Disable read/write monitoring on a socket. This is useful if you get the data
 you need from a socket, but while you're processing the data, you don't want the
@@ -227,6 +237,7 @@ associated with the socket until enabled again.
 (disable-socket socket &key read write)
 {% endhighlight %}
 
+<a id="socket-closed-p"></a>
 ### socket-closed-p
 Determines if a socket has been closed already.
 
@@ -235,6 +246,7 @@ Determines if a socket has been closed already.
 (socket-closed-p socket)
 {% endhighlight %}
 
+<a id="close-socket"></a>
 ### close-socket
 Close a socket and free its callbacks.
 
@@ -246,16 +258,19 @@ throw a [socket-closed](#socket-closed) condition.
 (close-socket socket)
 {% endhighlight %}
 
+<a id="tcp-info"></a>
 ### tcp-info
-_extends [connection-info](#connection-info)_
+_extends [connection-info](/cl-async/base#connection-info)_
 
 Base TCP condition, says "something" happened on a TCP connection.
 
+<a id="tcp-info-tcp-socket"></a>
 ##### tcp-socket
 Holds the TCP socket class. Can be used to write to the socket or close it.
 
+<a id="tcp-error"></a>
 ### tcp-error
-_extends [connection-error](#connection-error) and [tcp-info](#tcp-info)_
+_extends [connection-error](/cl-async/base#connection-error) and [tcp-info](#tcp-info)_
 
 Describes a general error on a TCP connection. If this is triggered, the socket
 will generally be closed by cl-async, and the app doesn't need to worry about
@@ -263,34 +278,41 @@ doing this. If the app *does* want to close the socket, it can do so by getting
 it from the [tcp-socket](#tcp-socket) accessor on the condition and using
 [close-socket](#close-socket).
 
+<a id="tcp-eof"></a>
 ### tcp-eof
 _extends [tcp-info](#tcp-info)_
 
 Triggered when the peer on a TCP connection closes the socket.
 
+<a id="tcp-timeout"></a>
 ### tcp-timeout
 _extends [tcp-error](#tcp-error)_
 
 Triggered when a TCP connection times out.
 
+<a id="tcp-refused"></a>
 ### tcp-refused
 _extends [tcp-error](#tcp-error)_
 
 Triggered when a TCP connection is refused by the peer.
 
+<a id="tcp-accept-error"></a>
 ### tcp-accept-error
 _extends [tcp-error](#tcp-error)_
 
 Passed to a [tcp-server](#tcp-server)'s `event-cb` when there is an error
 accepting a client connection.
 
+<a id="tcp-accept-error-listener"></a>
 ##### tcp-accept-error-listener
 The libevent listener c object. Provided in case your app needs to process it in
 some way.
 
+<a id="tcp-accept-error-tcp-server"></a>
 ##### tcp-accept-error-tcp-server
 The `tcp-server` object that the accept error happened on.
 
+<a id="socket-closed"></a>
 ### socket-closed
 _extends [tcp-error](#tcp-error)_
 

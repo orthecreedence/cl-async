@@ -9,6 +9,7 @@ DNS
 - [dns-lookup](#dns-lookup) _function_
 - [dns-error](#dns-error) _condition_
 
+<a id="dns-lookup"></a>
 ### dns-lookup
 Asynchronously lookup an IP address given a hostname. If the hostname is an IP
 address already, the mechanics are the same although the callback is called
@@ -27,6 +28,7 @@ The `:family` keyword can be one of `+af-inet+`, `+af-inet6+`, `+af-unspec+`.
             (lambda (err) (format t "err: ~a~%" err)))
 {% endhighlight %}
 
+<a id="dns-lookup-resolve-cb"></a>
 ##### resolve-cb definition
 
 {% highlight cl %}
@@ -35,6 +37,7 @@ The `:family` keyword can be one of `+af-inet+`, `+af-inet6+`, `+af-unspec+`.
 
 `ip-address-family` will be either `+af-inet+` or `+af-inet6+`.
 
+<a id="dns-error"></a>
 ### dns-error
 _extends [connection-error](/cl-async/base#connection-error)_
 

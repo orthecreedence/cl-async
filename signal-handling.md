@@ -10,6 +10,7 @@ Signal handling
 - [free-signal-handler](#free-signal-handler) _function_
 - [clear-signal-handlers](#clear-signal-handlers) _function_
 
+<a id="signal-handler"></a>
 ### signal-handler
 Create a signal handler. This listens for the given `signo` not only in the 
 event loop, but also in the lisp app as well. It replaces the current lisp
@@ -38,11 +39,13 @@ In the case of `signal-handler`, `event-cb` will *only* be called when an error
 occurs in the signal callback. There are no cl-async events that occur during
 signal processing.
 
+<a id="signal-handler-signal-cb"></a>
 ##### signal-cb definition
 {% highlight cl %}
 (lambda (signo) ...)
 {% endhighlight %}
 
+<a id="free-signal-handler"></a>
 ### free-signal-handler
 Unbinds a signal handler. This deletes the libevent signal listener event and
 also restores the lisp signal handler that existed before calling
@@ -58,6 +61,7 @@ also restores the lisp signal handler that existed before calling
                     (free-signal-handler 2)))
 {% endhighlight %}
 
+<a id="clear-signal-handlers"></a>
 ### clear-signal-handlers
 Clear all cl-async bound signal handlers. This deletes the libevent event
 listeners and restores the original lisp signal handlers for each bound signal.

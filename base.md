@@ -57,10 +57,10 @@ application error handling.
 
 <a id="default-event-cb"></a>
 ##### default-event-cb and catch-app-errors
-Please see the [application error handling](#application-error-handling) section
-for complete information on these. They correspond 1 to 1 with
-[\*default-event-handler\*](#default-event-handler) and
-[\*catch-application-errors\*](#catch-application-errors). Setting them when
+Please see the [application error handling](/cl-async/event-handling#application-error-handling)
+section for complete information on these. They correspond 1 to 1 with
+[\*default-event-handler\*](/cl-async/event-handling#default-event-handler) and
+[\*catch-application-errors\*](/cl-async/event-handling#catch-application-errors). Setting them when
 calling `start-event-loop` not only cuts down on `setf`s you have to do when
 starting your evented app, but also uses thread-local versions of the vars,
 meaning you can start multiple event loops in multiple threads wiithout using

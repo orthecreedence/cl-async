@@ -23,6 +23,7 @@ HTTP
 - [http-timeout](#http-timeout) _condition_
 - [http-refused](#http-refused) _condition_
 
+<a id="http-client"></a>
 ### http-client
 Asynchronously communicates with an HTTP server. Allows setting the method,
 headers, and body in the request which should be enough to make just about any
@@ -51,6 +52,7 @@ The `timeout` arg is in seconds.
              :timeout 5)
 {% endhighlight %}
 
+<a id="http-client-request-cb"></a>
 ##### request-cb definition
 
 {% highlight cl %}
@@ -62,6 +64,7 @@ The `timeout` arg is in seconds.
 - `body-byte-array` is pretty self-explanatory. Convert to string w/ babel if
 needed.
 
+<a id="http-server"></a>
 ### http-server
 Start a server that asynchronously processes HTTP requests. It takes data out of
 the request and populates the [http-request](#http-request) with it, which is
@@ -86,6 +89,7 @@ If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
                (http-response req :body "hai")))
 {% endhighlight %}
 
+<a id="http-server-request-cb"></a>
 ##### request-cb definition
 
 {% highlight cl %}
@@ -94,6 +98,7 @@ If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
 
 `http-request` is a on object of type [http-request](#http-request).
 
+<a id="close-http-server"></a>
 ### close-http-server
 Takes an `http-server` class, created by [http-server](#http-server) and closes
 the server it wraps. This can be useful if you want to shut down a HTTP server
@@ -118,6 +123,7 @@ the server. In other words, a graceful exit.
                       (close-http-server server))))
 {% endhighlight %}
 
+<a id="http-response"></a>
 ### http-response
 This is the function called by the application using an [http-server](#http-server)
 after it is done processing a request. It takes the [http-request](#http-request)
@@ -137,6 +143,7 @@ response we're sending.
                               :body "{\"name\":\"larry\"}")))
 {% endhighlight %}
 
+<a id="http-request"></a>
 ### http-request
 This is the class passed to an HTTP request callback after a request comes in
 from [http-server](#http-server). It must also be passed into
@@ -148,9 +155,11 @@ something like `(format t "~a~%" http-request)`, you'll get a nice, detailed
 overview of the request (method, uri, headers, content body length (in bytes),
 etc).
 
+<a id="http-request-accessors"></a>
 ### http-request accessors
 This details the accessors in `http-request`.
 
+<a id="http-request-c"></a>
 ##### http-request-c
 Pulls out the pointer to the libevent request object. This is included just in
 case extra processing is needed on the request that the library doesn't handle
@@ -158,6 +167,7 @@ for you. In other words, ignore this accessor unless you know the libevent evhtt
 internals and are comfortable using the libevent CFFI wrapper included with
 cl-async.
 
+<a id="http-request-method"></a>
 ##### http-request-method
 Pull out the request method. This is a symbol, and will be one of
 
@@ -165,6 +175,7 @@ Pull out the request method. This is a symbol, and will be one of
 '(GET POST HEAD PUT DELETE OPTIONS TRACE CONNECT PATCH)
 {% endhighlight %}
 
+<a id="http-request-uri"></a>
 ##### http-request-uri
 This is the full request URI in the request. For instance, if the request was
 
@@ -172,6 +183,7 @@ This is the full request URI in the request. For instance, if the request was
 
 Then this will be the string "GET /documents/45?format=json"
 
+<a id="http-request-resource"></a>
 ##### http-request-resource
 This is a string of the request resource (path). A request of
 
@@ -179,10 +191,12 @@ This is a string of the request resource (path). A request of
 
 The resource will be "/mysite/index"
 
+<a id="http-request-querystring"></a>
 ##### http-request-querystring
 The querystring from the request (string). Everything after (and not including)
 the "?"
 
+<a id="http-request-headers"></a>
 ##### http-request-headers
 All headers given in the request as an alist:
 
@@ -191,6 +205,7 @@ All headers given in the request as an alist:
   ("Accept" . "text/html"))
 {% endhighlight %}
 
+<a id="http-request-body"></a>
 ##### http-request-body
 Get the body out of the request. Since we don't make any assumptions about the
 data that's being passed around, it is a byte array. Convert it to a string in
@@ -201,21 +216,25 @@ are *not* decoded by `http-server`. As such, it is currently up to your app to
 do this. *This may change in the future* and if so, I will do my best to make the
 change backwards compatible.
 
+<a id="http-info"></a>
 ### http-info
-_extends [connection-info](#connection-info)_
+_extends [connection-info](/cl-async/base#connection-info)_
 
 Base HTTP condition.
 
+<a id="http-error"></a>
 ### http-error
-_extends [connection-error](#connection-error) and [http-info](#http-info)_
+_extends [connection-error](/cl-async/base#connection-error) and [http-info](#http-info)_
 
 Base HTTP error condition.
 
+<a id="http-timeout"></a>
 ### http-timeout
 _extends [http-error](#http-error)_
 
 Triggered when an HTTP connection times out.
 
+<a id="http-refused"></a>
 ### http-refused
 _extends [http-error](#http-error)_
 
