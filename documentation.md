@@ -8,7 +8,8 @@ Documentation
 =============
 
 - API Documentation
-  - [Base system](/cl-async/base) - Start/exit event loops, details base
+  - [Base system](/cl-async/base)<br/>
+  Start/exit event loops, details base
     conditions used by other parts of the system
   - [Timers](/cl-async/timers) - Delay functions to be executed later
   - [Signal handling](/cl-async/signal-handling) - Set up and clear out signal
