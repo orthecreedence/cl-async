@@ -1,7 +1,19 @@
 body {background: #f8f8f8; font-family: arial; font-size: 14px; line-height: 1.6; color: #000;}
 
-div#container {width: 800px; margin: 0 auto; padding: 20px; background: white: border-radius: 6px;}
+div#container {width: 800px; margin: 0 auto; padding: 20px; background: #fff: border-radius: 6px;}
 
+a {color: #4183C4; text-decoration: none;}
+a:hover {text-decoration: underline;}
+h1, h2, h3, h4, h5 {margin: 20px 0 10px 0; font-weight: bold;}
+h1 {font-size: 28px;}
+h2 {font-size: 24px; border-bottom: 1px solid #ccc;}
+h3 {font-size: 18px;}
+h4 {font-size: 16px;}
+h5 {font-size: 14px;}
+ul {margin: 15px 0; padding: 0 0 0 30px;}
+p {margin: 15px 0;}
+
+/* highlighting */
 .highlight pre {background-color:#f8f8f8; border: 1px solid #ccc; font-size: 13px; line-height: 19px; overflow: auto; padding: 6px 10px; border-radius: 3px}
 .highlight .c{color:#999988;font-style:italic}
 .highlight .err{color:#a61717;background-color:#e3d2d2}
@@ -65,13 +77,3 @@ div#container {width: 800px; margin: 0 auto; padding: 20px; background: white: b
 .highlight .il{color:#009999}
 .highlight .gc{color:#999;background-color:#EAF2F5}
 
-a {color: #4183C4; text-decoration: none;}
-a:hover {text-decoration: underline;}
-h1, h2, h3, h4, h5 {margin: 20px 0 10px 0; font-weight: bold;}
-h1 {font-size: 28px;}
-h2 {font-size: 24px; border-bottom: 1px solid #ccc;}
-h3 {font-size: 18px;}
-h4 {font-size: 16px;}
-h5 {font-size: 14px;}
-ul {margin: 15px 0; padding: 0 0 0 30px;}
-p {margin: 15px 0;}
