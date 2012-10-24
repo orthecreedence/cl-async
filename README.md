@@ -10,6 +10,10 @@ The main goal is to provide an experience that makes general asynchronous
 programming in lisp a delight instead of a chore. Portability and ease of use
 are favored over raw speed.
 
+### Documentation
+Please see the [cl-async website](http://orthecreedence.github.com/cl-async/)
+for full documentation.
+
 __Quicklisp note:__ Although this library is quicklisp-loadable, I _strongly
 urge you_ to use the master branch of this repo until otherwise noted. A lot has
 been changed/fixed since it was included, and I suspect this trend will continue
