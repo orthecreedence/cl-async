@@ -8,17 +8,18 @@ Implementation notes
 <a id="libevent"></a>
 ### Libevent
 Libevent was chosen for a few reasons:
- - It provides a socket API. The IOLib library was too undocumented for me
- to figure out. Plus things like delayed functions/timers were not clear to me.
- - It wraps the socket implementation and buffering in a [simple and wonderful
- API](http://www.wangafu.net/~nickm/libevent-book/Ref6_bufferevent.html).
- - It was very easy to generate bindings for and wrap in CFFI.
- - It is portable to Windows, and with a bit of work, I'm assuming cl-async
- could be programmed to use the IOCP parts of libevent (I think for now it uses
- select()).
- - It comes with asynchronous HTTP client/server implementations. These are not
- trivial, and if libevent makes it easier to have an asynchronous CL webserver
- or client, then hell let's use it.
+
+- It provides a socket API. The IOLib library was too undocumented for me
+to figure out. Plus things like delayed functions/timers were not clear to me.
+- It wraps the socket implementation and buffering in a [simple and wonderful
+API](http://www.wangafu.net/~nickm/libevent-book/Ref6_bufferevent.html).
+- It was very easy to generate bindings for and wrap in CFFI.
+- It is portable to Windows, and with a bit of work, I'm assuming cl-async
+could be programmed to use the IOCP parts of libevent (I think for now it uses
+select()).
+- It comes with asynchronous HTTP client/server implementations. These are not
+trivial, and if libevent makes it easier to have an asynchronous CL webserver
+or client, then hell let's use it.
 
 The bindings for libevent are auto-generated. I'm not proud of the bindings
 themselves, but because I planned to completely wrap them all along, didn't put
