@@ -39,6 +39,7 @@ ul {margin: 15px 0; padding: 0 0 0 30px;}
 ul ul {margin: 0;}
 p {margin: 15px 0;}
 code {margin: 0 2px; padding: 0 5px; white-space: nowrap; font-family: Consolas, "Liberation Mono", Courier, monospace; background: #f8f8f8; border: 1px solid #eaeaea; border-radius: 3px;}
+pre code {white-space: pre; margin: 0; padding: 0; background: none; border: none;}
 
 /* highlighting, stole direct off github's css */
 .highlight pre {white-space: pre; background-color:#f8f8f8; border: 1px solid #ccc; font-size: 13px; line-height: 19px; overflow: auto; padding: 6px 10px; border-radius: 3px}
