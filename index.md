@@ -16,21 +16,12 @@ The main goal is to provide an experience that makes general asynchronous
 programming in lisp a delight instead of a chore. Portability and ease of use
 are favored over raw speed.
 
-[__Full documentation__](/cl-async/documentation)
-
-__Quicklisp note:__ Although this library is quicklisp-loadable, I _strongly
-urge you_ to use the master branch of this repo until otherwise noted. A lot has
-been changed/fixed since it was included, and I suspect this trend will continue
-for at least a few more weeks. If you do use the quicklisp version, please check
-the [closed issues list](https://github.com/orthecreedence/cl-async/issues?state=closed)
-before complaining about something being broken.
-
-Also note that while the current style of this library is
-[CPS](http://en.wikipedia.org/wiki/Continuation-passing_style), in the future a
-syntactic layer may be built on top of it using [cl-cont](http://common-lisp.net/project/cl-cont/)
-or futures. For now, you're stuck with nested callback HELL __>:)__
-
 *This library's current status is BETA*
+
+<a id="documentation"></a>
+### Documentation
+Please see the [documentation page](/cl-async/documentation). Also, for example
+usage see the [examples section](/cl-async/examples).
 
 <a id="todo"></a>
 ### cl-async TODO

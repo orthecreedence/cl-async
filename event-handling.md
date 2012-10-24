@@ -51,18 +51,18 @@ and an `event-cb` is not specified for an operation, the function assigned to
 this variable will be used as the `event-cb`. The default:
 
 {% highlight cl %}
-(lambda (err)
-  ;; throw the error so we can wrap it in a handler-case
-  (handler-case (error err)
+(lambda (ev)
+  ;; throw the event so we can wrap it in a handler-case
+  (handler-case (error ev)
     ;; got a connection error, throw it (must do this explicitely since
     ;; connection-error extends connection-info)
-    (connection-error () (error err))
+    (connection-error () (error ev))
 
     ;; this is just info, let it slide
     (connection-info () nil)
 
     ;; this an actual error. throw it back to toplevel
-    (t () (error err))))
+    (t () (error ev))))
 {% endhighlight %}
 
 This can be changed by your application if different behavior is desired.
