@@ -2,9 +2,10 @@ body {margin: 0 0; font-family: arial; font-size: 14px; line-height: 1.6; color:
 
 div#container {width: 800px; margin: 0 auto; padding: 20px; background: #fff; border-radius: 6px;}
 
-nav ul {margin: 0; padding: 2px 8px; list-style: none; background: #666; border: px solid #333; border-radius: 3px;}
+nav ul {margin: 0; padding: 0 8px; list-style: none; background: #666; border: px solid #333; border-radius: 3px;}
 nav ul li {display: inline;}
-nav ul li a {color: #eee;}
+nav ul li a {display: inline-block; margin: 0 10px 0 0; padding: 2px 6px; font-size: 10px; text-transform: uppercase; color: #eee;}
+nav ul li a:hover {background: #333;}
 
 a {color: #4183C4; text-decoration: none;}
 a:hover {text-decoration: underline;}
