@@ -5,6 +5,8 @@ layout: default
 
 DNS
 ===
+This section details resolving hostnames to addresses, as well as
+conditions/events that occur while using the DNS system.
 
 - [dns-lookup](#dns-lookup) _function_
 - [dns-error](#dns-error) _condition_

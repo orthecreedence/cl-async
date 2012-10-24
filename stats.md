@@ -5,6 +5,9 @@ layout: default
 
 Stastistics
 ===========
+Cl-async keeps internal records of what's going on inside of it. This section
+goes over how to peek into this data for a current snapshot of what's going on
+in your app.
 
 - [stats](#stats) _function_
 

@@ -5,7 +5,6 @@ layout: default
 
 Examples
 ========
-
 Some limited examples are given in the [documentation](/cl-async/documentation),
 but more in-depth example usages are a great way to learn. This section will
 give some basic usage examples to get you started, and you can view more

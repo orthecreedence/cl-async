@@ -6,6 +6,8 @@ layout: default
 <a id="timers"></a>
 Timers/delayed functions
 ========================
+This section deals with setting up functions to run later (either on the next
+event loop pass or at a specific time in the future).
 
 - [delay](#delay) _function_
 - [timer](#timer) _function (deprecated)_

@@ -5,7 +5,7 @@ layout: default
 
 Drivers built on cl-async
 =========================
-I plan on building and releasing a number of drivers on top of cl-async:
+A number of drivers are planned to be built on top of cl-async
 
 - [beanstalkd](https://github.com/orthecreedence/beanstalk-async)
 - MongoDB

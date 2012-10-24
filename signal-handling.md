@@ -5,6 +5,8 @@ layout: default
 
 Signal handling
 ===============
+This section goes over how to tie into your operating system's signaling system
+so your application can listen to the signals passed to it and act accordingly.
 
 - [signal-handler](#signal-handler) _function_
 - [free-signal-handler](#free-signal-handler) _function_

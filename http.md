@@ -5,6 +5,8 @@ layout: default
 
 HTTP
 ====
+This section detials sending and receiving data over HTTP, and also the events
+and conditions one might run into while using the HTTP system.
 
 - [http-client](#http-client) _function_
 - [http-server](#http-server) _function_

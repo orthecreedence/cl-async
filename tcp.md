@@ -5,6 +5,9 @@ layout: default
 
 TCP
 ===
+This section details sending and receving data over TCP, along with how to deal
+with cl-async sockets. It also goes over conditions/events one might run into
+while using the TCP system.
 
 - [tcp-send](#tcp-send) _function_
 - [tcp-server](#tcp-server) _function_
