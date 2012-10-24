@@ -6,7 +6,6 @@ layout: default
 <a id="documentation"></a>
 Documentation
 =============
-cl-async is broken into a few sections.
 
 - __API Documentation__
   - [Base system](/cl-async/base)

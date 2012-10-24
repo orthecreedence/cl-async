@@ -26,9 +26,9 @@ the operation that generated the condition, or a default event handler that
 deals with the condition).
 
 Note that the following variables are also controllable on a per-event-loop
-basis via the [start-event-loop](#start-event-loop) keyword arguments
+basis via the [start-event-loop](/cl-async/base#start-event-loop) keyword arguments
 `:catch-app-errors` and `:default-event-cb`. It might actually be favorable to
-use [start-event-loop](#start-event-loop) since it creates thread-local versions
+use [start-event-loop](/cl-async/base#start-event-loop) since it creates thread-local versions
 of these variables when instantiating, which can be useful if running event
 loops in multiple threads.
 
