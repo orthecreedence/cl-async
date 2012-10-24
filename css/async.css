@@ -41,7 +41,7 @@ p {margin: 15px 0;}
 code {margin: 0 2px; padding: 0 5px; white-space: nowrap; font-family: Consolas, "Liberation Mono", Courier, monospace; background: #f8f8f8; border: 1px solid #eaeaea; border-radius: 3px;}
 
 /* highlighting, stole direct off github's css */
-.highlight pre {background-color:#f8f8f8; border: 1px solid #ccc; font-size: 13px; line-height: 19px; overflow: auto; padding: 6px 10px; border-radius: 3px}
+.highlight pre {white-space: pre; background-color:#f8f8f8; border: 1px solid #ccc; font-size: 13px; line-height: 19px; overflow: auto; padding: 6px 10px; border-radius: 3px}
 .highlight .c{color:#999988;font-style:italic}
 .highlight .err{color:#a61717;background-color:#e3d2d2}
 .highlight .k{font-weight:bold}
