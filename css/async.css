@@ -1,0 +1,14 @@
+body {background: #eee; font-family: arial; font-size: 14px; line-height: 1.6; color: #000;}
+
+container {width: 800px; margin: 0 auto; padding: 20px 0;}
+
+a {color: #4183C4;}
+a:hover {text-decoration: underline;}
+h1, h2, h3, h4, h5 {margin: 20px 0 10px 0; font-weight: bold;}
+h1 {font-size: 28px;}
+h2 {font-size: 24px; border-bottom: 1px solid #ccc;}
+h3 {font-size: 18px;}
+h4 {font-size: 16px;}
+h5 {font-size: 14px;}
+ul {margin: 15px 0; padding: 0 0 0 30px;}
+p {margin: 15px 0;}
