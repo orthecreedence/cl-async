@@ -20,7 +20,7 @@ test page
 __bold__ text and *italic* text r cool, but
 [links are teh shizzz](http://asdf.com).
 
-header, brah
+header, brah<a id="header-brah"></a>
 ============
 this is a paragraph that should look ok. some paragraphs look like
 smelly butthole but this paragraph trumps all others in style and
