@@ -20,9 +20,18 @@ test page
 __bold__ text and *italic* text r cool, but
 [links are teh shizzz](http://asdf.com).
 
+header, brah
+============
 this is a paragraph that should look ok. some paragraphs look like
 smelly butthole but this paragraph trumps all others in style and
 designs. steez, baby.
 
 this tests the wonderful spacing in paragraphs. it is the bomb.
 omg lol wtf.
+
+subheader
+---------
+damn, that h2 is lookin fiiiiiiine.
+
+### docs r funlol
+help
