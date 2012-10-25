@@ -74,19 +74,24 @@
         (future-values future) values)
   (run-future future))
 
-(defun attach-cb (future-return cb)
+(defun attach-cb (future-values cb)
   "Attach a callback to a future. The future must be the first value in a list
-   of values (car future-return) OR the future-return will be apply'ed to cb."
-  (let* ((future future-return)
-         (future (if (futurep future) future (car future-return))))
+   of values (car future-values) OR the future-values will be apply'ed to cb."
+  (let* ((future future-values)
+         (future (if (futurep future) future (car future-values)))
+         (cb-return-future (make-future))
+         (cb-wrapped (lambda (&rest args)
+                       (apply #'finish
+                              (append (list cb-return-future)
+                                      (multiple-value-list (apply cb args)))))))
     ;; if we were indeed passed a future, attach the callback to it AND run the
     ;; future if it has finished.
     (if (futurep future)
         (progn
-          (push cb (future-callbacks future))
+          (push cb-wrapped (future-callbacks future))
           (run-future future))
         ;; not a future, just a value. run the callback directly
-        (apply cb future-return))))
+        (apply cb-wrapped future-values))))
 
 (defmacro attach (future-gen cb)
   "Macro wrapping attachment of callback to a future (takes multiple values into
