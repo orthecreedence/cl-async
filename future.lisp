@@ -11,6 +11,11 @@
    (preserve-callbacks :accessor future-preserve-callbacks :initarg :preserve-callbacks :initform nil
     :documentation "When nil (the default) detaches callbacks after running
                     future.")
+   (reattach-callbacks :accessor future-reattach-callbacks :initarg :reattach-callbacks :initform t
+    :documentation "When a future's callback returns another future, bind all
+                    callbacks from this future onto the returned one. Allows
+                    values to transparently be derived from many layers deep of
+                    futures, almost like a real call stack.")
    (finished :accessor future-finished :initform nil
     :documentation "Marks if a future has been finished or not.")
    (events :accessor future-events :initform nil
@@ -23,9 +28,10 @@
      future. Also supports attaching callbacks to the future such that they will
      be called with the computed value(s) when ready."))
 
-(defun make-future ()
+(defun make-future (&key preserve-callbacks (reattach-callbacks t))
   "Create a blank future."
-  (make-instance 'future))
+  (make-instance 'future :preserve-callbacks preserve-callbacks
+                         :reattach-callbacks reattach-callbacks))
 
 (defun futurep (future)
   "Is this a future?"
@@ -70,9 +76,15 @@
 
 (defun finish (future &rest values)
   "Mark a future as finished, along with all values it's finished with."
-  (setf (future-finished future) t
-        (future-values future) values)
-  (run-future future))
+  (let ((first-val (car values)))
+    (cond ((and (futurep first-val)
+                (future-reattach-callbacks future))
+           (setf (future-callbacks first-val) (future-callbacks future))
+           (run-future first-val))
+          (t
+           (setf (future-finished future) t
+                 (future-values future) values)
+           (run-future future)))))
 
 (defun attach-cb (future-values cb)
   "Attach a callback to a future. The future must be the first value in a list
@@ -81,9 +93,9 @@
          (future (if (futurep future) future (car future-values)))
          (cb-return-future (make-future))
          (cb-wrapped (lambda (&rest args)
-                       (apply #'finish
-                              (append (list cb-return-future)
-                                      (multiple-value-list (apply cb args)))))))
+                       (let ((cb-return (multiple-value-list (apply cb args))))
+                         (apply #'finish (append (list cb-return-future)
+                                                 cb-return))))))
     ;; if we were indeed passed a future, attach the callback to it AND run the
     ;; future if it has finished.
     (if (futurep future)
@@ -91,7 +103,8 @@
           (push cb-wrapped (future-callbacks future))
           (run-future future))
         ;; not a future, just a value. run the callback directly
-        (apply cb-wrapped future-values))))
+        (apply cb-wrapped future-values))
+    cb-return-future))
 
 (defmacro attach (future-gen cb)
   "Macro wrapping attachment of callback to a future (takes multiple values into
