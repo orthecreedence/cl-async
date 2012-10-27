@@ -41,7 +41,7 @@ The `timeout` arg is in seconds.
 
 {% highlight cl %}
 ;; definition
-(http-client uri request-cb event-cb &key (method 'GET) headers body timeout)
+(http-client uri request-cb event-cb &key (method :GET) headers body timeout)
 
 ;; example
 (http-client "http://musio.com/"
@@ -49,7 +49,7 @@ The `timeout` arg is in seconds.
                (format t "Result: ~s~%" (list status headers (babel:octets-to-string body :encoding :utf-8))))
              (lambda (err)
                (format t "http event: ~a~%" err))
-             :method 'GET
+             :method :GET
              :headers '(("Accept" . "text/html"))
              :timeout 5)
 {% endhighlight %}
@@ -171,10 +171,10 @@ cl-async.
 
 <a id="http-request-method"></a>
 ##### http-request-method
-Pull out the request method. This is a symbol, and will be one of
+Pull out the request method. This is a keyword, and will be one of
 
 {% highlight cl %}
-'(GET POST HEAD PUT DELETE OPTIONS TRACE CONNECT PATCH)
+'(:GET :POST :HEAD :PUT :DELETE :OPTIONS :TRACE :CONNECT :PATCH)
 {% endhighlight %}
 
 <a id="http-request-uri"></a>
