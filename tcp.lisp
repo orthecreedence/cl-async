@@ -204,9 +204,9 @@
   (let ((body nil))
     (read-socket-data evbuffer
                       (lambda (data)
-                        (if body
-                            (setf body (append-array body data))
-                            data))
+                        (setf body (if body
+                                       (append-array body data)
+                                       data)))
                       :socket-is-evbuffer t)
     body))
 

@@ -96,15 +96,15 @@
   "Given a libevent EVHTTP_REQ enum key word, return the appropriate method
    string."
   (case enum
-    (:+evhttp-req-get+ 'GET)
-    (:+evhttp-req-post+ 'POST)
-    (:+evhttp-req-head+ 'HEAD)
-    (:+evhttp-req-put+ 'PUT)
-    (:+evhttp-req-delete+ 'DELETE)
-    (:+evhttp-req-options+ 'OPTIONS)
-    (:+evhttp-req-trace+ 'TRACE)
-    (:+evhttp-req-connect+ 'CONNECT)
-    (:+evhttp-req-patch+ 'PATCH)))
+    (:+evhttp-req-get+ :GET)
+    (:+evhttp-req-post+ :POST)
+    (:+evhttp-req-head+ :HEAD)
+    (:+evhttp-req-put+ :PUT)
+    (:+evhttp-req-delete+ :DELETE)
+    (:+evhttp-req-options+ :OPTIONS)
+    (:+evhttp-req-trace+ :TRACE)
+    (:+evhttp-req-connect+ :CONNECT)
+    (:+evhttp-req-patch+ :PATCH)))
 
 (defun get-method-reverse (method)
   "Given a method string, return the appropriate enum value for the libevent
@@ -112,15 +112,15 @@
   (case (cond
           ((stringp method) (read-from-string method))
           ((symbolp method) method))
-    (GET :+evhttp-req-get+)
-    (POST :+evhttp-req-post+)
-    (HEAD :+evhttp-req-head+)
-    (PUT :+evhttp-req-put+)
-    (DELETE :+evhttp-req-delete+)
-    (OPTIONS :+evhttp-req-options+)
-    (TRACE :+evhttp-req-trace+)
-    (CONNECT :+evhttp-req-connect+)
-    (PATCH :+evhttp-req-patch+)
+    ((GET :GET) :+evhttp-req-get+)
+    ((POST :POST) :+evhttp-req-post+)
+    ((HEAD :HEAD) :+evhttp-req-head+)
+    ((PUT :PUT) :+evhttp-req-put+)
+    ((DELETE :DELETE) :+evhttp-req-delete+)
+    ((OPTIONS :OPTIONS) :+evhttp-req-options+)
+    ((TRACE :TRACE) :+evhttp-req-trace+)
+    ((CONNECT :CONNECT) :+evhttp-req-connect+)
+    ((PATCH :PATCH) :+evhttp-req-patch+)
     (t :+evhttp-req-get+)))
 
 (defun http-get-headers (http-headers)
@@ -325,7 +325,7 @@
               :port (if port (read-from-string port) 80)
               :resource (if resource resource "/"))))))
 
-(defun http-client (uri request-cb event-cb &key (method 'GET) headers body timeout)
+(defun http-client (uri request-cb event-cb &key (method :GET) headers body timeout)
   "Asynchronously contact an HTTP server. Allows passing of method, headers, and
    body. If host is not present in the headers, it is set from the hostname (if
    given) in the URI. Also supports setting a timeout."
