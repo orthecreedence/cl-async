@@ -79,7 +79,13 @@
   (let ((first-val (car values)))
     (cond ((and (futurep first-val)
                 (future-reattach-callbacks future))
+           ;; a future "returned" another future. reattach the callbacks from
+           ;; the original future onto the returned on
            (setf (future-callbacks first-val) (future-callbacks future))
+           ;; if the new future doesnt have an explicit error handler, attach
+           ;; the handler from one future level up
+           (unless (future-event-handler first-val)
+             (setf (future-event-handler first-val) (future-event-handler future)))
            (run-future first-val))
           (t
            (setf (future-finished future) t
