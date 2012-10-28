@@ -202,9 +202,10 @@
            (let ((status (le:evhttp-request-get-response-code request))
                  (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
                  (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
+             ;; ok, this STILL segfaults, even when owning it. screw it for now
              ;; free the request
-             (le:evhttp-request-own request)
-             (le:evhttp-request-free request)
+             ;(le:evhttp-request-own request)
+             ;(le:evhttp-request-free request)
              (funcall request-cb status headers body))))
         (unless (cffi:null-pointer-p dns-base)
           (release-dns-base))
