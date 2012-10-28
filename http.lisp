@@ -206,6 +206,9 @@
              (funcall request-cb status headers body))))
         (release-dns-base)
         (free-pointer-data data-pointer)
+        ;; free the request
+        (le:evhttp-request-own request)
+        (le:evhttp-request-free request)
         ;; free the connection if it exists
         (unless (cffi:null-pointer-p connection)
           (le:evhttp-connection-free connection))))))
