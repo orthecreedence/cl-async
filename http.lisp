@@ -184,6 +184,7 @@
    or to the request-cb for everything else (even HTTP errors are sent through)."
   (let* ((pointer-data (deref-data-from-pointer data-pointer))
          (connection (getf pointer-data :connection))
+         (dns-base (getf pointer-data :dns-base))
          (callbacks (get-callbacks connection))
          (request-cb (getf callbacks :request-cb))
          (event-cb (getf callbacks :event-cb)))
@@ -204,7 +205,8 @@
              ;; This segfaults *sometimes* so are we not supposed to call this?
              ;(le:evhttp-request-free request)
              (funcall request-cb status headers body))))
-        (release-dns-base)
+        (unless (cffi:null-pointer-p dns-base)
+          (release-dns-base))
         (free-pointer-data data-pointer)
         ;; free the request
         (le:evhttp-request-own request)
@@ -347,7 +349,7 @@
     ;; track when the connection closes
     (le:evhttp-connection-set-closecb connection (cffi:callback http-client-close-cb) (cffi:null-pointer))
     (save-callbacks connection (list :request-cb request-cb :event-cb event-cb))
-    (attach-data-to-pointer data-pointer (list :connection connection))
+    (attach-data-to-pointer data-pointer (list :connection connection :dns-base dns-base))
     (when (numberp timeout)
       (le:evhttp-connection-set-timeout connection timeout))
     (let ((host-set nil)
