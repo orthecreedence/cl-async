@@ -28,6 +28,9 @@
      future. Also supports attaching callbacks to the future such that they will
      be called with the computed value(s) when ready."))
 
+(defmethod print-object ((future future) s)
+  (format s "#<Future (~s callbacks) (ev handler: ~s)>" (length (future-callbacks future)) (not (not (future-event-handler future)))))
+
 (defun make-future (&key preserve-callbacks (reattach-callbacks t))
   "Create a blank future."
   (make-instance 'future :preserve-callbacks preserve-callbacks
