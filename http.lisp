@@ -295,54 +295,26 @@
     (599 "Network Connect Timeout Error")
     (t "Unknown Status")))
 
-(defparameter *url-scanner*
-  (cl-ppcre:create-scanner
-    "^([a-z]+)://(([\\w-]+):([\\w-]+)@)?([^/:\?]+)(:([0-9]+))?((/|\\?).*)?$"
-    :case-insensitive-mode t)
-  "Scanner that splits URLs into their multiple parts. A bit sloppy and general,
-   but works great for it's purpose.")
-
-(defun parse-uri (uri)
-  "Given a full URI:
-     http://andrew:mypass@myhost.lol.com:9000/resource?query=string
-   Parse it into a plist:
-     '(:protocol \"http\"
-       :user \"andrew\"
-       :password \"mypass\"
-       :host \"myhost.lol.com\"
-       :port 9000
-       :resource \"/resource?query=string\")"
-  (let ((parts (cadr (multiple-value-list (cl-ppcre:scan-to-strings *url-scanner* uri)))))
-    (when (and parts
-               (not (stringp parts)))
-      (let ((protocol (aref parts 0))
-            (user (aref parts 2))
-            (pass (aref parts 3))
-            (host (aref parts 4))
-            (port (aref parts 6))
-            (resource (aref parts 7)))
-        (list :protocol protocol
-              :user user
-              :password pass
-              :host host
-              :port (if port (read-from-string port) 80)
-              :resource (if resource resource "/"))))))
-
 (defun http-client (uri request-cb event-cb &key (method :GET) headers body timeout)
   "Asynchronously contact an HTTP server. Allows passing of method, headers, and
    body. If host is not present in the headers, it is set from the hostname (if
    given) in the URI. Also supports setting a timeout."
   (check-event-loop-running)
   (let* ((data-pointer (create-data-pointer))
-         (parsed-uri (parse-uri uri))
-         (host (getf parsed-uri :host))
+         (parsed-uri (puri:parse-uri uri))
+         (host (puri:uri-host parsed-uri))
+         (port (or (puri:uri-port parsed-uri) 80))
+         (resource (or (puri:uri-path parsed-uri) "/"))
+         (resource (if (puri:uri-query parsed-uri)
+                       (concatenate 'string resource "?" (puri:uri-query parsed-uri))
+                       resource))
          (dns-base (if (ip-address-p host)
                        (cffi:null-pointer)
                        (get-dns-base)))
          (connection (le:evhttp-connection-base-new *event-base*
                                                     dns-base
                                                     host
-                                                    (getf parsed-uri :port 80)))
+                                                    port))
          (request (le:evhttp-request-new (cffi:callback http-client-cb) data-pointer)))
     ;; track when the connection closes
     (le:evhttp-connection-set-closecb connection (cffi:callback http-client-close-cb) (cffi:null-pointer))
@@ -363,7 +335,7 @@
       (le:evhttp-add-header header-ptr "Connection" "close"))
     (when body
       (write-to-evbuffer (le:evhttp-request-get-output-buffer request) body))
-    (le:evhttp-make-request connection request (get-method-reverse method) (getf parsed-uri :resource))
+    (le:evhttp-make-request connection request (get-method-reverse method) resource)
     (incf *outgoing-http-count*)))
 
 (defun http-server (bind port request-cb event-cb)
