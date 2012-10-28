@@ -202,18 +202,16 @@
            (let ((status (le:evhttp-request-get-response-code request))
                  (body (drain-evbuffer (le:evhttp-request-get-input-buffer request)))
                  (headers (http-get-headers (le:evhttp-request-get-input-headers request))))
-             ;; This segfaults *sometimes* so are we not supposed to call this?
-             ;(le:evhttp-request-free request)
+             ;; free the request
+             (le:evhttp-request-own request)
+             (le:evhttp-request-free request)
              (funcall request-cb status headers body))))
         (unless (cffi:null-pointer-p dns-base)
           (release-dns-base))
-        (free-pointer-data data-pointer)
-        ;; free the request
-        (le:evhttp-request-own request)
-        (le:evhttp-request-free request)
         ;; free the connection if it exists
         (unless (cffi:null-pointer-p connection)
-          (le:evhttp-connection-free connection))))))
+          (le:evhttp-connection-free connection))
+        (free-pointer-data data-pointer)))))
 
 (defun lookup-status-text (status-code)
   "Get the HTTP standard text that goes along with a status code."
