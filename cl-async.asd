@@ -12,5 +12,5 @@
    (:file "dns" :depends-on ("common"))
    (:file "tcp" :depends-on ("dns"))
    (:file "tcp-stream" :depends-on ("tcp"))
-   (:file "http" :depends-on ("dns"))
+   (:file "http" :depends-on ("tcp"))
    (:file "signal" :depends-on ("common"))))
