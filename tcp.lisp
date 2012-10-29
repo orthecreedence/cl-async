@@ -227,9 +227,9 @@
   (let ((body nil))
     (read-socket-data evbuffer
                       (lambda (data)
-                        (if body
-                            (setf body (append-array body data))
-                            data))
+                        (setf body (if body
+                                       (append-array body data)
+                                       data)))
                       :socket-is-evbuffer t)
     body))
 
@@ -291,7 +291,8 @@
                        (not (zerop dns-err)))
                   (setf event (make-instance 'dns-error
                                              :code dns-err
-                                             :msg (le:evutil-gai-strerror dns-err))))
+                                             :msg (le:evutil-gai-strerror dns-err)))
+                  (release-dns-base))
 
                  ;; socket timeout
                  ((< 0 (logand events le:+bev-event-timeout+))
