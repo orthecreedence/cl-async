@@ -18,8 +18,8 @@ complete list of what needs to be done.
 
 <div class="callout">
 	<ul class="clear">
-		<li><a href="/documentation">Docs</a></li>
-		<li><a href="/examples">Examples</a></li>
+		<li><a href="/cl-async/documentation">Docs</a></li>
+		<li><a href="/cl-async/examples">Examples</a></li>
 		<li><a href="https://github.com/orthecreedence/cl-async">Github</a></li>
 	</ul>
 </div>
