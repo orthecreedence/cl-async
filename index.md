@@ -12,7 +12,9 @@ The main goal is to provide an experience that makes general asynchronous
 programming in lisp a delight instead of a chore. Portability and ease of use
 are favored over raw speed.
 
-*This library's current status is BETA*
+*This library's current status is BETA.* Please see the
+[Issues list](https://github.com/orthecreedence/cl-async/issues) for the
+complete list of what needs to be done.
 
 <div class="callout">
 	<ul class="clear">
@@ -22,12 +24,9 @@ are favored over raw speed.
 	</ul>
 </div>
 
-<a id="todo"></a>
-### TODO
-Please see the [Issues list](https://github.com/orthecreedence/cl-async/issues)
-for the complete list of what needs to be done.
-
+### News
+<div class="posts">
 {% for post in site.posts %}
-#### {{ post.date | date_to_long_string }} [{{ post.title }}](/cl-async{{ post.url }})
+##### <small>{{ post.date | date_to_long_string }}</small>[{{ post.title }}](/cl-async{{ post.url }})
 {% endfor %}
-
+</div>
