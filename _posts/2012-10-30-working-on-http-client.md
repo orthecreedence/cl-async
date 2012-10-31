@@ -14,8 +14,8 @@ only supports simple requests:
 This works fine for simpler things, but I'm currently porting Drakma to use
 cl-async, and the easiest way to do this is to support streaming. I built a
 stream implementation on top of the cl-async `socket` type, which seems to work
-great. The problem is that Drakma has a hard time knowing when the response is
-fully loaded. I have three options:
+great (check out the `stream` branch in cl-async). The problem is that Drakma
+has a hard time knowing when the response is fully loaded. I have three options:
 
  1. Reprogram the streaming implementation in Drakma (ie Chunga) to be async.
  This would require a lot of work and state management which, honestly, seems
