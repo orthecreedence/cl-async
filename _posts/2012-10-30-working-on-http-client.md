@@ -47,4 +47,7 @@ response has finished downloading, and `nil` if it's still getting data. Then
 once it's finished, I can just stream the data into Drakma and it won't even
 know that the data loaded async.
 
-That's my latest cl-async update!
+Check out the latest version of the [http-stream implementation](https://github.com/orthecreedence/cl-async/blob/future%2Bstream/http-stream.lisp)
+on the [future+stream branch](https://github.com/orthecreedence/cl-async/tree/future+stream)
+of cl-async. Please note that `http-stream` is completely broken! It can stream
+data out, but doesn't trigger any complete callbacks yet. It's broken.
