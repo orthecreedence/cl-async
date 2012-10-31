@@ -24,11 +24,11 @@ complete list of what needs to be done.
 	</ul>
 </div>
 
-### News
+## News
 <div class="posts">
 {% for post in site.posts %}
 
-#### [{{ post.title }}](/cl-async{{ post.url }})
+### [{{ post.title }}](/cl-async{{ post.url }})
 {{ post.date | date_to_long_string }}
 
 {% endfor %}
