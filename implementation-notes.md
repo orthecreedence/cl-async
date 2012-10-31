@@ -5,6 +5,12 @@ layout: default
 
 Implementation notes
 ====================
+I tried other non-blocking libraries, but they either require a
+large number of dependencies, aren't portable, or are too specialized to one task.
+Cl-async uses [Libevent2](http://libevent.org/) as the async backend, which is
+a fast, stable, portable library for asynchronous IO (see my
+[notes on choosing Libevent](#libevent)).
+
 <a id="libevent"></a>
 ### Libevent
 Libevent was chosen for a few reasons:
