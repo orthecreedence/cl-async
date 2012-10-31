@@ -27,11 +27,7 @@ complete list of what needs to be done.
 ## News
 <ul>
 {% for post in site.posts %}
-
-<li>
-    [{{ post.title }}](/cl-async{{ post.url }})
-    <small>{{ post.date | date_to_long_string }}</small>
-</li>
-
+- [{{ post.title }}](/cl-async{{ post.url }})
+  <small>{{ post.date | date_to_long_string }}</small>
 {% endfor %}
 </ul>
