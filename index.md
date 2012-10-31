@@ -27,6 +27,8 @@ complete list of what needs to be done.
 ### News
 <div class="posts">
 {% for post in site.posts %}
-##### <small>{{ post.date | date_to_long_string }}</small>[{{ post.title }}](/cl-async{{ post.url }})
+
+##### <small>{{ post.date | date_to_long_string }}</small> [{{ post.title }}](/cl-async{{ post.url }})
+
 {% endfor %}
 </div>
