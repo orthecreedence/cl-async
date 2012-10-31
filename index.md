@@ -28,7 +28,8 @@ complete list of what needs to be done.
 <div class="posts">
 {% for post in site.posts %}
 
-#### <small>{{ post.date | date_to_long_string }}</small> [{{ post.title }}](/cl-async{{ post.url }})
+#### [{{ post.title }}](/cl-async{{ post.url }})
+{{ post.date | date_to_long_string }}
 
 {% endfor %}
 </div>

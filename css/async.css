@@ -48,7 +48,7 @@ pre code {white-space: pre; margin: 0; padding: 0; background: none; border: non
 .callout ul li a {display: inline-block; padding: 10px 60px; margin: 0; border-right: 1px solid #ddd;}
 .callout ul li:last-child a {border-right: 0;}
 
-.posts h5 small {float: right;}
+/*.posts h5 small {float: right;}*/
 
 /* highlighting, stole direct off github's css */
 .highlight pre {white-space: pre; background-color:#f8f8f8; border: 1px solid #ccc; font-size: 13px; line-height: 19px; overflow: auto; padding: 6px 10px; border-radius: 3px}
