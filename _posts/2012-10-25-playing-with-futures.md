@@ -19,7 +19,7 @@ The syntax can be changed around to make it prettier, but _currently there is no
 way to convert a synchronous function to being asynchronous without rewriting
 every function that calls it in CPS_. How horrible.
 
-#### Futures
+### Futures
 A future is an object that may recieve a value later. One or more callbacks can
 be attached to it, and these callbacks will be called when the future's value is
 done computing. This makes the syntax for async operations a bit more flexible
@@ -34,7 +34,7 @@ by being smart about how futures are binding to each other.
 I've implemented this type of future in the [future branch](https://github.com/orthecreedence/cl-async/tree/future)
 of cl-async, and plan on using it for building drivers.
 
-#### cl-async syntax
+### cl-async syntax
 I've decided that although I'd like to include my future implementation in the
 master branch of cl-async once I know it's stable, I will not be implementing
 futures in cl-async itself, but rather have futures be the standard for creating
