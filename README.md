@@ -12,7 +12,7 @@ are favored over raw speed.
 
 *This library's current status is BETA*
 
-### Documentation
+### [Documentation](http://orthecreedence.github.com/cl-async/documentation)
 Please see the [cl-async website](http://orthecreedence.github.com/cl-async) for
 full documentation, examples, etc.
 
@@ -42,12 +42,6 @@ before complaining about something being broken.
 
 ### TODO
 See the [TODO list](https://github.com/orthecreedence/cl-async/issues).
-
-### Notes
-While the current style of this library is [CPS](http://en.wikipedia.org/wiki/Continuation-passing_style),
-in the future a syntactic layer may be built on top of it using
-[cl-cont](http://common-lisp.net/project/cl-cont/) or futures. For now, you're
-stuck with nested callback HELL __>:)__
 
 ### License
 As always, my code is MIT licenced. Do whatever the hell you want with it. Enjoy!
