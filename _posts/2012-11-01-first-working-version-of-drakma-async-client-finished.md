@@ -8,6 +8,10 @@ that is able to determine the readiness of an HTTP response. It supports
 content-length and chunking response types. It does not currently check for
 `100 Continue` responses yet, but once it does, I think it will be complete.
 
+Note that the [drakma-async](https://github.com/orthecreedence/drakma-async)
+project requires cl-async's [future+stream](https://github.com/orthecreedence/cl-async/tree/future+stream)
+branch to work.
+
 So the general workflow is as such:
 
  1. Init http-client-stream, send request into returned stream. If doing this
