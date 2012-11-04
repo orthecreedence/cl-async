@@ -43,10 +43,10 @@ p {margin: 15px 0;}
 code {margin: 0 2px; padding: 0 5px; white-space: nowrap; font-family: Consolas, "Liberation Mono", Courier, monospace; background: #f8f8f8; border: 1px solid #eaeaea; border-radius: 3px;}
 pre code {white-space: pre; margin: 0; padding: 0; background: none; border: none;}
 
-.callout {width: 90%; margin: 0 auto; font-weight: bold; font-size: 22px; text-transform: uppercase; }
+.callout {width: 90%; margin: 40px auto 64px auto; font-weight: bold; font-size: 22px; text-transform: uppercase; }
 .callout ul {text-align: center; list-style: none; margin: 0; padding: 20px 0; height: 60px; background: #f7f7f7;}
 .callout ul li {display: inline;}
-.callout ul li a {display: inline-block; padding: 10px 60px; margin: 0; border-right: 1px solid #ddd;}
+.callout ul li a {display: inline-block; padding: 10px 69px; margin: 0; border-right: 1px solid #ddd;}
 .callout ul li:last-child a {border-right: 0;}
 
 /* highlighting, stole direct off github's css */

@@ -24,7 +24,7 @@ complete list of what needs to be done.
 	</ul>
 </div>
 
-## News
+## Library updates
 {% for post in site.posts %}
 ##### [{{ post.title }}](/cl-async{{ post.url }}) - <small>{{ post.date | date_to_long_string }}</small>
 {% endfor %}
