@@ -37,6 +37,7 @@
   (decf *dns-ref-count*)
   (when (<= *dns-ref-count* 0)
     (setf *dns-ref-count* 0)
+    (setf *dns-base* nil)
     (free-dns-base *dns-base*)))
 
 (cffi:defcallback dns-cb :void ((errcode :int) (addrinfo :pointer) (data-pointer :pointer))
