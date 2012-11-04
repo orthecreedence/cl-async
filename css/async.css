@@ -1,5 +1,5 @@
 html {overflow-y: scroll; overflow-x: auto;}
-body {margin: 0; padding: 0; font-family: arial; font-size: 14px; line-height: 1.6; color: #222; background: #fff;}
+body {margin: 0; padding: 0; font-family: 'arial'; font-size: 14px; line-height: 1.6; color: #2d2d2d; background: #fff;}
 
 .clear:after {content: "."; display: block; height: 0; clear: both; visibility: hidden;}
 .clear {display: inline-block;}
@@ -10,29 +10,30 @@ body {margin: 0; padding: 0; font-family: arial; font-size: 14px; line-height: 1
 
 div#container {width: 800px; margin: 0 auto; padding: 0 20px; background: #fff; border-radius: 6px;}
 
-header {margin: 0 0 32px 0; padding: 0 0px; border-top: 10px solid #41a3a4;}
-header h1 {float: left; margin: 0; padding: 0; font-size: 24px;}
+header {margin: 0 0 80px 0; padding: 0; /*border-top: 10px solid #41a3a4;*/}
+header h1 {float: left; margin: 0; padding: 0 32px 1px 0; font-size: 16px; border-right: 1px solid #ccc;}
 header h1 a {color: #666;}
 header h1 a:hover {color: #333; text-decoration: none;}
 
-nav {float: right; margin: 13px 0 0 0;}
-nav ul {margin: 0 0 0 0; padding: 0 0; list-style: none; line-height: 1;}
+nav {margin: 13px 0 0 0; padding: 2px 0 0 0;}
+nav ul {margin: 0 0 0 0; padding: 0; list-style: none; line-height: 1;}
 nav ul li {display: inline;}
-nav ul li a {display: inline-block; margin: 0 0 0 0; padding: 2px 8px; font-weight: bold; color: #41a3a4; font-size: 11px; text-transform: uppercase;}
+nav ul li a {display: inline-block; margin: 0 0 0 0; padding: 2px 8px; font-weight: bold; font-size: 11px; text-transform: uppercase;}
 nav ul li:last-child a {padding-right: 0px; }
+nav ul li:first-child a {padding-left: 32px; }
 nav ul li a:hover {color: #000; text-decoration: none;}
 
-footer {margin: 100px 0 0 0; padding: 4px 0 30px 0; font-size: 11px; border-top: 2px solid #ddd;}
+footer {margin: 100px 0 0 0; padding: 4px 0 30px 0; font-size: 11px; border-top: 1px solid #ddd;}
 footer ul {float: left; list-style: none; margin: 0; padding: 0;}
-footer ul li {display: inline-block; padding: 0 6px 0 9px; line-height: 1; border-left: 1px solid #ccc;}
+footer ul li {display: inline-block; padding: 0 6px 0 9px; line-height: 1; border-left: 1px solid #ddd;}
 footer ul li:first-child {border-left: 0; padding-left: 0;}
 footer p {float: right; margin: 0; padding: 0;}
 
 a {color: #4183C4; text-decoration: none;}
 a:hover {text-decoration: underline;}
-h1, h2, h3, h4, h5 {margin: 20px 0 10px 0; font-weight: bold;}
-h1 {font-size: 28px;}
-h2 {font-size: 24px; border-bottom: 1px solid #ccc;}
+h1, h2, h3, h4, h5 {margin: 20px 0 10px 0; font-weight: normal;}
+h1 {font-size: 28px; line-height: 1.2em;}
+h2 {font-size: 24px; border-bottom: 1px solid #e9e9e9;}
 h3 {font-size: 18px;}
 h4 {font-size: 16px;}
 h5 {font-size: 14px;}
@@ -43,12 +44,10 @@ code {margin: 0 2px; padding: 0 5px; white-space: nowrap; font-family: Consolas,
 pre code {white-space: pre; margin: 0; padding: 0; background: none; border: none;}
 
 .callout {width: 90%; margin: 0 auto; font-weight: bold; font-size: 22px; text-transform: uppercase; }
-.callout ul {text-align: center; list-style: none; margin: 0; padding: 20px 0; height: 60px; background: #f0f0f0;}
+.callout ul {text-align: center; list-style: none; margin: 0; padding: 20px 0; height: 60px; background: #f7f7f7;}
 .callout ul li {display: inline;}
 .callout ul li a {display: inline-block; padding: 10px 60px; margin: 0; border-right: 1px solid #ddd;}
 .callout ul li:last-child a {border-right: 0;}
-
-.posts h3 small {font-size: 13px; font-weight: normal;}
 
 /* highlighting, stole direct off github's css */
 .highlight pre {white-space: pre; background-color:#f8f8f8; border: 1px solid #ccc; font-size: 13px; line-height: 19px; overflow: auto; padding: 6px 10px; border-radius: 3px}
@@ -113,5 +112,6 @@ pre code {white-space: pre; margin: 0; padding: 0; background: none; border: non
 .highlight .vi{color:#008080}
 .highlight .il{color:#009999}
 .highlight .gc{color:#999;background-color:#EAF2F5}
+
 
 
