@@ -237,6 +237,25 @@
         :outgoing-tcp-connections *outgoing-connection-count*
         :incoming-http-connections *incoming-http-count*
         :outgoing-http-connections *outgoing-http-count*))
+
+(defun dump-event-loop-status (file &key (return-as-string t))
+  "Dump the status of the event loop to a file. Good for debugging.
+   
+   If return-as-string is T, the file is read/deleted and the contents returned
+   as a string. Note that this is the default behavior."
+  (check-event-loop-running)
+  (let ((fp (cffi:foreign-funcall "fopen" :string (namestring file) :string "w+" :pointer)))
+    (unwind-protect
+        (le:event-base-dump-events *event-base* fp)
+      (cffi:foreign-funcall "fclose" :pointer fp)))
+  (when (and return-as-string
+             (probe-file file))
+    (unwind-protect
+        (with-open-file (s file)
+          (let* ((len (file-length s))
+                 (data (make-string len)))
+            (values data (read-sequence data s))))
+      (delete-file file))))
   
 (defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
   "Simple wrapper function that starts an event loop which runs the given
