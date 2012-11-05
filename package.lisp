@@ -14,6 +14,7 @@
            #:conn-errmsg
            ;; common functions
            #:stats
+           #:dump-event-loop-status
            #:start-event-loop
            #:exit-event-loop
 

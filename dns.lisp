@@ -36,8 +36,9 @@
    frees the DNS base."
   (decf *dns-ref-count*)
   (when (<= *dns-ref-count* 0)
+    (free-dns-base *dns-base*)
     (setf *dns-ref-count* 0)
-    (free-dns-base *dns-base*)))
+    (setf *dns-base* nil)))
 
 (cffi:defcallback dns-cb :void ((errcode :int) (addrinfo :pointer) (data-pointer :pointer))
   "Callback for DNS lookups."
