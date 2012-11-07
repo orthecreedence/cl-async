@@ -42,7 +42,8 @@ from above, but using coroutines (using a mythical package `coro`):
   (let ((app-coro (coro:current-coroutine)))
 	;; when the delay returns, we resume the app-coro
     (as:delay (lambda () (coro:resume app-coro)) :time 2))
-  ;; we resume the event loop so it can process its events
+  ;; we resume the event loop so it can process its events. once theapp-coro is
+  ;; resumed, execution begins here and (sleeper) returns.
   (coro:resume *event-loop-coro*))
 
 (defun my-app ()
