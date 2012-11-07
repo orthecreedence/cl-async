@@ -26,5 +26,5 @@ complete list of what needs to be done.
 
 ## Library updates
 {% for post in site.posts %}
-##### [{{ post.title }}](/cl-async{{ post.url }}) - <small>{{ post.date | date: "%b, %d %Y" }}</small>
+##### [{{ post.title }}](/cl-async{{ post.url }}) - <small>{{ post.date | date: "%b %d, %Y" }}</small>
 {% endfor %}
