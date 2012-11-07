@@ -93,6 +93,16 @@ I think the problem is that the lisp stack is much more complicated than a
 C stack and switching the C stack doesn't magically make everything work in
 lisp land.
 
+It's worth noting that Github user [deliciousrobots](https://github.com/deliciousrobots)
+commented on a [discussion about the failure of cl-coro on reddit](http://www.reddit.com/r/lisp/comments/12pyi4/need_help_understanding_coroutine_c_library/)
+and mentioned that he [implemented green threads on top of cl-cont](https://github.com/deliciousrobots/green-threads).
+He also posted a [few examples](https://gist.github.com/4028233) demonstrating
+how one could use the green threads to emulate the blocking behavior of
+coroutines. This works really well, but like I mentioned above, requires all the
+code involved be wrapped in `cl-cont` macros, so it's not a drop-in solution
+as it would still require rewriting all the involved libraries by hand. Still,
+it's a an excellent project.
+
 #### What's next?
 Good question. The next step would probably be for me to probe the maintainers
 of a few open-source lisp distributions and see what kind of problem I'm up
