@@ -7,7 +7,7 @@ on reddit, I've been thinking a lot about [CPS](http://en.wikipedia.org/wiki/Con
 style and how terrible it is. If you don't agree with me, try converting a
 blocking library (like [usocket](http://common-lisp.net/project/usocket/), for
 instance) to be CPS.  It's fairly strightforward. Now the real issue comes into
-play. What about every library that depends on usocket? Oh, they all have to be
+play: what about every library that depends on usocket? Oh, they all have to be
 converted to CPS as well. All the way down. Example of CPS:
 
 {% highlight cl %}
@@ -60,9 +60,9 @@ from above, but using coroutines (using a mythical package `coro`):
 {% endhighlight %}
 
 In this case, `sleeper` is a bit more complicated, but `my-app` becomes much
-more readable, understandable, and most importantly, preserves its call stack.
-Most importantly, while `my-app` is blocking on `sleeper`, the event loop is
-available to process more events.
+more readable, understandable, and preserves its call stack.  Most importantly,
+while `my-app` is blocking on `sleeper`, the event loop is available to process
+more events.
 
 What we have here is a hybrid between blocking calls with OS threads and
 asynchronous processing with an event loop. Imagine now converting usocket to
@@ -76,7 +76,7 @@ Well, Common Lisp does not support coroutines. Coroutines are easily implemented
 via continuations, but Common Lisp does not support continuations. Coroutines
 can also be implemented via direct stack manipulation, but Common Lisp does not
 support direct stack manipulation (aside from the catch/throw, block/return
-directives and the condition system).
+directives and the condition system, which are not sufficient).
 
 Not only does Common Lisp not support the building blocks to make coroutines,
 as far as I know, the lisp implementations themselves don't expose interfaces to
@@ -87,7 +87,7 @@ I tried [solving this problem directly via CFFI](https://github.com/orthecreeden
 and calling out to [libpcl](http://xmailserver.org/libpcl.html), but lisp just
 chokes on it and segfaults. Interestingly, [ECL](http://ecls.sourceforge.net/)
 does a lot better (the stacks switch fine, but the occasional segfault occurs),
-presumably because it's all implemented in C stack already.
+presumably because it's all implemented in a C stack already.
 
 I think the problem is that the lisp stack is much more complicated than a
 C stack and switching the C stack doesn't magically make everything work in
@@ -121,5 +121,5 @@ source implementations fairly well.
 
 So I'm screwed for now. Anyway, I'll keep everyone updated on this as time goes
 on. In the meantime, I'd still like to continue converting libraries to be
-async (coroutines or not). The [async versino of drakma](https://github.com/orthecreedence/drakma-async)
+async (coroutines or not). The [async version of drakma](https://github.com/orthecreedence/drakma-async)
 is coming along nicely, although not fully ready to use yet.
