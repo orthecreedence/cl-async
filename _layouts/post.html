@@ -3,7 +3,7 @@ layout: default
 ---
 
 <div class="post">
-	<span class="date">{{ page.date }}</span>
+	<span class="date">{{ page.date | date: "%b, %d %Y" }}</span>
 	<h1>{{ page.title }}</h1>
 	{{ content }}
 </div>

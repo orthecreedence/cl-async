@@ -43,7 +43,7 @@ p {margin: 15px 0;}
 code {margin: 0 2px; padding: 0 5px; white-space: nowrap; font-family: Consolas, "Liberation Mono", Courier, monospace; background: #f8f8f8; border: 1px solid #eaeaea; border-radius: 3px;}
 pre code {white-space: pre; margin: 0; padding: 0; background: none; border: none;}
 
-.post .date {float: right;}
+.post .date {float: right; display: inline-block; padding: 6px 0 0 0;}
 
 .callout {width: 90%; margin: 40px auto 64px auto; font-weight: bold; font-size: 22px; text-transform: uppercase; }
 .callout ul {text-align: center; list-style: none; margin: 0; padding: 20px 0; height: 60px; background: #f7f7f7;}
