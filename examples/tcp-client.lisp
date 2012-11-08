@@ -1,5 +1,5 @@
 ;;; This shows a quick example of using TCP to communicate with a server. In
-;;; case, we'll use HTTP as an example as it's a fairly straightforward
+;;; this case, we'll use HTTP as an example as it's a fairly straightforward
 ;;; protocol
 
 (ql:quickload :cl-async)
