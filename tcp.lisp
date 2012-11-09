@@ -238,6 +238,7 @@
    callback system to run user-specified anonymous callbacks on read events."
   (let* ((bev-data (deref-data-from-pointer bev))
          (socket (getf bev-data :socket))
+         (tcp-stream (getf bev-data :stream))
          (callbacks (get-callbacks data-pointer))
          (read-cb (getf callbacks :read-cb))
          (event-cb (getf callbacks :event-cb))
@@ -250,7 +251,7 @@
             (read-cb
              ;; we got a non-draining callback, let the read-cb know that we
              ;; have data without emptying the read buffer
-             (funcall read-cb socket nil))
+             (funcall read-cb socket tcp-stream))
             (drain-read
              ;; no callback associated, and we're asking to drain, to clean out
              ;; the evbuffer without calling a cb
@@ -366,14 +367,20 @@
                                      :listener listener
                                      :tcp-server tcp-server))))
 
-(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1) dont-drain-read-buffer stream)
+(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) stream)
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
   (check-event-loop-running)
 
   (let* ((data-pointer (create-data-pointer))
          (bev (le:bufferevent-socket-new *event-base* -1 +bev-opt-close-on-free+))
-         (socket (make-instance 'socket :c bev :direction 'out :drain-read-buffer (not dont-drain-read-buffer))))
+         ;; assume dont-drain-read-buffer if unspecified and requesting a stream
+         (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
+                                     t
+                                     dont-drain-read-buffer))
+         (socket (make-instance 'socket :c bev :direction 'out :drain-read-buffer (not dont-drain-read-buffer)))
+         (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
+
     (le:bufferevent-setcb bev (cffi:callback tcp-read-cb) (cffi:callback tcp-write-cb) (cffi:callback tcp-event-cb) data-pointer)
     (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
     (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :write-cb write-cb))
@@ -381,7 +388,9 @@
     (set-socket-timeouts bev read-timeout write-timeout :socket-is-bufferevent t)
 
     ;; allow the data pointer/socket class to be referenced directly by the bev
-    (attach-data-to-pointer bev (list :data-pointer data-pointer :socket socket))
+    (attach-data-to-pointer bev (list :data-pointer data-pointer
+                                      :socket socket
+                                      :stream tcp-stream))
 
     ;; connect the socket
     (incf *outgoing-connection-count*)
@@ -395,7 +404,7 @@
           (attach-data-to-pointer data-pointer dns-base)
           (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port)))
     (if stream
-        (make-instance 'async-io-stream :socket socket)
+        tcp-stream
         socket)))
 
 (defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1))
