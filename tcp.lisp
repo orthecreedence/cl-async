@@ -366,7 +366,7 @@
                                      :listener listener
                                      :tcp-server tcp-server))))
 
-(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1) dont-drain-read-buffer)
+(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1) dont-drain-read-buffer stream)
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
   (check-event-loop-running)
@@ -394,7 +394,9 @@
         (let ((dns-base (get-dns-base)))
           (attach-data-to-pointer data-pointer dns-base)
           (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port)))
-    socket))
+    (if stream
+        (make-instance 'async-io-stream :socket socket)
+        socket)))
 
 (defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1))
   "Start a TCP listener on the current event loop. Returns a tcp-server class
