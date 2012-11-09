@@ -5,8 +5,8 @@ layout: default
 
 Asynchronous operations for Common Lisp
 =======================================
-Cl-async is a library for general purpose library for non-blocking programming
-Common Lisp.
+Cl-async is a library for general purpose, non-blocking programming in Common
+Lisp.
 
 The main goal is to provide an experience that makes general asynchronous 
 programming in lisp a delight instead of a chore. Portability and ease of use
