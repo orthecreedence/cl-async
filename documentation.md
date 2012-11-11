@@ -6,6 +6,9 @@ layout: default
 <a id="documentation"></a>
 Documentation
 =============
+The documentation is split into a number of sections covering the various
+abilities of cl-async:
+
 - API Documentation
   - [Base system](/cl-async/base)<br/>
   - [Timers](/cl-async/timers)<br/>
@@ -18,7 +21,7 @@ Documentation
 
 <a id="quick-start"></a>
 Quick start
-===========
+-----------
 Cl-async uses an event loop (via [libevent](http://libevent.org/)) to keep track
 of events it's currently processing. An event can be something like a timer
 being fired, data being received on a socket, an operating system signal being
@@ -65,6 +68,7 @@ thousands of strings of execution concurrently, all while only using one thread.
 
 [See more cl-async examples to get you started](/cl-async/examples).
 
+<a id="performance"></a>
 Event loop performence
 ----------------------
 It's important to note what event loops are good for and what they are bad for.
