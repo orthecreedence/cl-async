@@ -11,6 +11,7 @@ so your application can listen to the signals passed to it and act accordingly.
 - [signal-handler](#signal-handler) _function_
 - [free-signal-handler](#free-signal-handler) _function_
 - [clear-signal-handlers](#clear-signal-handlers) _function_
+- [signal definitions](#signal-definitions)
 
 <a id="signal-handler"></a>
 ### signal-handler
@@ -77,3 +78,38 @@ loop forcibly](/cl-async/base#exit-event-loop).
 (clear-signal-handlers)
 {% endhighlight %}
 
+<a id="signal-definitions"></a>
+### Signal definitions
+These signals correspond directly to the [unix signals](http://unixhelp.ed.ac.uk/CGI/man-cgi?signal+7):
+
+- `+sighup+`
+- `+sigint+`
+- `+sigquit+`
+- `+sigill+`
+- `+sigtrap+`
+- `+sigabrt+`
+- `+sigemt+`
+- `+sigfpe+`
+- `+sigkill+`
+- `+sigbus+`
+- `+sigsegv+`
+- `+sigsys+`
+- `+sigpipe+`
+- `+sigalrm+`
+- `+sigterm+`
+- `+sigurg+`
+- `+sigstop+`
+- `+sigtstp+`
+- `+sigcont+`
+- `+sigchld+`
+- `+sigttin+`
+- `+sigttou+`
+- `+sigio+`
+- `+sigxcpu+`
+- `+sigxfsz+`
+- `+sigvtalrm+`
+- `+sigprof+`
+- `+sigwinch+`
+- `+siginfo+`
+- `+sigusr1+`
+- `+sigusr2+`
