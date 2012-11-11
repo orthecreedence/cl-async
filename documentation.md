@@ -69,7 +69,7 @@ thousands of strings of execution concurrently, all while only using one thread.
 [See more cl-async examples to get you started](/cl-async/examples).
 
 <a id="performance"></a>
-Event loop performence
+Event loop performance
 ----------------------
 It's important to note what event loops are good for and what they are bad for.
 Event loops are wonderful if 50% or more of what you're doing is input/output
