@@ -12,6 +12,10 @@
 ;;;                       remote-host remote-port
 ;;;                       &key stats debug)
 ;;; 
+;;; Not only does this offer a good example of a more advanced usage of cl-async
+;;; but is actually really useful for peeking into plaintext TCP protocols. For
+;;; instance, you could use it to debug HTTP requests or learn what a driver is
+;;; sending to a server (which is what I built it for).
 
 (ql:quickload :cl-async)
 
