@@ -62,8 +62,7 @@ This is all probably greek, so let's give an example or two:
 
 {% highlight cl %}
 (defun future-calc (x)
-  "Asynchronously add 1 to x, returning a future that will be finished when x is
-  computed."
+  "Asynchronously add 1 to x, returning a future that will be finished when x is computed."
   (let ((future (as:make-future)))
     (as:delay (lambda () (as:finish future (+ x 1)))
               :time 1)
