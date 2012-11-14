@@ -20,7 +20,8 @@ execution of an application.
 
 
 <a id="intro"></a>
-### Intro to futures
+Intro to futures
+----------------
 A future is a representation of a value in the (wait for it) future. The concept
 is that you can attach actions to a future that will run once its value is
 computed, and also attach an event handler to make sure any problems are handled
@@ -90,6 +91,8 @@ get the result computed from many async-levels deep. Not only does this mimick a
 normal call stack a lot closer than CPS, but can be wrapped in macros that make
 the syntax almost natural (note that these macros I speak of are on the way).
 
+Futures API
+----------
 <a id="future"></a>
 ### future (class)
 The future class performs a number of tasks. For your application, it's mostly
