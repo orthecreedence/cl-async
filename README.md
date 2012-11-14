@@ -19,13 +19,15 @@ full documentation, examples, etc.
 Quick links:
 
 - [Documentation](http://orthecreedence.github.com/cl-async/documentation)
-  - [Base system](http://orthecreedence.github.com/cl-async/base)<br/>
-  - [Timers](http://orthecreedence.github.com/cl-async/timers)<br/>
-  - [Signal handling](http://orthecreedence.github.com/cl-async/signal-handling)<br/>
-  - [DNS](http://orthecreedence.github.com/cl-async/dns)<br/>
-  - [TCP](http://orthecreedence.github.com/cl-async/tcp)<br/>
-  - [HTTP](http://orthecreedence.github.com/cl-async/http)<br/>
-  - [Stats](http://orthecreedence.github.com/cl-async/stats)<br/>
+  - [Base system](http://orthecreedence.github.com/cl-async/base)
+  - [Timers](http://orthecreedence.github.com/cl-async/timers)
+  - [Signal handling](http://orthecreedence.github.com/cl-async/signal-handling)
+  - [DNS](http://orthecreedence.github.com/cl-async/dns)
+  - [TCP](http://orthecreedence.github.com/cl-async/tcp)
+  - [TCP stream](http://orthecreedence.github.com/cl-async/tcp-stream)
+  - [HTTP](http://orthecreedence.github.com/cl-async/http)
+  - [Futures](http://orthecreedence.github.com/cl-async/future)
+  - [Stats](http://orthecreedence.github.com/cl-async/stats)
   - [Event callbacks and error handling](http://orthecreedence.github.com/cl-async/event-handling)
 - [Examples](http://orthecreedence.github.com/cl-async/examples)
 - [Benchmarks](http://orthecreedence.github.com/cl-async/benchmarks)
