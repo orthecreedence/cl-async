@@ -9,6 +9,7 @@ A future is an object that may have a value at some point later on in the
 execution of an application. 
 
 - [Intro to futures](#intro)
+- [Itegration with cl-async](#integration)
 - [future](#future) _class_
 - [make-future](#make-future) _function_
 - [set-event-handler](#set-event-handler) _function_
@@ -91,6 +92,24 @@ get the result computed from many async-levels deep. Not only does this mimick a
 normal call stack a lot closer than CPS, but can be wrapped in macros that make
 the syntax almost natural (note that these macros I speak of are on the way).
 
+<a id="integration"></a>
+Integration with cl-async
+-------------------------
+Futures are at their core, the representation of one value. Because of this, I
+feel that their integration into cl-async is not appropriate. Most, if not all,
+of the asynchronous operations in cl-async are stream-oriented, server oriented,
+or have no values at all. The [http-client](/cl-async/http#http-client) is the
+only piece that would benefit from using futures, and as such it's a bit weird
+to use callbacks everywhere but one function.
+
+Instead, futures are provided as a standard way to build drivers. Most drivers
+provide a request-response interface, which is much more suited to futures.
+
+So really, cl-async will at its core always use callbacks and CPS, but drivers
+will be able to provide an interface to make its users feel less like they are
+programming javascript via futures and macros.
+
+<a id="future-api"></a>
 Futures API
 ----------
 <a id="future"></a>
