@@ -71,11 +71,11 @@ This is all probably greek, so let's give an example or two:
 (as:start-event-loop
   (lambda ()
     (let ((future (as:attach (future-calc 0)
-                    (lambda (x)
+                    (lambda (x)   ;; x is 1 here
                       (as:attach (future-calc x)
-                        (lambda (x)
+                        (lambda (x)   ;; x is 2 here
                           (as:attach (future-calc x)
-                            (lambda (x)
+                            (lambda (x)   ;; x is 3 here
                               (* x 5)))))))))
       (as:attach future
         (lambda (x)
