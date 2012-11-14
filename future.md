@@ -240,11 +240,12 @@ interface for attaching callbacks to is [attach](#attach).
 list of values. If the first value in the list is a `future`, the given callback
 is attached to that future to be fired when the future's value(s) are finished.
 If the first item in `future-values` is *not* a `future` class, the _given
-callback is fired instantly with the values passed as the arguments_.
+callback is fired instantly with the values passed as `future-values` as the
+arguments_.
 
 The reason `attach-cb` fires the callback instantly is that it's sometimes nice
 to attach a callback to a value when you don't know whether the value is a
-future or an already-computed value. This allows for some nice syntactic
+future or an already-computed value. This allows for some useful syntactic
 abstractions.
 
 If `attach-cb` is called on a future that has already been finished, it fires
