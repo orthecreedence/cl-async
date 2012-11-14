@@ -1,5 +1,5 @@
 (defpackage :cl-async
-  (:use :cl)
+  (:use :cl :trivial-gray-streams)
   (:export #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
@@ -87,6 +87,13 @@
            #:disable-socket
            #:tcp-send
            #:tcp-server
+
+           ;; tcp stream
+           #:async-stream
+           #:stream-socket
+           #:async-input-stream
+           #:async-output-stream
+           #:async-io-stream
 
            ;; http conditions/accessors
            #:http-info

@@ -34,7 +34,8 @@
   ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
    (data :accessor socket-data :initarg data :initform nil)
    (closed :accessor socket-closed :initarg :closed :initform nil)
-   (direction :accessor socket-direction :initarg :direction :initform nil))
+   (direction :accessor socket-direction :initarg :direction :initform nil)
+   (drain-read-buffer :accessor socket-drain-read-buffer :initarg :drain-read-buffer :initform t))
   (:documentation "Wraps around a libevent bufferevent socket."))
 
 (defclass tcp-server ()
@@ -144,6 +145,28 @@
         (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :unsigned-char i)))
       (funcall data-cb (subseq buffer-lisp 0 n)))))
 
+(defun read-bytes-from-socket (socket num-bytes &key socket-is-evbuffer)
+  "Read num-bytes out of a socket's buffer and return them. If the evbuffer has
+   less bytes than num-bytes, returns nil (ie, try again later)."
+  (let ((bufsize *buffer-size*)
+        (buffer-c *socket-buffer-c*)
+        (buffer-lisp *socket-buffer-lisp*)
+        (input (if socket-is-evbuffer
+                   socket
+                   (le:bufferevent-get-input (socket-c socket))))
+        (data-final nil))
+    (loop for bytes-to-read = (min num-bytes bufsize (le:evbuffer-get-length input))
+          for n = (le:evbuffer-remove input buffer-c bytes-to-read)
+          while (< 0 n) do
+      (dotimes (i n)
+        (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :unsigned-char i)))
+      (let ((read-bytes (subseq buffer-lisp 0 n)))
+        (setf data-final (if data-final
+                             (append-array data-final read-bytes)
+                             read-bytes)))
+      (decf num-bytes n))
+    data-final))
+
 (defun write-to-evbuffer (evbuffer data)
   "Writes data directly to evbuffer."
   (let* ((data (if (stringp data)
@@ -215,15 +238,28 @@
    callback system to run user-specified anonymous callbacks on read events."
   (let* ((bev-data (deref-data-from-pointer bev))
          (socket (getf bev-data :socket))
+         (tcp-stream (getf bev-data :stream))
          (callbacks (get-callbacks data-pointer))
          (read-cb (getf callbacks :read-cb))
-         (event-cb (getf callbacks :event-cb)))
+         (event-cb (getf callbacks :event-cb))
+         (drain-read (socket-drain-read-buffer socket)))
     (catch-app-errors event-cb
-      (if read-cb
-          ;; we have a callback, so grab the data form the socket and send it in
-          (read-socket-data socket (lambda (data) (funcall read-cb socket data)))
-          ;; no callback associated, so just drain the buffer so it doesn't pile up
-          (le:evbuffer-drain (le:bufferevent-get-input bev) *buffer-size*)))))
+      (cond ((and read-cb drain-read)
+             ;; we have a drain callback, so grab the data form the socket and
+             ;; send it in
+             (read-socket-data socket (lambda (data) (funcall read-cb socket data))))
+            (read-cb
+             ;; we got a non-draining callback, let the read-cb know that we
+             ;; have data without emptying the read buffer
+             (funcall read-cb socket tcp-stream))
+            (drain-read
+             ;; no callback associated, and we're asking to drain, to clean out
+             ;; the evbuffer without calling a cb
+             (le:evbuffer-drain (le:bufferevent-get-input bev) *buffer-size*))
+            (t
+             ;; we're not draining and we don't have a callback, so this is
+             ;; probably sme sort of stream operation
+             nil)))))
 
 (cffi:defcallback tcp-write-cb :void ((bev :pointer) (data-pointer :pointer))
   "Called when data is finished being written to a socket."
@@ -331,14 +367,20 @@
                                      :listener listener
                                      :tcp-server tcp-server))))
 
-(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1))
+(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) stream)
   "Open a TCP connection asynchronously. An event loop must be running for this
    to work."
   (check-event-loop-running)
 
   (let* ((data-pointer (create-data-pointer))
          (bev (le:bufferevent-socket-new *event-base* -1 +bev-opt-close-on-free+))
-         (socket (make-instance 'socket :c bev :direction 'out)))
+         ;; assume dont-drain-read-buffer if unspecified and requesting a stream
+         (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
+                                     t
+                                     dont-drain-read-buffer))
+         (socket (make-instance 'socket :c bev :direction 'out :drain-read-buffer (not dont-drain-read-buffer)))
+         (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
+
     (le:bufferevent-setcb bev (cffi:callback tcp-read-cb) (cffi:callback tcp-write-cb) (cffi:callback tcp-event-cb) data-pointer)
     (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
     (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :write-cb write-cb))
@@ -346,7 +388,9 @@
     (set-socket-timeouts bev read-timeout write-timeout :socket-is-bufferevent t)
 
     ;; allow the data pointer/socket class to be referenced directly by the bev
-    (attach-data-to-pointer bev (list :data-pointer data-pointer :socket socket))
+    (attach-data-to-pointer bev (list :data-pointer data-pointer
+                                      :socket socket
+                                      :stream tcp-stream))
 
     ;; connect the socket
     (incf *outgoing-connection-count*)
@@ -359,7 +403,9 @@
         (let ((dns-base (get-dns-base)))
           (attach-data-to-pointer data-pointer dns-base)
           (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port)))
-    socket))
+    (if stream
+        tcp-stream
+        socket)))
 
 (defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1))
   "Start a TCP listener on the current event loop. Returns a tcp-server class
