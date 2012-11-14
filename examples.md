@@ -7,8 +7,7 @@ Examples
 ========
 Some limited examples are given in the [documentation](/cl-async/documentation),
 but more in-depth example usages are a great way to learn. This section will
-give some basic usage examples to get you started, and you can view more
-complicated apps in [the examples/ folder on github](https://github.com/orthecreedence/cl-async/tree/master/examples).
+give some basic usage examples to get you started.
 
 <a id="echo-server"></a>
 ### An echo server
@@ -34,5 +33,7 @@ server, it immediately echos that data back to the connecting client. This goes
 on ad infinitum until the server recieves a SIGINT signal, then it forcibly
 exits the event loop.
 
-
-... more examples on the way ...
+Github examples
+---------------
+See [the examples on github](https://github.com/orthecreedence/cl-async/tree/master/examples),
+which provide some more advanced code samples.
