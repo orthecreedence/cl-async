@@ -113,7 +113,7 @@ Futures API
 ----------
 <a id="future"></a>
 ### future (class)
-The future class performs a number of tasks. For your application, it's mostly
+The future class represents a future value. For your application, it's mostly
 an opaque object which can be operated on using the functions/macros below. It
 currently has no public accessors, and mainly just holds callbacks, values,
 events, etc.
@@ -143,7 +143,7 @@ with another future as the value).
 Sets up a function to handle events/errors that happen on a future. Note that
 events must be explicitely sent to a future via [signal-event](#signal-event).
 
-When there is ano event handler on a future, events are saved up until an event
+When there is no event handler on a future, events are saved up until an event
 handler is attached, at which point the events will be sent to the handler in
 the order they were received.
 
@@ -227,7 +227,7 @@ to the future will be fired, with the given values as their arguments.
   (as:delay (lambda () (finish future 1 2 3)))
   (attach future
     (lambda (x y z)
-      (format t "result: ~a (* x y z)))))
+      (format t "result: ~a~%" (* x y z)))))
 {% endhighlight %}
 
 <a id="attach-cb"></a>
