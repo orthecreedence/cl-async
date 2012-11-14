@@ -29,7 +29,7 @@
      be called with the computed value(s) when ready."))
 
 (defmethod print-object ((future future) s)
-  (format s "#<Future (~s callbacks) (ev handler: ~s)>" (length (future-callbacks future)) (not (not (future-event-handler future)))))
+  (format s "#<Future (~s callbacks) (ev handler: ~s) (finished: ~a)>" (length (future-callbacks future)) (not (not (future-event-handler future))) (future-finished future)))
 
 (defun make-future (&key preserve-callbacks (reattach-callbacks t))
   "Create a blank future."
