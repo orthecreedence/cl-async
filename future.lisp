@@ -121,3 +121,24 @@
   `(let* ((future-gen-vals (multiple-value-list ,future-gen)))
      (attach-cb future-gen-vals ,cb)))
 
+(defmacro alet (bindings &body body)
+  (let ((bind-vars (loop for (bind nil) in bindings collect bind))
+        (num-bindings (length bindings)))
+    `(let* ((finished-future (make-future))
+            (finished-vals nil)
+            (finished-cb
+              (let ((c 0))
+                (lambda ()
+                  (incf c)
+                  (when (<= ,num-bindings c)
+                    (let ((vars (loop for bind in ',bind-vars collect (getf finished-vals bind))))
+                      (apply #'finish (append (list finished-future) vars))))))))
+       ,@(loop for (bind form) in bindings collect
+           `(let ((future (make-future)))
+              (attach (progn ,form
+                             future)
+                      (lambda (val)
+                        (setf (getf finished-vals ',bind) val)
+                        (funcall finished-cb)))))
+       (attach finished-future (lambda ,bind-vars
+                                 ,@body)))))
