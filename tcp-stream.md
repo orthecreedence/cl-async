@@ -33,12 +33,15 @@ the `:dont-drain-read-buffer` parameter.
 <a id="tcp-stream-classes"></a>
 Classes
 -------
+<a id="async-output-stream"></a>
 ### async-output-stream
 The base output stream, can only be used to send data on a socket.
 
+<a id="async-input-stream"></a>
 ### async-input-stream
 The base input stream, can only be used to recieve data on a socket.
 
+<a id="async-io-stream"></a>
 ### async-io-stream
 Extends both `async-output-stream` and `async-input-stream`, and allows both
 reading and writing on the underlying socket.

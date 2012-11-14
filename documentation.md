@@ -10,13 +10,14 @@ The documentation is split into a number of sections covering the various
 abilities of cl-async:
 
 - API Documentation
-  - [Base system](/cl-async/base)<br/>
-  - [Timers](/cl-async/timers)<br/>
-  - [Signal handling](/cl-async/signal-handling)<br/>
-  - [DNS](/cl-async/dns)<br/>
-  - [TCP](/cl-async/tcp)<br/>
-  - [HTTP](/cl-async/http)<br/>
-  - [Stats](/cl-async/stats)<br/>
+  - [Base system](/cl-async/base)
+  - [Timers](/cl-async/timers)
+  - [Signal handling](/cl-async/signal-handling)
+  - [DNS](/cl-async/dns)
+  - [TCP](/cl-async/tcp)
+  - [TCP stream](/cl-async/tcp-stream)
+  - [HTTP](/cl-async/http)
+  - [Stats](/cl-async/stats)
 - [Event callbacks and error handling](/cl-async/event-handling)
 
 <a id="quick-start"></a>

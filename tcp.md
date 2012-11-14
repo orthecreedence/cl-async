@@ -43,9 +43,14 @@ worry about sending data later, you can call `tcp-send` with `data = nil`
 and then later use [write-socket-data](#write-socket-data) to write to the
 socket that `tcp-send` returns.
 
+`tcp-send` can also return a stream of type [async-io-stream](/cl-async/tcp-stream#async-io-stream)
+when the keyword argument `:stream` is `T`. This allows [normal stream
+operations on top of a non-blocking socket](/cl-async/tcp-stream).
+
 Note that `tcp-send` always opens a new connection. If you want to send data on
 and existing connection (and also be able to set new read/write/event callbacks
-on it), check out [write-socket-data](#write-socket-data).
+on it), check out [write-socket-data](#write-socket-data), or in the case of a
+stream, you can use `write-sequence` to send new data on the stream.
 
 Note that the `host` can be an IP address *or* a hostname. The hostname will
 be looked up asynchronously via libevent's DNS implementation. Also note that
@@ -65,15 +70,29 @@ directly calls into the libevent DNS functions.
           #'my-app-error-handler)
 {% endhighlight %}
 
+See the [tcp-stream page](/cl-async/tcp-stream) for some examples on stream
+usage.
+
 <a id="tcp-send-read-cb"></a>
-##### read-cb definition
+##### read-cb definition (default)
 
 {% highlight cl %}
 (lambda (socket byte-array) ...)
 {% endhighlight %}
 
-`socket` should never be dealt with directly as it may change in the future,
-however it *can* be passed to other cl-async functions that take a `socket` arg.
+<a id="tcp-send-read-cb-stream"></a>
+##### read-cb definition (when tcp-send's :stream is T)
+
+{% highlight cl %}
+(lambda (socket stream) ...)
+{% endhighlight %}
+
+Note that in this case, `stream` replaces the data byte array's position. Also,
+when calling `:stream T` in `tcp-send`, the read buffer for the socket is not
+drained and is only done so by [reading from the stream](/cl-async/tcp-stream).
+
+`stream` is always the same object returned from `tcp-send` with `:stream t`. It
+wraps the `socket` object.
 
 <a id="tcp-send-write-cb"></a>
 ##### write-cb definition
