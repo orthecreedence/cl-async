@@ -122,6 +122,12 @@
      (attach-cb future-gen-vals ,cb)))
 
 (defmacro alet (bindings &body body)
+  "Asynchronous let. Allows calculating a number of values in parallel via
+   futures, and run the body when all values have computed with the bindings
+   given available to the body.
+   
+   Also returns a future that fires with the values returned from the body form,
+   which allows arbitrary nesting to get a final value(s)."
   (let ((bind-vars (loop for (bind nil) in bindings collect bind))
         (num-bindings (length bindings)))
     `(let* ((finished-future (make-future))
@@ -134,11 +140,10 @@
                     (let ((vars (loop for bind in ',bind-vars collect (getf finished-vals bind))))
                       (apply #'finish (append (list finished-future) vars))))))))
        ,@(loop for (bind form) in bindings collect
-           `(let ((future (make-future)))
-              (attach (progn ,form
-                             future)
-                      (lambda (val)
-                        (setf (getf finished-vals ',bind) val)
-                        (funcall finished-cb)))))
-       (attach finished-future (lambda ,bind-vars
-                                 ,@body)))))
+           `(attach ,form
+                    (lambda (val)
+                      (setf (getf finished-vals ',bind) val)
+                      (funcall finished-cb))))
+       (attach finished-future
+         (lambda ,bind-vars
+           ,@body)))))
