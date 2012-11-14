@@ -9,7 +9,7 @@ A future is an object that may have a value at some point later on in the
 execution of an application. 
 
 - [Intro to futures](#intro)
-- [Itegration with cl-async](#integration)
+- [Integration with cl-async](#integration)
 - [future](#future) _class_
 - [make-future](#make-future) _function_
 - [set-event-handler](#set-event-handler) _function_
