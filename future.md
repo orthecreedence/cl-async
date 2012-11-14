@@ -3,17 +3,8 @@ title: Futures | Documentation
 layout: default
 ---
 
-future
-make-future
-set-event-handler
-signal-event
-futurep
-finish
-attach-cb
-attach
-
-Future
-======
+Futures
+=======
 A future is an object that may have a value at some point later on in the
 execution of an application. 
 
