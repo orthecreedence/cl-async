@@ -86,7 +86,7 @@ This waits 3 seconds then prints:
 
     Final result: 15
 
-Notice how the call back was attached to the top-level future, but was able to
+Notice how the callback was attached to the top-level future, but was able to
 get the result computed from many async-levels deep. Not only does this mimick a
 normal call stack a lot closer than CPS, but can be wrapped in macros that make
 the syntax almost natural (note that these macros I speak of are on the way).
@@ -99,14 +99,14 @@ feel that their integration into cl-async is not appropriate. Most, if not all,
 of the asynchronous operations in cl-async are stream-oriented, server oriented,
 or have no values at all. The [http-client](/cl-async/http#http-client) is the
 only piece that would benefit from using futures, and as such it's a bit weird
-to use callbacks everywhere but one function.
+to use callbacks everywhere but one function, which uses futures.
 
 Instead, futures are provided as a standard way to build drivers. Most drivers
 provide a request-response interface, which is much more suited to futures.
 
 So really, cl-async will at its core always use callbacks and CPS, but drivers
-will be able to provide an interface to make its users feel less like they are
-programming javascript via futures and macros.
+will be able to use futures to provide an interface that makes its users feel
+less like they are programming javascript and more like programming lisp.
 
 <a id="future-api"></a>
 Futures API
