@@ -58,7 +58,7 @@ of CPS calls back to the top-level, assuming that your operations are in the
 tail position (remember, a callback has to return the future from the next
 operation for this to work).
 
-This is all probably greek, so let's give an example or two:
+This is all probably greek, so let's give an example:
 
 {% highlight cl %}
 (defun future-calc (x)
