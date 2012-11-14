@@ -8,8 +8,8 @@ TCP stream
 This section goes over the stream implementation wrapping the [TCP
 implementation](/cl-async/tcp).
 
-A TCP stream is generally created around a [tcp-socket](/cl-async/tcp#socket),
-which is returned by [tcp-send](/cl-async/tcp#tcp-send):
+A TCP stream is wraps a [tcp-socket](/cl-async/tcp#socket), which is returned by
+[tcp-send](/cl-async/tcp#tcp-send):
 
 {% highlight cl %}
 (let ((socket (tcp-send "google.com" 80 ... :dont-drain-read-buffer t)))
@@ -27,8 +27,8 @@ The stream we just created is a normal lisp stream which can be operated on via
 does not block when pulling data from it, so reading from the stream should be
 triggered by the `read-cb` given to `tcp-send`.
 
-See the [notes](#tcp-stream-notes) section for an explanation of
-the `:dont-drain-read-buffer` parameter.
+See the [notes on buffer draining](#tcp-stream-notes) section for an explanation
+of the `:dont-drain-read-buffer` parameter.
 
 <a id="tcp-stream-classes"></a>
 Classes
@@ -47,8 +47,8 @@ Extends both `async-output-stream` and `async-input-stream`, and allows both
 reading and writing on the underlying socket.
 
 <a id="tcp-stream-notes"></a>
-Notes
------
+Buffer draining notes
+---------------------
 Streams work by sucking the data out of libevent's bufferevent for the given
 socket. Normally, when a `read-cb` fires on a socket, cl-async will drain the
 data received out of the bufferevent and put it into a byte array it passes to
