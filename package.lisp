@@ -123,5 +123,8 @@
            #:futurep
            #:finish
            #:attach-cb
-           #:attach)
+           #:attach
+           #:alet
+           #:alet*
+           #:multiple-future-bind)
   (:nicknames :as))

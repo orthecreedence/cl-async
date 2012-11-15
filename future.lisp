@@ -147,3 +147,26 @@
        (attach finished-future
          (lambda ,bind-vars
            ,@body)))))
+
+(defmacro alet* (bindings &body body)
+  "Asynchronous let*. Allows calculating a number of values in sequence via
+   futures, and run the body when all values have computed with the bindings
+   given available to the body.
+   
+   Also returns a future that fires with the values returned from the body form,
+   which allows arbitrary nesting to get a final value(s)."
+  (if bindings
+      (let* ((binding (car bindings))
+             (bind (car binding))
+             (future (cadr binding)))
+        `(attach ,future
+           (lambda (,bind)
+             (alet* ,(cdr bindings) ,@body))))
+      `(progn ,@body)))
+
+(defmacro multiple-future-bind ((&rest bindings) future-gen &body body)
+  "Like multiple value bind, but instead of a form that evaluates to multiple
+   values, takes a form that generates a future."
+  `(attach ,future-gen
+     (lambda (,@bindings) ,@body)))
+
