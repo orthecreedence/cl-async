@@ -106,8 +106,8 @@ return normal value(s) and those value(s) will just be used for the binding(s).
 For instance, these forms will work fine:
 
 {% highlight cl %}
-(alet ((x (get-x-from-server))
-       (y (+ x 5)))
+(alet* ((x (get-x-from-server))
+        (y (+ x 5)))
   (format t "x,y: ~a,~a~%" x y))
 
 (multiple-future-bind (name num-friends)
