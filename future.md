@@ -329,7 +329,7 @@ just be bound to that value.
 This macro allows `(let*)` syntax with async functions that return futures. It
 binds the future return values to the given bindings (in sequence), allowing
 later bindings to be able to use the values from previous bindings, and then
-running body when all futures have calculated.
+runs the body when all futures have calculated.
 
 It's important to note that `alet*` returns a future from its form, meaning it
 can have a callback [attached to it](#attach), just like any other
