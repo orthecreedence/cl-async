@@ -66,23 +66,25 @@ operation for this to work).
 This is all probably greek, so let's give an example:
 
 {% highlight cl %}
+(use-package :cl-async-future)
+
 (defun future-calc (x)
   "Asynchronously add 1 to x, returning a future that will be finished when x is computed."
-  (let ((future (as:make-future)))
-    (as:delay (lambda () (as:finish future (+ x 1)))
+  (let ((future (make-future)))
+    (as:delay (lambda () (finish future (+ x 1)))
               :time 1)
     future))
 
 (as:start-event-loop
   (lambda ()
-    (let ((future (as:attach (future-calc 0)
+    (let ((future (attach (future-calc 0)
                     (lambda (x)           ;; x is 1 here
-                      (as:attach (future-calc x)
+                      (attach (future-calc x)
                         (lambda (x)       ;; x is 2 here
-                          (as:attach (future-calc x)
+                          (attach (future-calc x)
                             (lambda (x)   ;; x is 3 here
                               (* x 5)))))))))
-      (as:attach future
+      (attach future
         (lambda (x)
           (format t "Final result: ~a" x))))))
 {% endhighlight %}
