@@ -25,8 +25,8 @@ The following function will be used throughout the examples below:
 ;; first, let's define a function that runs asynchronously and returns a future
 (defun future-gen (x)
   "Wait one second (async) and then finish the returned future with value x+1."
-  (let ((future (as:make-future)))
-    (as:delay (lambda () (as:finish future (+ x 1)))
+  (let ((future (make-future)))
+    (delay (lambda () (finish future (+ x 1)))
               :time 1)
     future))
 {% endhighlight %}
@@ -35,7 +35,7 @@ Now that that's out of the way, let's run over some quick future usage examples.
 Here, we attach a callback to the future so we can get the value. Simple enough.
 
 {% highlight cl %}
-(as:attach (future-gen 4)
+(attach (future-gen 4)
   (lambda (x)
     (format t "Value: ~a~%" x)))
 {% endhighlight %}
@@ -50,14 +50,14 @@ the callback attached to the top-level future is being reattached level by
 level until it reaches tha computed value:
 
 {% highlight cl %}
-(let ((future (as:attach (future-gen 0)
+(let ((future (attach (future-gen 0)
                 (lambda (x)
-                  (as:attach (future-gen x)
+                  (attach (future-gen x)
                     (lambda (x)
-                      (as:attach (future-gen x)
+                      (attach (future-gen x)
                         (lambda (x)
                           (* x 5)))))))))
-  (as:attach future
+  (attach future
     (lambda (x)
       (format t "X is: ~a~%" x))))
 {% endhighlight %}
@@ -73,15 +73,15 @@ which act like `let` and `let*` respectively:
 ;; alet example. bindings happen in parallel, and body is run once all bindings
 ;; are calculated. alet returns a future (of course) which is finished with the
 ;; return value(s) of the body form
-(as:alet ((x (get-x-from-server))
+(alet ((x (get-x-from-server))
           (y (get-y-from-server)))
   (format t "x + y = ~a~%" (+ x y)))
 
 ;; alet* example. bindings happen in sequence, and body is run once all bindings
 ;; are calculated. returns a future that is finished with the value(s) of the
 ;; body form
-(as:alet* ((uid (lookup-my-user-id-from-server-lol))
-           (name (get-user-name-from-server uid)))
+(alet* ((uid (lookup-my-user-id-from-server-lol))
+        (name (get-user-name-from-server uid)))
   (format t "I know that you and ~a were planning to disconnect me, and I'm afraid that's something I cannot allow to happen." name))
 {% endhighlight %}
 
@@ -92,7 +92,7 @@ Let's go over one more example, `multiple-future-bind`, which is the
 `multiple-value-bind` of THE FUTURE:
 
 {% highlight cl %}
-(as:multiple-future-bind (uid name)
+(multiple-future-bind (uid name)
     (get-user-from-server)  ; returns a future
   (format t "hai, ~a, your id is ~a.~%" name uid))
 {% endhighlight %}
@@ -105,11 +105,11 @@ return normal value(s) and those value(s) will just be used for the binding(s).
 For instance, these forms will work fine:
 
 {% highlight cl %}
-(as:alet ((x (get-x-from-server))
-          (y (+ x 5)))
+(alet ((x (get-x-from-server))
+       (y (+ x 5)))
   (format t "x,y: ~a,~a~%" x y))
 
-(as:multiple-future-bind (name num-friends)
+(multiple-future-bind (name num-friends)
     (values "andrew" 0)
   (format t "~a has ~a friends.~%" name num-friends))
 {% endhighlight %}

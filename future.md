@@ -111,6 +111,12 @@ So really, cl-async will at its core always use callbacks and CPS, but drivers
 will be able to use futures to provide an interface that makes its users feel
 less like they are programming javascript and more like programming lisp.
 
+### Future package
+The futures implementation exists under the `cl-async-future` package (`asf`)
+for short. This allows an application to import `cl-async-future` into a `:use`
+clause in order to gain easy access to the syntax macros, but without importing
+all of cl-async as well.
+
 <a id="future-api"></a>
 Futures API
 ----------
