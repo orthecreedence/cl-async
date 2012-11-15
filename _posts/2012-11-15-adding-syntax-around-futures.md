@@ -3,8 +3,12 @@ title: Adding syntax around futures
 layout: post
 ---
 After a [lengthy discussion about how sucky CPS is](http://www.reddit.com/r/lisp/comments/11lo3a/clasync_asynchronous_operations_for_common_lisp/),
-reddit user _pkhuong_ showed me a [syntactic abstraction over futures](http://www.reddit.com/r/lisp/comments/11lo3a/clasync_asynchronous_operations_for_common_lisp/c6nnvwk)
-that almost made async programming (with CPS) into real, stack-based programming.
+[Paul Khuong (pkhuong)](https://github.com/pkhuong) showed me a
+[syntactic abstraction over futures](http://www.reddit.com/r/lisp/comments/11lo3a/clasync_asynchronous_operations_for_common_lisp/c6nnvwk)
+that almost makes async programming (with CPS) into real, stack-based programming.
+Note that the macros built into the [future system](/cl-async/future) and
+detailed below are close (but not exact) implementations of Paul's syntax
+abstractions. So, mad props.
 
 There are a few things happening here. A future is a representation of a value
 that will be available in the future. A future can have a callback attached. The
