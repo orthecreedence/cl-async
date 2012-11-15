@@ -1,5 +1,21 @@
+(defpackage :cl-async-future
+  (:use :cl)
+  (:nicknames :asf)
+  (:export #:future
+           #:make-future
+           #:set-event-handler
+           #:signal-event
+           #:futurep
+           #:finish
+           #:attach-cb
+           #:attach
+           #:alet
+           #:alet*
+           #:multiple-future-bind))
+
 (defpackage :cl-async
   (:use :cl :trivial-gray-streams)
+  (:nicknames :as)
   (:export #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
@@ -113,18 +129,4 @@
            #:http-request-resource
            #:http-request-querystring
            #:http-request-headers
-           #:http-request-body
-
-           ;; futures
-           #:future
-           #:make-future
-           #:set-event-handler
-           #:signal-event
-           #:futurep
-           #:finish
-           #:attach-cb
-           #:attach
-           #:alet
-           #:alet*
-           #:multiple-future-bind)
-  (:nicknames :as))
+           #:http-request-body))

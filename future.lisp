@@ -1,4 +1,4 @@
-(in-package :cl-async)
+(in-package :cl-async-future)
 
 (defclass future ()
   ((callbacks :accessor future-callbacks :initform nil
