@@ -75,7 +75,7 @@ which act like `let` and `let*` respectively:
 ;; are calculated. alet returns a future (of course) which is finished with the
 ;; return value(s) of the body form
 (alet ((x (get-x-from-server))
-          (y (get-y-from-server)))
+	   (y (get-y-from-server)))
   (format t "x + y = ~a~%" (+ x y)))
 
 ;; alet* example. bindings happen in sequence, and body is run once all bindings
