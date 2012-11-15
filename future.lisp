@@ -118,7 +118,7 @@
 (defmacro attach (future-gen cb)
   "Macro wrapping attachment of callback to a future (takes multiple values into
    account, which a simple function cannot)."
-  `(let* ((future-gen-vals (multiple-value-list ,future-gen)))
+  `(let ((future-gen-vals (multiple-value-list ,future-gen)))
      (attach-cb future-gen-vals ,cb)))
 
 ;; -----------------------------------------------------------------------------
