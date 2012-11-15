@@ -121,9 +121,13 @@
   `(let* ((future-gen-vals (multiple-value-list ,future-gen)))
      (attach-cb future-gen-vals ,cb)))
 
+;; -----------------------------------------------------------------------------
+;; start our syntactic abstraction section (rolls off the tongue nicely)
+;; -----------------------------------------------------------------------------
+
 (defmacro alet (bindings &body body)
   "Asynchronous let. Allows calculating a number of values in parallel via
-   futures, and run the body when all values have computed with the bindings
+   futures, and runs the body when all values have computed with the bindings
    given available to the body.
    
    Also returns a future that fires with the values returned from the body form,
