@@ -18,6 +18,9 @@ execution of an application.
 - [finish](#finish) _function_
 - [attach-cb](#attach-cb) _function_
 - [attach](#attach) _macro_
+- [alet](#alet) _macro_
+- [alet*](#alet-star) _macro_
+- [multiple-future-bind](#multiple-future-bind) _macro_
 
 
 <a id="intro"></a>
@@ -279,5 +282,77 @@ is a part of the public API, but its use should be limited by need.
 (attach (my-async-op-which-returns-a-future)
   (lambda (x)
     (format t "x is ~a~%" x)))
+{% endhighlight %}
+
+<a id="alet"></a>
+### alet
+This macro allows `(let)` syntax with async functions that return futures. It
+binds the future return values to the given bindings (in parallel), then runs
+the body when all the futures have finished.
+
+It's important to note that `alet` returns a future from its form, meaning it
+can have a callback [attached to it](#attach), just like any other
+future-generating form.
+
+Also know that the binding forms do not not *not* have to return a future for
+the binding process to work. They can return any value, and that variable will
+just be bound to that value.
+
+{% highlight cl %}
+;; definition
+(alet bindings &body body)
+
+;; example (x and y compute in parallel)
+(alet ((x (grab-x-from-server))
+       (y (grab-y-from-server)))
+  (format t "x + y = ~a~%" (+ x y)))
+{% endhighlight %}
+
+<a id="alet-star"></a>
+### alet*
+This macro allows `(let*)` syntax with async functions that return futures. It
+binds the future return values to the given bindings (in sequence), allowing
+later bindings to be able to use the values from previous bindings, and then
+running body when all futures have calculated.
+
+It's important to note that `alet*` returns a future from its form, meaning it
+can have a callback [attached to it](#attach), just like any other
+future-generating form.
+
+Also know that the binding forms do not not *not* have to return a future for
+the binding process to work. They can return any value, and that variable will
+just be bound to that value.
+
+{% highlight cl %}
+;; definition
+(alet* bindings &body body)
+
+;; example (note we calculate uid THEN name)
+(alet* ((uid (grab-user-id-from-server))
+        (name (get-user-name-from-id uid)))
+  (format t "Dear, ~a. Please return my pocket lint you borrowed from me. My grandfather gave it to me and it is very important. If you do not see fit to return it, be prepared to throw down. Seriously, we're going to throw down and I'm going to straight wreck you.~%" name))
+{% endhighlight %}
+
+<a id="multiple-future-bind"></a>
+### multiple-future-bind
+Like `multiple-value-bind` but for futures. Really, it's just a tiny macro
+wrapper around [attach](#attach).
+
+It's important to note that `multiple-future-bind` returns a future, meaning it
+can have a callback [attached to it](#attach), just like any other
+future-generating form.
+
+Also note that the `future-gen` value does not have to evaluate to a future, but
+any value(s), and the bindings will just attach to the given value(s) (in which
+case it works exactly like `multiple-value-bind`.
+
+{% highlight cl %}
+;; definition
+(multiple-future-bind ((&rest bindings) future-gen &body body))
+
+;; example
+(multiple-future-bind (id name)
+    (get-user-from-server)  ; returns a future
+  (format t "Hai, ~a. Your ID is ~a.~%" name id))
 {% endhighlight %}
 
