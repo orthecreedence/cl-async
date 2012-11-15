@@ -10,17 +10,19 @@ execution of an application.
 
 - [Intro to futures](#intro)
 - [Integration with cl-async](#integration)
-- [future](#future) _class_
-- [make-future](#make-future) _function_
-- [set-event-handler](#set-event-handler) _function_
-- [signal-event](#signal-event) _function_
-- [futurep](#futurep) _function_
-- [finish](#finish) _function_
-- [attach-cb](#attach-cb) _function_
-- [attach](#attach) _macro_
-- [alet](#alet) _macro_
-- [alet*](#alet-star) _macro_
-- [multiple-future-bind](#multiple-future-bind) _macro_
+- [Future API](#future-api)
+  - [future](#future) _class_
+  - [make-future](#make-future) _function_
+  - [set-event-handler](#set-event-handler) _function_
+  - [signal-event](#signal-event) _function_
+  - [futurep](#futurep) _function_
+  - [finish](#finish) _function_
+  - [attach-cb](#attach-cb) _function_
+  - [attach](#attach) _macro_
+- [Nicer syntax](#nicer-syntax)
+  - [alet](#alet) _macro_
+  - [alet*](#alet-star) _macro_
+  - [multiple-future-bind](#multiple-future-bind) _macro_
 
 
 <a id="intro"></a>
@@ -289,6 +291,14 @@ is a part of the public API, but its use should be limited by need.
   (lambda (x)
     (format t "x is ~a~%" x)))
 {% endhighlight %}
+
+<a id="nicer-syntax"></a>
+Nicer syntax
+------------
+Futures are a great abstraction not only because of the decoupling of an action
+and a callback, but also because they can be wrapped in macros to make syntax
+fairly natural. The following macros aim to be as close to native lisp as
+possible while dealing with asynchronous operations.
 
 <a id="alet"></a>
 ### alet
