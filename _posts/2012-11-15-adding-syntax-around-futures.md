@@ -17,7 +17,8 @@ top-level via a future.
 
 Note that this is all explained (hopefully in better depth) in the [futures doc
 page](/cl-async/future). Let's go over a few examples so we can see how this all
-fits together.
+fits together. Please note the following examples assume you are in a package
+that's `:use`ing the `cl-async-future` package.
 
 The following function will be used throughout the examples below:
 
