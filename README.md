@@ -7,8 +7,8 @@ Cl-async uses [Libevent2](http://libevent.org/) as the async backend, which is
 a fast, stable, portable library for asynchronous IO (see my [notes on choosing Libevent](http://orthecreedence.github.com/cl-async/implementation-notes#libevent)).
 
 The main goal is to provide an experience that makes general asynchronous 
-programming in lisp a delight instead of a chore. Portability and ease of use
-are favored over raw speed.
+programming in lisp natural, and to also provide a number of
+[drivers](http://orthecreedence.github.com/cl-async/drivers) on top of cl-async.
 
 *This library's current status is BETA*
 
