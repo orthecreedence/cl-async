@@ -10,7 +10,7 @@ execution of an application.
 
 - [Intro to futures](#intro)
 - [Integration with cl-async](#integration)
-- [Future API](#future-api)
+- [Futures API](#future-api)
   - [future](#future) _class_
   - [make-future](#make-future) _function_
   - [set-event-handler](#set-event-handler) _function_
