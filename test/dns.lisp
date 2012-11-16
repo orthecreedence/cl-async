@@ -32,3 +32,35 @@
     (is (stringp dns1))
     (is (stringp dns2))))
 
+(test dns-ipv4
+  "Test IPV4 family"
+  (is (as::ipv4-address-p
+        (async-let ((ipv4 nil))
+          (as:dns-lookup "google.com"
+            (lambda (addr fam)
+              (declare (ignore fam))
+              (setf ipv4 addr))
+            (lambda (ev)
+              (error ev))
+            :family as:+af-inet+)))))
+
+(test dns-ipv6
+  "Test IPV6 family: can fail in linux, for some reason (Slack, at least)"
+  (is (as::ipv6-address-p
+        (async-let ((ipv6 nil))
+          (as:dns-lookup "google.com"
+            (lambda (addr fam)
+              (declare (ignore fam))
+              (setf ipv6 addr))
+            (lambda (ev)
+              (error ev))
+            :family as:+af-inet6+)))))
+
+(test dns-fail
+  "Tests DNS failure on fake host"
+  (signals as:dns-error
+    (async-let ((lookup nil))
+      (as:dns-lookup "all your children are poor unfortunate victims of lies you believe."
+        (lambda (addr fam) (list addr fam))
+        (lambda (ev) (error ev))))))
+
