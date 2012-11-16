@@ -192,8 +192,9 @@
   "Wait for a future to finish, ignoring any values it returns. Can be useful
    when you sent a command to a server and you don't really care what the
    response is, you just want to run the body when it returns."
-  `(attach ,future-gen
-     (lambda (&rest _)
-       (declare (ignore _))
-       ,@body)))
+  (let ((ignore-var (gensym "async-ignore")))
+    `(attach ,future-gen
+       (lambda (&rest ,ignore-var)
+         (declare (ignore ,ignore-var))
+         ,@body))))
 
