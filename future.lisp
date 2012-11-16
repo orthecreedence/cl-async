@@ -172,7 +172,7 @@
       (let* ((binding (car bindings))
              (bind (car binding))
              (ignore-bind (not bind))
-             (bind (if ignore-bind '_ bind))
+             (bind (if ignore-bind (gensym "async-ignore") bind))
              (future (cadr binding)))
         `(attach ,future
            (lambda (&rest args)
