@@ -3,7 +3,7 @@
   :license "MIT"
   :version "0.1"
   :description "TESTS FOR Asynchronous operations for Common Lisp."
-  :depends-on (#:cffi #:cl-async #:eos #:bordeaux-threads)
+  :depends-on (#:cffi #:cl-async #:eos)
   :components
   ((:module test
 	:components ((:file "base")
