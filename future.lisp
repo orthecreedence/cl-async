@@ -195,8 +195,9 @@
 
 (defmacro wait-for (future-gen &body body)
   "Wait for a future to finish, ignoring any values it returns. Can be useful
-   when you sent a command to a server and you don't really care what the
-   response is, you just want to run the body when it returns."
+   when you want to run an async action but don't care about the return value
+   (or it doesn't return a value) and you want to continue processing when it
+   returns."
   (let ((ignore-var (gensym "async-ignore")))
     `(attach ,future-gen
        (lambda (&rest ,ignore-var)
