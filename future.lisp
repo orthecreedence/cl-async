@@ -186,7 +186,12 @@
   "Like multiple value bind, but instead of a form that evaluates to multiple
    values, takes a form that generates a future."
   `(attach ,future-gen
-     (lambda (,@bindings) ,@body)))
+     (lambda (&rest args)
+       (let (,@bindings)
+         ,@(loop for b in bindings collect
+             `(setf ,b (car args)
+                    args (cdr args)))
+         ,@body))))
 
 (defmacro wait-for (future-gen &body body)
   "Wait for a future to finish, ignoring any values it returns. Can be useful
