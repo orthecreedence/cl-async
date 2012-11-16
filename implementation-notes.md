@@ -12,7 +12,8 @@ a fast, stable, portable library for asynchronous IO (see my
 [notes on choosing Libevent](#libevent)).
 
 <a id="libevent"></a>
-### Libevent
+Libevent
+--------
 Libevent was chosen for a few reasons:
 
 - It provides a socket API. The IOLib library was too undocumented for me
@@ -33,20 +34,22 @@ too much work into making them pretty and useful. They will most likely stay
 as-is (and undocumented).
 
 <a id="http-server"></a>
-### HTTP server
+HTTP server
+-----------
 The [http-server](/cl-async/http#http-server) is a simple way to get a quick HTTP interface
 for your app. However, as someone who does a lot of ops as well as dev, I must
 warn you that **I would not trust this to be public-facing**. This is not
-because I am a terrible programmer, but because I don't think libevent's HTTP
-implementation takes into account a lot of things that other HTTP servers have
-been battle tested with.
+because I am a terrible programmer, au contraire baby, but because I don't think
+libevent's HTTP implementation takes into account a lot of things that other
+HTTP servers have been battle tested with.
 
 In other words, put [HAProxy](http://haproxy.1wt.eu/) or [NginX](http://nginx.org/)
 (or similar) in front of it. Let someone else bear the brunt of dealing with the
 security flaws of the open web so you can focus on building a solid application.
 
 <a id="internals"></a>
-### Internals
+Internals
+---------
 cl-async tracks anonymous callbacks and libevent objects using what are called
 data pointers. A data pointer is just a CFFI pointer that can be passed around
 to libevent callbacks, and can also be used to pull data out of a hash table.
