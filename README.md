@@ -42,6 +42,19 @@ more weeks. If you do use the quicklisp version, please check the
 [closed issues list](https://github.com/orthecreedence/cl-async/issues?state=closed)
 before complaining about something being broken.
 
+### Tests
+I'm slowly but surely adding tests via the [Eos test framework](https://github.com/adlai/Eos)
+under `test/`:
+
+```common-lisp
+(ql:quickload :cl-async-test)
+
+(cl-async-test:run-tests)
+```
+
+I'm adding tests to the system as I think of them and when I have time, so it
+will be a while longer before there's a complete set of tests. Stay tuned.
+
 ### TODO
 See the [TODO list](https://github.com/orthecreedence/cl-async/issues).
 
