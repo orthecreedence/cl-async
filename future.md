@@ -23,6 +23,7 @@ execution of an application.
   - [alet](#alet) _macro_
   - [alet*](#alet-star) _macro_
   - [multiple-future-bind](#multiple-future-bind) _macro_
+  - [wait-for](#wait-for) _macro_
 
 
 <a id="intro"></a>
@@ -316,6 +317,9 @@ Also know that the binding forms do not not *not* have to return a future for
 the binding process to work. They can return any value, and that variable will
 just be bound to that value.
 
+If an `alet` form results in multiple values, the first value will be bound to
+the variable.
+
 {% highlight cl %}
 ;; definition
 (alet bindings &body body)
@@ -324,6 +328,12 @@ just be bound to that value.
 (alet ((x (grab-x-from-server))
        (y (grab-y-from-server)))
   (format t "x + y = ~a~%" (+ x y)))
+
+;; alet can bind to nil, meaning that the future is run, but the result is
+;; thrown out
+(alet ((x (grab-x-from-server))
+       (nil (run-command-i-dont-need-the-return-val-for)))
+  (format t "got: ~a~%" x))
 {% endhighlight %}
 
 <a id="alet-star"></a>
@@ -341,6 +351,9 @@ Also know that the binding forms do not not *not* have to return a future for
 the binding process to work. They can return any value, and that variable will
 just be bound to that value.
 
+If an `alet*` form results in multiple values, the first value will be bound to
+the variable.
+
 {% highlight cl %}
 ;; definition
 (alet* bindings &body body)
@@ -349,6 +362,12 @@ just be bound to that value.
 (alet* ((uid (grab-user-id-from-server))
         (name (get-user-name-from-id uid)))
   (format t "Dear, ~a. Please return my pocket lint you borrowed from me. My grandfather gave it to me and it is very important. If you do not see fit to return it, be prepared to throw down. Seriously, we're going to throw down and I'm going to straight wreck you.~%" name))
+
+;; alet* can bind to nil, meaning that the future is run, but the result is
+;; thrown out
+(alet* ((x (grab-x-from-server))
+        (nil (save-val x)))
+  (format t "got: ~a~%" x))
 {% endhighlight %}
 
 <a id="multiple-future-bind"></a>
@@ -372,5 +391,19 @@ case it works exactly like `multiple-value-bind`.
 (multiple-future-bind (id name)
     (get-user-from-server)  ; returns a future
   (format t "Hai, ~a. Your ID is ~a.~%" name id))
+{% endhighlight %}
+
+<a id="wait-for"></a>
+### wait-for
+Wait on a future without using any of the return values. This is good if you
+want to know when an operation has finished but don't care about the result.
+
+{% highlight cl %}
+;; definition
+(wait-for future-gen &body body)
+
+;; example: run-command can return a future
+(wait-for (run-command)
+  (format t "Command finished.~%"))
 {% endhighlight %}
 
