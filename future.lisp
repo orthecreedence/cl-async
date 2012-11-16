@@ -132,8 +132,16 @@
    
    Also returns a future that fires with the values returned from the body form,
    which allows arbitrary nesting to get a final value(s)."
-  (let ((bind-vars (loop for (bind nil) in bindings collect bind))
-        (num-bindings (length bindings)))
+  (let* ((ignore-bindings nil)
+         (bindings (loop for (bind form) in bindings
+                         collect (list (if bind
+                                           bind
+                                           (let ((igsym (gensym "alet-ignore")))
+                                             (push igsym ignore-bindings)
+                                             igsym))
+                                       form)))
+         (bind-vars (loop for (bind nil) in bindings collect bind))
+         (num-bindings (length bindings)))
     `(let* ((finished-future (make-future))
             (finished-vals nil)
             (finished-cb
@@ -145,11 +153,12 @@
                       (apply #'finish (append (list finished-future) vars))))))))
        ,@(loop for (bind form) in bindings collect
            `(attach ,form
-                    (lambda (val)
-                      (setf (getf finished-vals ',bind) val)
+                    (lambda (&rest vals)
+                      (setf (getf finished-vals ',bind) (car vals))
                       (funcall finished-cb))))
        (attach finished-future
          (lambda ,bind-vars
+           (declare (ignore ,@ignore-bindings))
            ,@body)))))
 
 (defmacro alet* (bindings &body body)
@@ -162,10 +171,15 @@
   (if bindings
       (let* ((binding (car bindings))
              (bind (car binding))
+             (ignore-bind (not bind))
+             (bind (if ignore-bind '_ bind))
              (future (cadr binding)))
         `(attach ,future
-           (lambda (,bind)
-             (alet* ,(cdr bindings) ,@body))))
+           (lambda (&rest args)
+             (let ((,bind (car args)))
+               ,(when ignore-bind
+                  `(declare (ignore ,bind)))
+               (alet* ,(cdr bindings) ,@body)))))
       `(progn ,@body)))
 
 (defmacro multiple-future-bind ((&rest bindings) future-gen &body body)
@@ -173,4 +187,13 @@
    values, takes a form that generates a future."
   `(attach ,future-gen
      (lambda (,@bindings) ,@body)))
+
+(defmacro wait-for (future-gen &body body)
+  "Wait for a future to finish, ignoring any values it returns. Can be useful
+   when you sent a command to a server and you don't really care what the
+   response is, you just want to run the body when it returns."
+  `(attach ,future-gen
+     (lambda (&rest _)
+       (declare (ignore _))
+       ,@body)))
 

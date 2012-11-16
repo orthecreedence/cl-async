@@ -11,7 +11,8 @@
            #:attach
            #:alet
            #:alet*
-           #:multiple-future-bind))
+           #:multiple-future-bind
+           #:wait-for))
 
 (defpackage :cl-async
   (:use :cl :trivial-gray-streams)
