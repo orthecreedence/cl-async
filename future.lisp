@@ -152,10 +152,21 @@
                     (let ((vars (loop for bind in ',bind-vars collect (getf finished-vals bind))))
                       (apply #'finish (append (list finished-future) vars))))))))
        ,@(loop for (bind form) in bindings collect
-           `(attach ,form
-                    (lambda (&rest vals)
-                      (setf (getf finished-vals ',bind) (car vals))
-                      (funcall finished-cb))))
+           `(let ((future-gen (multiple-value-list ,form)))
+              ;; forward events we get on this future to the finalizing future
+              (when (futurep (car future-gen))
+                (set-event-handler (car future-gen)
+                  (lambda (ev)
+                    (signal-event finished-future ev))))
+              ;; when this future finishes, call the finished-cb, which tallies
+              ;; up the number of finishes until it equals the number of
+              ;; bindings.
+              (attach (apply #'values future-gen)
+                (lambda (&rest vals)
+                  (setf (getf finished-vals ',bind) (car vals))
+                  (funcall finished-cb)))))
+       ;; return our future which gets fired when all bindings have completed.
+       ;; gets events forwarded to it from the binding futures.
        (attach finished-future
          (lambda ,bind-vars
            (declare (ignore ,@ignore-bindings))
@@ -174,11 +185,13 @@
              (ignore-bind (not bind))
              (bind (if ignore-bind (gensym "async-ignore") bind))
              (future (cadr binding)))
+        ;; since this is in the tail-position, no need to explicitely set
+        ;; callbacks/event handler since they will be reattached automatically.
         `(attach ,future
            (lambda (&rest args)
              (let ((,bind (car args)))
-               ,(when ignore-bind
-                  `(declare (ignore ,bind)))
+               ,(when ignore-bind `(declare (ignore ,bind)))
+               ;; being recursive helps us keep the code cleaner...
                (alet* ,(cdr bindings) ,@body)))))
       `(progn ,@body)))
 
