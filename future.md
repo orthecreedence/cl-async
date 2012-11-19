@@ -318,8 +318,8 @@ Also know that the binding forms do not not *not* have to return a future for
 the binding process to work. They can return any value, and that variable will
 just be bound to that value.
 
-If an `alet` form results in multiple values, the first value will be bound to
-the variable.
+If an `alet` binding form results in multiple values, the first value will be 
+bound to the variable (just like `let`).
 
 {% highlight cl %}
 ;; definition
@@ -352,8 +352,8 @@ Also know that the binding forms do not not *not* have to return a future for
 the binding process to work. They can return any value, and that variable will
 just be bound to that value.
 
-If an `alet*` form results in multiple values, the first value will be bound to
-the variable.
+If an `alet*` binding form results in multiple values, the first value will be 
+bound to the variable (just like `let*`).
 
 {% highlight cl %}
 ;; definition
