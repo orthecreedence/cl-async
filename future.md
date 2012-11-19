@@ -5,8 +5,10 @@ layout: default
 
 Futures
 =======
-A future is an object that may have a value at some point later on in the
-execution of an application. 
+A future is an object that represents a value at some point later on in the
+execution of an application. This is directly applicable to cl-async because
+most (if not all) of the operations it performs are done asynchronously, so you
+are constantly dealing with values that are not yet realized.
 
 - [Intro to futures](#intro)
 - [Integration with cl-async](#integration)
@@ -29,10 +31,9 @@ execution of an application.
 <a id="intro"></a>
 Intro to futures
 ----------------
-A future is a representation of a value in the (wait for it) future. The concept
-is that you can attach actions to a future that will run once its value is
-computed, and also attach an event handler to make sure any problems are handled
-along the way.
+A future is a representation of a value in the future. The idea is that you can
+attach actions to a future that will run once its value is computed, and also
+attach an event handler to make sure any problems are handled along the way.
 
 Futures not only give an important abstraction for asynchronous programming, but
 offer opportunities for syntactic abstraction that make async programming less
