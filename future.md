@@ -36,8 +36,8 @@ attach actions to a future that will run once its value is computed, and also
 attach an event handler to make sure any problems are handled along the way.
 
 Futures not only give an important abstraction for asynchronous programming, but
-offer opportunities for syntactic abstraction that make async programming less
-like [CPS](http://en.wikipedia.org/wiki/Continuation-passing_style).
+offer opportunities for [syntactic abstraction](#nicer-syntax) that make async
+programming a lot more natural.
 
 Our implementation of futures are great for this because of the following
 reasons:
