@@ -3,8 +3,8 @@
   (:nicknames :asf)
   (:export #:future
            #:make-future
-           #:set-event-handler
-           #:signal-event
+           #:attach-errback
+           #:signal-error
            #:futurep
            #:finish
            #:attach-cb

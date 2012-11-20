@@ -3,16 +3,13 @@
 (defclass future ()
   ((callbacks :accessor future-callbacks :initform nil
     :documentation "A list that holds all callbacks associated with this future.")
+   (errbacks :accessor future-errbacks :initform nil
+    :documentation "A list that holds all errbacks associated with this future.")
    (forwarded-future :accessor future-forward-to :initform nil
     :documentation "Can hold a reference to another future, which will receive
                     callbacks and event handlers added to this one once set.
                     This allows a future to effectively take over another future
                     by taking all its callbacks/events.")
-   (event-handler :accessor future-event-handler :initarg :event-handler :initform nil
-    :documentation "Holds a callback that will handle events as they happen on
-                    the future. If events occur and there is no handler, they
-                    will be saved, in order, and sent to the handler once one is
-                    attached.")
    (preserve-callbacks :accessor future-preserve-callbacks :initarg :preserve-callbacks :initform nil
     :documentation "When nil (the default) detaches callbacks after running
                     future.")
@@ -34,9 +31,9 @@
      be called with the computed value(s) when ready."))
 
 (defmethod print-object ((future future) s)
-  (format s "#<Future (~s callbacks) (ev handler: ~s) (finished: ~a) (forward: ~a)>"
+  (format s "#<Future (~s callbacks) (errbacks: ~s) (finished: ~a) (forward: ~a)>"
           (length (future-callbacks future))
-          (not (not (future-event-handler future)))
+          (length (future-errbacks future))
           (future-finished future)
           (not (not (future-forward-to future)))))
 
@@ -49,6 +46,21 @@
   "Is this a future?"
   (subtypep (type-of future) 'future))
 
+(defun do-add-callback (future cb)
+  "Add a callback to a future if it isn't already attached."
+  (unless (member cb (future-callbacks future))
+    (push cb (future-callbacks future))))
+
+(defun attach-errback (future errback)
+  "Add an error handler for this future. If the errback already exists on this
+   future, don't re-add it."
+  (when (futurep future)
+    (let ((forwarded-future (lookup-actual-future future)))
+      (unless (member errback (future-errbacks future))
+        (push errback (future-errbacks forwarded-future))
+        (process-errors forwarded-future))))
+  future)
+
 (defun setup-future-forward (future-from future-to)
   "Set up future-from to send all callbacks, events, handlers, etc to the
    future-to future. This includes all current objects, plus objects that may be
@@ -56,14 +68,14 @@
    event handler to future A will then add it to future B (assuming future B has
    no current event handler). The same goes for callbacks as well, they will be
    added to the new future-to if added to the future-from."
-  ;; a future "returned" another future. reattach the callbacks from
-  ;; the original future onto the returned on
-  (setf (future-callbacks future-to) (future-callbacks future-from))
-  ;; if the new future doesnt have an explicit error handler, attach
-  ;; the handler from one future level up
-  (unless (future-event-handler future-to)
-    (setf (future-event-handler future-to) (future-event-handler future-from)))
-  ;; forward the current future to the new one. all 
+  ;; a future "returned" another future. reattach the callbacks/errbacks from
+  ;; the original future onto the returned one
+  (dolist (cb (future-callbacks future-from))
+    (do-add-callback future-to cb))
+  (dolist (errback (future-errbacks future-from))
+    (attach-errback future-to errback))
+  ;; mark the future as forwarded to other parts of the system know to use the
+  ;; new future for various tasks.
   (setf (future-forward-to future-from) future-to))
 
 (defun lookup-actual-future (future)
@@ -74,34 +86,22 @@
       (setf future (future-forward-to future))))
   future)
 
-(defun run-event-handler (future)
+(defun process-errors (future)
   "If an event handler exists for this future, run all events through the
-   handler and clear the events out once run."
-  (let ((event-handler (future-event-handler future)))
-    (when event-handler
-      (dolist (event (nreverse (future-events future)))
-        (funcall event-handler event))
-      (setf (future-events future) nil))))
+   errbacks and clear the events out once run."
+  (when (future-errbacks future)
+    (dolist (ev (reverse (future-events future)))
+      (dolist (errback (reverse (future-errbacks future)))
+        (funcall errback ev)))
+    (setf (future-events future) nil)))
 
-(defun set-event-handler (future cb)
-  "Sets the event handler for a future. If the handler is attached after events
-   have already been caught, they will be passed into the handler, in order,
-   directly after it is added."
-  (when (futurep future)
-    (let ((forwarded-future (lookup-actual-future future)))
-      (when (or (equal future forwarded-future)
-                (not (future-event-handler forwarded-future)))
-        (setf (future-event-handler forwarded-future) cb)
-        (run-event-handler forwarded-future))))
-  future)
-
-(defun signal-event (future condition)
-  "Signal that an event has happened on a future. If the future has an event
-   handler, the given condition will be passed to it, otherwise the event will
-   be saved until an event handler has been attached."
+(defun signal-error (future condition)
+  "Signal that an error has happened on a future. If the future has errbacks,
+   they will be used to process the error, otherwise it will be stored until an
+   errback is added to the future."
   (let ((forwarded-future (lookup-actual-future future)))
     (push condition (future-events forwarded-future))
-    (run-event-handler forwarded-future)))
+    (process-errors forwarded-future)))
 
 (defun run-future (future)
   "Run all callbacks on a future *IF* the future is finished (and has computed
@@ -150,7 +150,7 @@
     ;; future if it has finished.
     (if (futurep future)
         (progn
-          (push cb-wrapped (future-callbacks future))
+          (do-add-callback future cb-wrapped)
           (run-future future))
         ;; not a future, just a value. run the callback directly
         (apply cb-wrapped future-values))
@@ -201,13 +201,9 @@
        ;; future "finished-future" is triggered, which runs the body
        ,@(loop for (bind form) in bindings collect
            `(let ((future-gen (multiple-value-list ,form)))
-              ;; forward events we get on this future to the finalizing future,
-              ;; but only if the future doesn't already have an event handler
-              (when (and (futurep (car future-gen))
-                         (not (future-event-handler (car future-gen))))
-                (set-event-handler (car future-gen)
-                  (lambda (ev)
-                    (signal-event ,finished-future ev))))
+              ;; forward events we get on this future to the finalizing future.
+              (attach-errback (car future-gen)
+                (lambda (ev) (signal-error ,finished-future ev)))
               ;; when this future finishes, call the finished-cb, which tallies
               ;; up the number of finishes until it equals the number of
               ;; bindings.
@@ -315,7 +311,7 @@
                       (let ((vals (gensym "future-vals")))
                         `(let ((,vals (multiple-value-list ,future-gen)))
                            (if (futurep (car ,vals))
-                               (set-event-handler (car ,vals) ,handler)
+                               (attach-errback (car ,vals) ,handler)
                                (apply #'values ,vals))))))
            (macrolet ((alet (bindings &body body)
                         `(%alet ,(loop for (bind form) in bindings
