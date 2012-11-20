@@ -12,7 +12,8 @@
            #:alet
            #:alet*
            #:multiple-future-bind
-           #:wait-for))
+           #:wait-for
+           #:future-handler-case))
 
 (defpackage :cl-async
   (:use :cl :trivial-gray-streams)
