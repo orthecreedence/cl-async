@@ -20,6 +20,7 @@ while using the TCP system.
 - [disable-socket](#disable-socket) _function_
 - [socket-closed-p](#socket-closed-p) _function_
 - [close-socket](#close-socket) _function_
+- [Conditions](#conditions)
 - [tcp-info](#tcp-info) _condition_
   - [tcp-socket](#tcp-socket) _accessor_
 - [tcp-error](#tcp-error) _condition_
@@ -279,6 +280,11 @@ throw a [socket-closed](#socket-closed) condition.
 ;; definition
 (close-socket socket)
 {% endhighlight %}
+
+<a id="conditions"></a>
+Conditions
+----------
+These are the conditions the TCP system can signal in [event callbacks](/cl-async/event-handling).
 
 <a id="tcp-info"></a>
 ### tcp-info

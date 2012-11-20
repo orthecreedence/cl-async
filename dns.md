@@ -9,6 +9,7 @@ This section details resolving hostnames to addresses, as well as
 conditions/events that occur while using the DNS system.
 
 - [dns-lookup](#dns-lookup) _function_
+- [Conditions](#conditions)
 - [dns-error](#dns-error) _condition_
 
 <a id="dns-lookup"></a>
@@ -38,6 +39,11 @@ The `:family` keyword can be one of `+af-inet+`, `+af-inet6+`, `+af-unspec+`.
 {% endhighlight %}
 
 `ip-address-family` will be either `+af-inet+` or `+af-inet6+`.
+
+<a id="conditions"></a>
+Conditions
+----------
+These are the conditions the DNS system can signal in [event callbacks](/cl-async/event-handling).
 
 <a id="dns-error"></a>
 ### dns-error
