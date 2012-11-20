@@ -304,24 +304,30 @@
    or less restricted to the form it's run in."
   (let ((event-handler (gensym "errhandler")))
     `(let ((,event-handler (lambda (ev)
-                           (handler-case (error ev)
-                             ,@error-forms))))
+                             (handler-case (error ev)
+                               ,@error-forms))))
        (handler-case
-         (macrolet ((alet (bindings &body body)
-                      `(%alet ,(loop for (bind form) in bindings
-                                     collect `(,bind (set-event-handler ,form ,',event-handler)))
-                         ,@body))
-                    (alet* (bindings &body body)
-                      `(%alet* ,(loop for (bind form) in bindings
-                                      collect `(,bind (set-event-handler ,form ,',event-handler)))
-                         ,@body))
-                    (multiple-future-bind ((&rest bindings) future-gen &body body)
-                      `(%multiple-future-bind ,bindings
-                           (set-event-handler ,future-gen ,',event-handler)
-                         ,@body))
-                    (wait-for (future-gen &body body)
-                      `(%wait-for (set-event-handler ,future-gen ,',event-handler)
-                         ,@body)))
-           ,body-form)
+         (macrolet ((wrap-event-handler (future-gen handler)
+                      (let ((vals (gensym "future-vals")))
+                        `(let ((,vals (multiple-value-list ,future-gen)))
+                           (if (futurep (car ,vals))
+                               (set-event-handler (car ,vals) ,handler)
+                               (values ,vals))))))
+           (macrolet ((alet (bindings &body body)
+                        `(%alet ,(loop for (bind form) in bindings
+                                       collect `(,bind (wrap-event-handler ,form ,',event-handler)))
+                           ,@body))
+                      (alet* (bindings &body body)
+                        `(%alet* ,(loop for (bind form) in bindings
+                                        collect `(,bind (wrap-event-handler ,form ,',event-handler)))
+                           ,@body))
+                      (multiple-future-bind ((&rest bindings) future-gen &body body)
+                        `(%multiple-future-bind ,bindings
+                             ,(wrap-event-handler future-gen ',event-handler)
+                           ,@body))
+                      (wait-for (future-gen &body body)
+                        `(%wait-for (wrap-event-handler ,future-gen ,',event-handler)
+                           ,@body)))
+             ,body-form))
          ,@error-forms))))
 
