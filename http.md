@@ -20,6 +20,7 @@ and conditions one might run into while using the HTTP system.
   - [http-request-querystring](#http-request-querystring) _accessor_
   - [http-request-headers](#http-request-headers) _accessor_
   - [http-request-body](#http-request-body) _accessor_
+- [Conditions](#conditions)
 - [http-info](#http-info) _condition_
 - [http-error](#http-error) _condition_
 - [http-timeout](#http-timeout) _condition_
@@ -217,6 +218,10 @@ It's important to note that at this time, multipart form data, posted files, etc
 are *not* decoded by `http-server`. As such, it is currently up to your app to
 do this. *This may change in the future* and if so, I will do my best to make the
 change backwards compatible.
+
+<A id="conditions"></a>
+Conditions
+----------
 
 <a id="http-info"></a>
 ### http-info
