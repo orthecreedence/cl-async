@@ -312,7 +312,7 @@
                         `(let ((,vals (multiple-value-list ,future-gen)))
                            (if (futurep (car ,vals))
                                (set-event-handler (car ,vals) ,handler)
-                               (values ,vals))))))
+                               (apply #'values ,vals))))))
            (macrolet ((alet (bindings &body body)
                         `(%alet ,(loop for (bind form) in bindings
                                        collect `(,bind (wrap-event-handler ,form ,',event-handler)))
@@ -323,7 +323,7 @@
                            ,@body))
                       (multiple-future-bind ((&rest bindings) future-gen &body body)
                         `(%multiple-future-bind ,bindings
-                             ,(wrap-event-handler future-gen ',event-handler)
+                             (wrap-event-handler ,future-gen ,',event-handler)
                            ,@body))
                       (wait-for (future-gen &body body)
                         `(%wait-for (wrap-event-handler ,future-gen ,',event-handler)
