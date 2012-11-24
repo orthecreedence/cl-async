@@ -333,9 +333,7 @@
     `(handler-case
        ;; redefine our attach macro so that the future-gen forms are
        ;; wrapped (recursively, if called more than once) in the
-       ;; `wrap-event-handler` macro, which will setup a single error handler
-       ;; for each form that takes all the handler-case forms passed into
-       ;; future-handler-case into account.
+       ;; `wrap-event-handler` macro.
        (macrolet ((attach (future-gen fn)
                     (funcall ,attach-orig
                       `(attach
