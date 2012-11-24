@@ -34,13 +34,14 @@ the error handlers assigned by `future-handler-case`.
 
 The one caveat is that if you jump out of `future-handler-case` into a function
 that has asynchronous operations, it will not be able to catch errors triggered
-asynchronously in that function (because it needs access to the markup):
+asynchronously in that function (because it needs access to either the markup OR
+the same stack the markup uses):
 
 {% highlight cl %}
 (defun process-results (x y)
   (alet ((z (get-z-from-server x y)))
     (unless (= z 5)
-      ;; this will not be caught, and will be sent tot he REPL
+      ;; this will not be caught, and will be sent to the REPL
       (error "Z is incorrect!"))))
 
 (future-handler-bind
