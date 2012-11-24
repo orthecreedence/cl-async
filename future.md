@@ -446,6 +446,13 @@ handlers.
     (format t "oh no, a connection error.~%")))
 
 ;; nesting example
+
+(defun process-results (x y)
+  ;; any errors triggered on this stak will be caught. any errors occuring after
+  ;; (calculate-z-from-server ...) returns will NOT NOT NOT be caught.
+  (alet ((z (calculate-z-from-server x y)))
+    (format t "z is ~a~% z)))
+
 (future-handler-case
   (alet ((sock (connect-to-server)))
     (future-handler-case
@@ -464,9 +471,9 @@ handlers.
 {% endhighlight %}
 
 In the above, if `x` or `y` are not returned as numbers, it will be caught by
-the `(type-error ...)` handler. If some unknown error occurs while calling
-`(multiple-future-bind ...)`, the outer `(t (e) ...)` general error handler
-will get triggered, even though there's a `future-handler-case` inside it.
+the `(type-error ...)` handler. If some unknown error occurs anywhere inside the
+top-level `future-handler-case`, the outer `(t (e) ...)` general error handler
+will get triggered (even though there's a `future-handler-case` inside it).
 
 If `process-results` signals an error, it will only be caught by the
 `future-handler-case` forms if it spawned no asynchronous events _or_ if any
