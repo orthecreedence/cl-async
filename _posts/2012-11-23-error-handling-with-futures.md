@@ -25,7 +25,7 @@ future-generating forms with one top-level handler.
   (user-not-found ()
     (format t "Sorry, user wasn't found.~%"))
   (connection-error ()
-    (format t "Error connecting to server.~%)))
+    (format t "Error connecting to server.~%")))
 {% endhighlight %}
 
 So the syntax is like that of `handler-case`. The power of it comes from the
