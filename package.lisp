@@ -7,7 +7,6 @@
            #:signal-error
            #:futurep
            #:finish
-           #:attach-cb
            #:attach
            #:alet
            #:alet*
