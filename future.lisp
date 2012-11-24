@@ -166,7 +166,7 @@
 ;; start our syntactic abstraction section (rolls off the tongue nicely)
 ;; -----------------------------------------------------------------------------
 
-(defmacro %alet (bindings &body body)
+(defmacro alet (bindings &body body)
   "Asynchronous let. Allows calculating a number of values in parallel via
    futures, and runs the body when all values have computed with the bindings
    given available to the body.
@@ -219,7 +219,7 @@
               `(declare (ignore ,@ignore-bindings)))
            ,@body)))))
 
-(defmacro %alet* (bindings &body body)
+(defmacro alet* (bindings &body body)
   "Asynchronous let*. Allows calculating a number of values in sequence via
    futures, and run the body when all values have computed with the bindings
    given available to the body.
@@ -243,7 +243,7 @@
                (alet* ,(cdr bindings) ,@body)))))
       `(progn ,@body)))
 
-(defmacro %multiple-future-bind ((&rest bindings) future-gen &body body)
+(defmacro multiple-future-bind ((&rest bindings) future-gen &body body)
   "Like multiple-value-bind, but instead of a form that evaluates to multiple
    values, takes a form that generates a future."
   (let ((args (gensym "args")))
@@ -255,7 +255,7 @@
                       ,args (cdr ,args)))
            ,@body)))))
 
-(defmacro %wait-for (future-gen &body body)
+(defmacro wait-for (future-gen &body body)
   "Wait for a future to finish, ignoring any values it returns. Can be useful
    when you want to run an async action but don't care about the return value
    (or it doesn't return a value) and you want to continue processing when it
@@ -266,68 +266,85 @@
          (declare (ignore ,ignore-var))
          ,@body))))
 
-;; -----------------------------------------------------------------------------
-;; define the public interfaces for our heroic syntax macros
-;; -----------------------------------------------------------------------------
-(defmacro alet (bindings &body body)
-  "Asynchronous let. Allows calculating a number of values in parallel via
-   futures, and runs the body when all values have computed with the bindings
-   given available to the body.
+(defmacro make-nested-handler-cases (final-form error-forms)
+  "Given a set of error forms for a handler-case statement, recursively create
+   a set of nested handler-case statements. The final-form variable holds the
+   statement to run inside all of the created handler-cases."
+  `(handler-case
+     ,(let ((next (cdr error-forms)))
+        (if next
+            `(make-error-handler ,final-form ,next)
+            final-form))
+     ,@(car error-forms)))
+
+(defmacro wrap-event-handler (future-gen error-forms)
+  "Used to wrap the future-generation forms of future syntax macros. This macro
+   is not to be used directly, but instead by future-handler-case.
    
-   Also returns a future that fires with the values returned from the body form,
-   which allows arbitrary nesting to get a final value(s)."
-  `(%alet ,bindings ,@body))
-
-(defmacro alet* (bindings &body body)
-  "Asynchronous let*. Allows calculating a number of values in sequence via
-   futures, and run the body when all values have computed with the bindings
-   given available to the body.
+   It allows itself to be recursive, but any recursions will simply add their
+   error forms for a top-level list and return the form they are given as the
+   body. This allows a top-level form to add an error handler to a future, while
+   gathering the lower-level forms' handler-case bindings into one big handler
+   function (crreated with make-nexted-handler-cases).
    
-   Also returns a future that fires with the values returned from the body form,
-   which allows arbitrary nesting to get a final value(s)."
-  `(%alet ,bindings ,@body))
+   Note that this macro makes use of (eval). I couldn't figure out how NOT to,
+   but it seems to solve my problem perfectly (dynamically creating a function
+   wrapping the creation of the nested handler-case statements). Perhaps there's
+   a better way to do it, but because this all happens at compile time, I don't
+   think performance is an issue."
+  `(macrolet ((wrap-event-handler (future-gen error-forms)
+               `(progn
+                  (push ',error-forms handlers)
+                  ,future-gen)))
+     (let* ((handlers '(,error-forms))
+            (vals (multiple-value-list ,future-gen))
+            (final-handler (eval `(lambda (ev)
+                                    (make-nested-handler-cases
+                                      (error ev)
+                                      ,(reverse handlers))))))
+       (if (futurep (car vals))
+           (progn
+             (attach-errback (car vals) final-handler))
+           (apply #'values vals)))))
 
-(defmacro multiple-future-bind ((&rest bindings) future-gen &body body)
-  "Like multiple-value-bind, but instead of a form that evaluates to multiple
-   values, takes a form that generates a future."
-  `(%multiple-future-bind ,bindings ,future-gen ,@body))
-
-(defmacro wait-for (future-gen &body body)
-  "Wait for a future to finish, ignoring any values it returns. Can be useful
-   when you want to run an async action but don't care about the return value
-   (or it doesn't return a value) and you want to continue processing when it
-   returns."
-  `(%wait-for ,future-gen ,@body))
-
-(defmacro future-handler-case (body-form &rest error-forms)
+(defmacro future-handler-case (body-form &rest error-forms &environment env)
   "Wrap all of our lovely syntax macros up with an event handler. This is more
    or less restricted to the form it's run in."
-  (let ((event-handler (gensym "errhandler")))
-    `(let ((,event-handler (lambda (ev)
-                             (handler-case (error ev)
-                               ,@error-forms))))
-       (handler-case
-         (macrolet ((wrap-event-handler (future-gen handler)
-                      (let ((vals (gensym "future-vals")))
-                        `(let ((,vals (multiple-value-list ,future-gen)))
-                           (if (futurep (car ,vals))
-                               (attach-errback (car ,vals) ,handler)
-                               (apply #'values ,vals))))))
-           (macrolet ((alet (bindings &body body)
-                        `(%alet ,(loop for (bind form) in bindings
-                                       collect `(,bind (wrap-event-handler ,form ,',event-handler)))
-                           ,@body))
-                      (alet* (bindings &body body)
-                        `(%alet* ,(loop for (bind form) in bindings
-                                        collect `(,bind (wrap-event-handler ,form ,',event-handler)))
-                           ,@body))
-                      (multiple-future-bind ((&rest bindings) future-gen &body body)
-                        `(%multiple-future-bind ,bindings
-                             (wrap-event-handler ,future-gen ,',event-handler)
-                           ,@body))
-                      (wait-for (future-gen &body body)
-                        `(%wait-for (wrap-event-handler ,future-gen ,',event-handler)
-                           ,@body)))
-             ,body-form))
-         ,@error-forms))))
+  (let ((attach-orig (macro-function 'attach env))
+        (alet-orig (macro-function 'alet env))
+        (alet*-orig (macro-function 'alet* env))
+        (multiple-future-bind-orig (macro-function 'multiple-future-bind env))
+        (wait-for-orig (macro-function 'wait-for env)))
+    `(handler-case
+       (macrolet ((attach (future-gen fn)
+                    (funcall ,attach-orig
+                      `(attach
+                         (wrap-event-handler ,future-gen ,',error-forms)
+                         ,fn)
+                      nil))
+                  (alet (bindings &body body)
+                    (funcall ,alet-orig
+                      `(alet ,(loop for (bind form) in bindings
+                                    collect `(,bind (wrap-event-handler ,form ,',error-forms)))
+                         ,@body)
+                      nil))
+                  (alet* (bindings &body body)
+                    (funcall ,alet*-orig
+                      `(alet* ,(loop for (bind form) in bindings
+                                     collect `(,bind (wrap-event-handler ,form ,',error-forms)))
+                         ,@body)
+                      nil))
+                  (multiple-future-bind (bindings future-gen &body body)
+                    (funcall ,multiple-future-bind-orig
+                      `(multiple-future-bind ,bindings
+                           (wrap-event-handler ,future-gen ,',error-forms)
+                         ,@body)
+                      nil))
+                  (wait-for (future-gen &body body)
+                    (funcall ,wait-for-orig
+                      `(wait-for (wrap-event-handler ,future-gen ,',error-forms)
+                         ,@body)
+                      nil)))
+           ,body-form)
+       ,@error-forms)))
 
