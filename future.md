@@ -438,25 +438,21 @@ handlers.
 ;; definition
 (future-handler-case body-form &rest error-forms)
 
-;; example
+;; simple example
 (future-handler-case
-  (alet ((id (get-user-from-server)))
-    (format t "got user id: ~a~%" id))
+  (alet ((record (get-record-from-server)))
+    (format t "got record: ~a~%" record))
   (connection-error (e)
     (format t "oh no, a connection error.~%")))
-{% endhighlight %}
 
-Note that, like `handler-case`, you can wrap your forms in multiple handlers,
-and it will also wrap sub-forms in the same error handling:
-
-{% highlight cl %}
+;; nesting example
 (future-handler-case
   (alet ((sock (connect-to-server)))
     (future-handler-case
       (multiple-future-bind (id name)
           (get-user-from-server :socket sock)
-        (alet ((x (get-x-from-server :socket sock))
-               (y (get-y-from-server :socket sock)))
+        (alet* ((x (get-x-from-server :socket sock))
+                (y (get-y-from-server :socket sock)))
           (format t "x+y: ~a~%" (+ x y))
           (process-results x y)))
       (type-error (e)
@@ -467,12 +463,12 @@ and it will also wrap sub-forms in the same error handling:
     (format t "Got general error: ~a~%" e)))
 {% endhighlight %}
 
-In the above, if `x` or `y` were not returned as numbers, it would be caught by
-the `(type-error ...)` handler. If some unknown error occured while calling
+In the above, if `x` or `y` are not returned as numbers, it will be caught by
+the `(type-error ...)` handler. If some unknown error occurs while calling
 `(multiple-future-bind ...)`, the outer `(t (e) ...)` general error handler
-would get triggered, even though there's a `future-handler-case` inside it.
+will get triggered, even though there's a `future-handler-case` inside it.
 
-If `process-results` signaled an error, it would only be caught by the
+If `process-results` signals an error, it will only be caught by the
 `future-handler-case` forms if it spawned no asynchronous events _or_ if any
 errors signaled are done so on the current stack (ie synchronously, *not*
 asynchronously).
@@ -480,4 +476,4 @@ asynchronously).
 Really, if you want to call out to another function that performs asynchronous
 operations from within a `future-handler-case`, make sure that function is
 perfectly capable of handling its own errors without relying on the calling form
-to catch them.
+to catch them *OR ELSE*.
