@@ -283,7 +283,8 @@
   ;; define a macrolet that takes all sub `wrap-event-handler` forms and
   ;; rewrites them to inject their error handlers into a lambda chain that makes
   ;; sure the handler-case tree is in the correct order (just wrapping one
-  ;; lambda in the next will reverse the order).
+  ;; lambda in the next will reverse the order). once chain is updated, the form
+  ;; given is just returned directly since no further action is required.
   `(macrolet ((wrap-event-handler (future-gen error-forms)
                `(progn
                   ;; "inject" the next-level down error handler in between the
@@ -306,6 +307,9 @@
                           (handler-case
                             (funcall signal-error ev)
                             ,@error-forms)))
+            ;; sub (wrap-event-handler ...) forms are expanded with ,future-gen
+            ;; they add their handler-case forms into a lambda which is injected
+            ;; into the error handling chain,
             (vals (multiple-value-list ,future-gen)))
        (if (futurep (car vals))
            (progn
