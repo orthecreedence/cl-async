@@ -317,22 +317,21 @@
            (apply #'values vals)))))
 
 (defmacro future-handler-case (body-form &rest error-forms &environment env)
-  "Wrap all of our lovely syntax macros up with an event handler. This is more
-   or less restricted to the form it's run in."
-  ;; save the original macro functions so they aren't overwritten by macrolet,
+  "Wrap all of our lovely attach macro up with an event handler. This is more or
+   less restricted to the form it's run in.
+   
+   Note that we only have to wrap (attach) because *all other syntax macros* use
+   attach. This greatly simplifies our code."
+  ;; save the original ttach macro function so is isn't overwritten by macrolet,
   ;; the slithering scope-stealing snake. if future-handler-case is called
-  ;; inside another future-handler-case, these "*-orig" functions will be bound
-  ;; to the wrapping macrolet form instead of the top-level macros, which is
-  ;; perfect because we want to wrap the forms multiple times.
-  (let ((attach-orig (macro-function 'attach env))
-        (alet-orig (macro-function 'alet env))
-        (alet*-orig (macro-function 'alet* env))
-        (multiple-future-bind-orig (macro-function 'multiple-future-bind env))
-        (wait-for-orig (macro-function 'wait-for env)))
+  ;; inside another future-handler-case, these "attach-orig" function will be
+  ;; bound to the wrapping macrolet form instead of the top-level macros, which
+  ;; is perfect because we want to wrap the forms multiple times.
+  (let ((attach-orig (macro-function 'attach env)))
     ;; wrap the top-level form in a handler-case to catch any errors we may have
     ;; before the futures are even generated.
     `(handler-case
-       ;; redefine all our syntax macros so that the future-gen forms are
+       ;; redefine our attach macro so that the future-gen forms are
        ;; wrapped (recursively, if called more than once) in the
        ;; `wrap-event-handler` macro, which will setup a single error handler
        ;; for each form that takes all the handler-case forms passed into
@@ -342,29 +341,6 @@
                       `(attach
                          (wrap-event-handler ,future-gen ,',error-forms)
                          ,fn)
-                      ,env))
-                  (alet (bindings &body body)
-                    (funcall ,alet-orig
-                      `(alet ,(loop for (bind form) in bindings
-                                    collect `(,bind (wrap-event-handler ,form ,',error-forms)))
-                         ,@body)
-                      ,env))
-                  (alet* (bindings &body body)
-                    (funcall ,alet*-orig
-                      `(alet* ,(loop for (bind form) in bindings
-                                     collect `(,bind (wrap-event-handler ,form ,',error-forms)))
-                         ,@body)
-                      ,env))
-                  (multiple-future-bind (bindings future-gen &body body)
-                    (funcall ,multiple-future-bind-orig
-                      `(multiple-future-bind ,bindings
-                           (wrap-event-handler ,future-gen ,',error-forms)
-                         ,@body)
-                      ,env))
-                  (wait-for (future-gen &body body)
-                    (funcall ,wait-for-orig
-                      `(wait-for (wrap-event-handler ,future-gen ,',error-forms)
-                         ,@body)
                       ,env)))
            ,body-form)
        ,@error-forms)))
