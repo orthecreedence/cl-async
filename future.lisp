@@ -266,17 +266,6 @@
          (declare (ignore ,ignore-var))
          ,@body))))
 
-(defmacro make-nested-handler-cases (final-form error-forms)
-  "Given a set of error forms for a handler-case statement, recursively create
-   a set of nested handler-case statements. The final-form variable holds the
-   statement to run inside all of the created handler-cases."
-  `(handler-case
-     ,(let ((next (cdr error-forms)))
-        (if next
-            `(make-error-handler ,final-form ,next)
-            final-form))
-     ,@(car error-forms)))
-
 (defmacro wrap-event-handler (future-gen error-forms)
   "Used to wrap the future-generation forms of future syntax macros. This macro
    is not to be used directly, but instead by future-handler-case.
@@ -285,37 +274,65 @@
    error forms for a top-level list and return the form they are given as the
    body. This allows a top-level form to add an error handler to a future, while
    gathering the lower-level forms' handler-case bindings into one big handler
-   function (crreated with make-nexted-handler-cases).
+   function (created with make-nexted-handler-cases).
    
-   Note that this macro makes use of (eval). I couldn't figure out how NOT to,
-   but it seems to solve my problem perfectly (dynamically creating a function
-   wrapping the creation of the nested handler-case statements). Perhaps there's
-   a better way to do it, but because this all happens at compile time, I don't
-   think performance is an issue."
+   Note that since normally the wrap-event-handler forms expand outside in, we
+   have to do some trickery with the error-handling functions to make sure the
+   order of the handler-case forms (as far as what level of the tree we're on)
+   are preserved."
+  ;; define a macrolet that takes all sub `wrap-event-handler` forms and
+  ;; rewrites them to inject their error handlers into a lambda chain that makes
+  ;; sure the handler-case tree is in the correct order (just wrapping one
+  ;; lambda in the next will reverse the order).
   `(macrolet ((wrap-event-handler (future-gen error-forms)
                `(progn
-                  (push ',error-forms handlers)
+                  ;; "inject" the next-level down error handler in between the
+                  ;; error triggering function and the error handler one level
+                  ;; up. this preserves the handler-case tree (as opposed to 
+                  ;; reversing it)
+                  (let ((old-signal-error signal-error))
+                    (setf signal-error 
+                          (lambda (ev)
+                            (handler-case
+                              (funcall old-signal-error ev)
+                              ,@error-forms))))
                   ,future-gen)))
-     (let* ((handlers '(,error-forms))
-            (vals (multiple-value-list ,future-gen))
-            (final-handler (eval `(lambda (ev)
-                                    (make-nested-handler-cases
-                                      (error ev)
-                                      ,(reverse handlers))))))
+     ;; define a function that signals the error, and a top-level error handler
+     ;; which uses the error-forms passed to THIS macro instance. any instance
+     ;; of `wrap-event-handler` that occurs in the `future-gen` form will inject
+     ;; its error handler between handler-fn and signal-error.
+     (let* ((signal-error (lambda (ev) (error ev)))
+            (handler-fn (lambda (ev)
+                          (handler-case
+                            (funcall signal-error ev)
+                            ,@error-forms)))
+            (vals (multiple-value-list ,future-gen)))
        (if (futurep (car vals))
            (progn
-             (attach-errback (car vals) final-handler))
+             (attach-errback (car vals) handler-fn))
            (apply #'values vals)))))
 
 (defmacro future-handler-case (body-form &rest error-forms &environment env)
   "Wrap all of our lovely syntax macros up with an event handler. This is more
    or less restricted to the form it's run in."
+  ;; save the original macro functions so they aren't overwritten by macrolet,
+  ;; the slithering scope-stealing snake. if future-handler-case is called
+  ;; inside another future-handler-case, these "*-orig" functions will be bound
+  ;; to the wrapping macrolet form instead of the top-level macros, which is
+  ;; perfect because we want to wrap the forms multiple times.
   (let ((attach-orig (macro-function 'attach env))
         (alet-orig (macro-function 'alet env))
         (alet*-orig (macro-function 'alet* env))
         (multiple-future-bind-orig (macro-function 'multiple-future-bind env))
         (wait-for-orig (macro-function 'wait-for env)))
+    ;; wrap the top-level form in a handler-case to catch any errors we may have
+    ;; before the futures are even generated.
     `(handler-case
+       ;; redefine all our syntax macros so that the future-gen forms are
+       ;; wrapped (recursively, if called more than once) in the
+       ;; `wrap-event-handler` macro, which will setup a single error handler
+       ;; for each form that takes all the handler-case forms passed into
+       ;; future-handler-case into account.
        (macrolet ((attach (future-gen fn)
                     (funcall ,attach-orig
                       `(attach
