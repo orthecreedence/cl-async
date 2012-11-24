@@ -321,30 +321,30 @@
                       `(attach
                          (wrap-event-handler ,future-gen ,',error-forms)
                          ,fn)
-                      nil))
+                      ,env))
                   (alet (bindings &body body)
                     (funcall ,alet-orig
                       `(alet ,(loop for (bind form) in bindings
                                     collect `(,bind (wrap-event-handler ,form ,',error-forms)))
                          ,@body)
-                      nil))
+                      ,env))
                   (alet* (bindings &body body)
                     (funcall ,alet*-orig
                       `(alet* ,(loop for (bind form) in bindings
                                      collect `(,bind (wrap-event-handler ,form ,',error-forms)))
                          ,@body)
-                      nil))
+                      ,env))
                   (multiple-future-bind (bindings future-gen &body body)
                     (funcall ,multiple-future-bind-orig
                       `(multiple-future-bind ,bindings
                            (wrap-event-handler ,future-gen ,',error-forms)
                          ,@body)
-                      nil))
+                      ,env))
                   (wait-for (future-gen &body body)
                     (funcall ,wait-for-orig
                       `(wait-for (wrap-event-handler ,future-gen ,',error-forms)
                          ,@body)
-                      nil)))
+                      ,env)))
            ,body-form)
        ,@error-forms)))
 
