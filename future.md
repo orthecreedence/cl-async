@@ -19,7 +19,6 @@ are constantly dealing with values that are not yet realized.
   - [signal-event](#signal-event) _function_
   - [futurep](#futurep) _function_
   - [finish](#finish) _function_
-  - [attach-cb](#attach-cb) _function_
   - [attach](#attach) _macro_
 - [Nicer syntax](#nicer-syntax)
   - [alet](#alet) _macro_
@@ -253,40 +252,38 @@ This function attaches a callback to a future. _Please_ note that although there
 are cases where calling this function directly are appropriate, the standard
 interface for attaching callbacks to is [attach](#attach).
 
-`attach-cb` takes two arguments, `future-values` and `cb`. `future-values` is a
-list of values. If the first value in the list is a `future`, the given callback
-is attached to that future to be fired when the future's value(s) are finished.
-If the first item in `future-values` is *not* a `future` class, the _given
-callback is fired instantly with the values passed as `future-values` as the
-arguments_.
+<a id="attach"></a>
+### attach
+This macro attaches a callback to a future such that once the future computes,
+the callback will be called with the future's finished value(s) as its
+arguments.
 
-The reason `attach-cb` fires the callback instantly is that it's sometimes nice
-to attach a callback to a value when you don't know whether the value is a
-future or an already-computed value. This allows for some useful syntactic
+`attach` takes two arguments, `future-gen` and `cb`. `future-gen` is a form that
+*can* (but is not required to) return a future. If the first value of
+`future-gen`'s return values is a future, the callback given is attached to that
+future to be fired when the future's value(s) are finished.  If the first item
+in `future-gen` is *not* a `future` class, the _given callback is fired
+instantly with the values passed as `future-values` as the arguments_.
+
+The reason `attach` fires the callback instantly is that it's sometimes nice to
+attach a callback to a value when you don't know whether the value is a future
+or an already-computed value. This allows for some useful syntactic
 abstractions.
 
-If `attach-cb` is called on a future that has already been finished, it fires
+If `attach` is called on a future that has already been finished, it fires
 the given callback immediately with the future's value(s).
 
-`attach-cb` returns one value: a future that is finished with the return values
-of the given callback. So the original future fires, the callback gets called,
-and then the future that was returned from `attach-cb` is fired with the return
-values from the callback.
+`attach` returns one value: a future that is finished with the return values
+of the given callback once it is fired. So the original future fires, the
+callback gets called, and then the future that was returned from `attach` is
+fired with the return values from the callback.
 
 Also note that if a `future` is [finished](#finish) with another future as the
 first value, the original future's callbacks/event handlers are _transfered_ to
-the new future. This, on top of `attach-cb` always returning a future, makes
+the new future. This, on top of `attach` always returning a future, makes
 possible some incredible syntactic abstractions which can somewhat mimick non
 CPS style by allowing the results from async operations several levels deep to
 be viewable by the top-level caller.
-
-<a id="attach"></a>
-### attach
-The attach macro is a thin wrapper around [attach-cb](#attach-cb) which allows
-seamless capturing of multiple values.
-
-It is also the standard interface for attaching callbacks to futures. [attach-cb](#attach-cb)
-is a part of the public API, but its use should be limited by need.
 
 {% highlight cl %}
 ;; definition (future-gen is an operation that may generate multiple values)
