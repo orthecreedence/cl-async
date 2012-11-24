@@ -26,6 +26,8 @@ are constantly dealing with values that are not yet realized.
   - [alet*](#alet-star) _macro_
   - [multiple-future-bind](#multiple-future-bind) _macro_
   - [wait-for](#wait-for) _macro_
+- [Error handling](#error-handling)
+  - [future-handler-case](#future-handler-case)
 
 
 <a id="intro"></a>
@@ -408,3 +410,74 @@ want to know when an operation has finished but don't care about the result.
   (format t "Command finished.~%"))
 {% endhighlight %}
 
+<a id="error-handling"></a>
+Error handling
+--------------
+All the wonderful [syntax macros](#nicer-syntax) in the world aren't going to do
+you any good if you can't handle errors and conditions properly. The error
+handling for futures closely follows how you would handle errors in native lisp.
+
+<a id="future-handler-case"></a>
+### future-handler-case
+This macro wraps any of the above macros (`attach`, `alet`, `alet*`,
+`multiple-future-bind`, `wait-for`) with `handler-case` like error handling.
+
+It works not only on the top-level forms, but also on each form within the above
+macros that generates a future, meaning that a single handler form can set up
+error handling for all the sub-forms, even if the stack has unwound.
+
+Note that `future-handler-case` will only work on the forms it wraps (ie the
+lexical scope). If you leave via a function call or similar, it *will only catch
+errors that occur in that function if they are generated synchronously*. This is
+probably the main difference between `handler-case` and `future-handler-case`.
+If you want to call a function that operates asynchronously from *within* a
+`future-handler-case` macro, make sure that function sets up its own error
+handlers.
+
+{% highlight cl %}
+;; definition
+(future-handler-case body-form &rest error-forms)
+
+;; example
+(future-handler-case
+  (alet ((id (get-user-from-server)))
+    (format t "got user id: ~a~%" id))
+  (connection-error (e)
+    (format t "oh no, a connection error.~%")))
+{% endhighlight %}
+
+Note that, like `handler-case`, you can wrap your forms in multiple handlers,
+and it will also wrap sub-forms in the same error handling:
+
+{% highlight cl %}
+(future-handler-case
+  (alet ((sock (connect-to-server)))
+    (future-handler-case
+      (multiple-future-bind (id name)
+          (get-user-from-server :socket sock)
+        (alet ((x (get-x-from-server :socket sock))
+               (y (get-y-from-server :socket sock)))
+          (format t "x+y: ~a~%" (+ x y))
+          (process-results x y)))
+      (type-error (e)
+        (format t "Got a type error, x or y possibly isn't a number: ~a~%" e))))
+  (connection-error (e)
+    (format t "Error connecting to server: ~a~%" e))
+  (t (e)
+    (format t "Got general error: ~a~%" e)))
+{% endhighlight %}
+
+In the above, if `x` or `y` were not returned as numbers, it would be caught by
+the `(type-error ...)` handler. If some unknown error occured while calling
+`(multiple-future-bind ...)`, the outer `(t (e) ...)` general error handler
+would get triggered, even though there's a `future-handler-case` inside it.
+
+If `process-results` signaled an error, it would only be caught by the
+`future-handler-case` forms if it spawned no asynchronous events _or_ if any
+errors signaled are done so on the current stack (ie synchronously, *not*
+asynchronously).
+
+Really, if you want to call out to another function that performs asynchronous
+operations from within a `future-handler-case`, make sure that function is
+perfectly capable of handling its own errors without relying on the calling form
+to catch them.
