@@ -451,7 +451,7 @@ handlers.
   ;; any errors triggered on this stak will be caught. any errors occuring after
   ;; (calculate-z-from-server ...) returns will NOT NOT NOT be caught.
   (alet ((z (calculate-z-from-server x y)))
-    (format t "z is ~a~% z)))
+    (format t "z is ~a~%" z)))
 
 (future-handler-case
   (alet ((sock (connect-to-server)))
