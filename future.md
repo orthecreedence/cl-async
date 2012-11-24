@@ -448,8 +448,8 @@ handlers.
 ;; nesting example
 
 (defun process-results (x y)
-  ;; any errors triggered on this stak will be caught. any errors occuring after
-  ;; (calculate-z-from-server ...) returns will NOT NOT NOT be caught.
+  ;; any errors triggered on this stack will be caught. any errors occuring
+  ;; after (calculate-z-from-server ...) returns will NOT NOT NOT be caught.
   (alet ((z (calculate-z-from-server x y)))
     (format t "z is ~a~%" z)))
 
