@@ -280,11 +280,6 @@
    have to do some trickery with the error-handling functions to make sure the
    order of the handler-case forms (as far as what level of the tree we're on)
    are preserved."
-  ;; define a macrolet that takes all sub `wrap-event-handler` forms and
-  ;; rewrites them to inject their error handlers into a lambda chain that makes
-  ;; sure the handler-case tree is in the correct order (just wrapping one
-  ;; lambda in the next will reverse the order). once chain is updated, the form
-  ;; given is just returned directly since no further action is required.
   (let ((signal-error (gensym "signal-error"))
         (handler-fn (gensym "handler-fn"))
         (vals (gensym "vals")))
