@@ -285,36 +285,44 @@
   ;; sure the handler-case tree is in the correct order (just wrapping one
   ;; lambda in the next will reverse the order). once chain is updated, the form
   ;; given is just returned directly since no further action is required.
-  `(macrolet ((wrap-event-handler (future-gen error-forms)
-               `(progn
-                  ;; "inject" the next-level down error handler in between the
-                  ;; error triggering function and the error handler one level
-                  ;; up. this preserves the handler-case tree (as opposed to 
-                  ;; reversing it)
-                  (let ((old-signal-error signal-error))
-                    (setf signal-error 
-                          (lambda (ev)
-                            (handler-case
-                              (funcall old-signal-error ev)
-                              ,@error-forms))))
-                  ,future-gen)))
-     ;; define a function that signals the error, and a top-level error handler
-     ;; which uses the error-forms passed to THIS macro instance. any instance
-     ;; of `wrap-event-handler` that occurs in the `future-gen` form will inject
-     ;; its error handler between handler-fn and signal-error.
-     (let* ((signal-error (lambda (ev) (error ev)))
-            (handler-fn (lambda (ev)
-                          (handler-case
-                            (funcall signal-error ev)
-                            ,@error-forms)))
-            ;; sub (wrap-event-handler ...) forms are expanded with ,future-gen
-            ;; they add their handler-case forms into a lambda which is injected
-            ;; into the error handling chain,
-            (vals (multiple-value-list ,future-gen)))
-       (if (futurep (car vals))
-           (progn
-             (attach-errback (car vals) handler-fn))
-           (apply #'values vals)))))
+  (let ((signal-error (gensym "signal-error"))
+        (handler-fn (gensym "handler-fn"))
+        (vals (gensym "vals")))
+    ;; hijack any child wrap-event-handler macros to just return their
+    ;; future-gen form verbatim, but add their error handlers to the error
+    ;; handling chain
+    `(macrolet ((wrap-event-handler (future-gen error-forms)
+                  (let ((old-signal-error (gensym "old-signal-error")))
+                    `(progn
+                       ;; "inject" the next-level down error handler in between the
+                       ;; error triggering function and the error handler one level
+                       ;; up. this preserves the handler-case tree (as opposed to
+                       ;; reversing it)
+                       (let ((,old-signal-error ,',signal-error))
+                         (setf ,',signal-error
+                               (lambda (ev)
+                                 (handler-case
+                                   (funcall ,old-signal-error ev)
+                                   ,@error-forms))))
+                       ;; return the future-gen form verbatim
+                       ,future-gen))))
+       ;; define a function that signals the error, and a top-level error handler
+       ;; which uses the error-forms passed to THIS macro instance. any instance
+       ;; of `wrap-event-handler` that occurs in the `future-gen` form will inject
+       ;; its error handler between handler-fn and signal-error.
+       (let* ((,signal-error (lambda (ev) (error ev)))
+              (,handler-fn (lambda (ev)
+                             (handler-case
+                               (funcall ,signal-error ev)
+                               ,@error-forms)))
+              ;; sub (wrap-event-handler ...) forms are expanded with ,future-gen
+              ;; they add their handler-case forms into a lambda which is injected
+              ;; into the error handling chain,
+              (,vals (multiple-value-list ,future-gen)))
+         (if (futurep (car ,vals))
+             (progn
+               (attach-errback (car ,vals) ,handler-fn))
+             (apply #'values ,vals))))))
 
 (defmacro future-handler-case (body-form &rest error-forms &environment env)
   "Wrap all of our lovely attach macro up with an event handler. This is more or
