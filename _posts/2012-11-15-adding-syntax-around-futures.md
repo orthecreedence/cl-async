@@ -129,3 +129,9 @@ a handler on the first future and it will propagate down.
 
 I may write code-walking macros that mimick `handler-case`, but I also may not.
 It really just depends on the work to reward ratio.
+
+UPDATE: See the post on [error handling with futures](http://orthecreedence.github.com/cl-async/2012/11/23/error-handling-with-futures.html).
+I used lisp's built-in version of code walking, `macrolet` (so not code walking
+at all, thank god), to build [future-handler-case](/cl-async/future/#future-handler-case).
+`future-handler-case` provides `handler-case` like error handling for
+asynchronous operations involving futures.
