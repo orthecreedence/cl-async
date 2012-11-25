@@ -15,8 +15,8 @@ are constantly dealing with values that are not yet realized.
 - [Futures API](#future-api)
   - [future](#future) _class_
   - [make-future](#make-future) _function_
-  - [set-event-handler](#set-event-handler) _function_
-  - [signal-event](#signal-event) _function_
+  - [attach-errback](#attach-errback) _function_
+  - [signal-error](#signal-error) _function_
   - [futurep](#futurep) _function_
   - [finish](#finish) _function_
   - [attach](#attach) _macro_
@@ -154,24 +154,26 @@ with another future as the value).
   (finish future 5))
 {% endhighlight %}
 
-<a id="set-event-handler"></a>
-### set-event-handler
-Sets up a function to handle events/errors that happen on a future. Note that
-events must be explicitely sent to a future via [signal-event](#signal-event).
+<a id="attach-errback"></a>
+### attach-errback
+This adds an "errback" (an error callback) to the future, to be called whenever
+[signal-error](#signal-error) is called on the future. A future can hold
+multiple errbacks, allowing different pieces of your application to set up
+handling for different events a future might encounter.
 
-When there is no event handler on a future, events are saved up until an event
-handler is attached, at which point the events will be sent to the handler in
-the order they were received.
+When there are no errbacks attached to a future, any errors triggered on that
+future are saved until an errback is added, at which point the errback is called
+with all the saved up errors in the order they were received.
 
 {% highlight cl %}
 ;; definition
-(set-event-handler future cb)
+(attach-errback future cb)
 
 ;; example
 (let ((future (make-future))
       (socket (tcp-send "musio.com" 80 nil)))
   ;; set up our event handler
-  (set-event-handler future
+  (attach-errback future
     (lambda (ev)
       (handler-case (error ev)
         (tcp-eof () (format t "peer closed socket.~%"))
@@ -188,15 +190,15 @@ the order they were received.
       (format t "got data: ~a~%" (babel:octets-to-string data)))))
 {% endhighlight %}
 
-<a id="signal-event"></a>
-### signal-event
-Signal an event on the future. Many async operations will signal events/errors,
-and this allows you to "transfer" these events to a future. You can also [set up
-an event handler](#set-event-handler) on the future to deal with these events.
+<a id="signal-error"></a>
+### signal-error
+Signal an error on the future. Many async operations will signal events/errors,
+and this allows you to "transfer" these events to a future. You handle errors
+on a future by [settin up errbacks](#attach-errback) on the future.
 
 {% highlight cl %}
 ;; definition
-(signal-event future condition)
+(signal-error future condition)
 
 ;; example
 (let ((future (make-future)))
@@ -207,7 +209,7 @@ an event handler](#set-event-handler) on the future to deal with these events.
       (finish future data))
     (lambda (ev)
       ;; signal the event on the future
-      (signal-event future ev)))
+      (signal-error future ev)))
 
   ;; attach a callback to the tcp op
   (attach future
@@ -215,7 +217,7 @@ an event handler](#set-event-handler) on the future to deal with these events.
       (format t "got data: ~a~%" (babel:octets-to-string data))))
 
   ;; handle any events
-  (set-event-handler future
+  (attach-errback future
     (lambda (ev)
       (format t "ev: ~a~%" ev))))
 {% endhighlight %}
