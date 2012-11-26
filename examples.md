@@ -35,9 +35,9 @@ exits the event loop.
 
 <a id="future-example"></a>
 ### Using futures (a simple driver example)
-For this example, make sure the `cl-async-future` package is loaded. We're going
-to create a simple client for an imaginary HTTP server that returns information
-on a user.
+For this example, make sure the `cl-async-future` package is loaded (and `:use`
+it). We're going to create a simple client for an imaginary HTTP server that
+returns information on a user.
 
 {% highlight cl %}
 (define-condition server-error (error)
@@ -57,7 +57,7 @@ on a user.
         (finish future status headers body))
       (lambda (event)
         (let ((event-type (type-of event)))
-          ;; ignore info events
+          ;; ignore info events (careful, connection-error extends connection-info)
           (when (or (not (subtypep event-type 'as:connection-info))
                     (subtypep event-type 'as:connection-error))
             (signal-error future event))))
@@ -70,6 +70,7 @@ on a user.
     (multiple-future-bind (user-data status)
         (get-user-from-server id)  ; make the request
       (format t "Got user: ~a~%" (gethash "name" user-data))
+      ;; "return" the status
       status)
     (server-error (e)
       (format t "Error while getting user: status code (~a)~%" (server-error-status e)))
@@ -81,7 +82,7 @@ on a user.
 
 This is an example of a very simple driver built on top of futures. For a real
 driver, the `get-user-from-server` would most likely be a lot more general and
-would eb able to process a number of different driver commands, but for this
+would be able to process a number of different driver commands, but for this
 example it works fine the way it is.
 
 So what happens is `get-user-from-server` spawns an HTTP request and returns a
@@ -110,7 +111,7 @@ future must be wrapped in [attach](/cl-async/future#attach) or
 expected.
 
 This is the standard way to implement [drivers](/cl-async/drivers) in cl-async.
-Read [more on futures](/cl-async-future) to get an understanding of what's going
+Read [more on futures](/cl-async/future) to get an understanding of what's going
 on.
 
 Github examples
