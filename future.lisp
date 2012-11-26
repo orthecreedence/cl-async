@@ -246,13 +246,24 @@
 (defmacro multiple-future-bind ((&rest bindings) future-gen &body body)
   "Like multiple-value-bind, but instead of a form that evaluates to multiple
    values, takes a form that generates a future."
-  (let ((args (gensym "args")))
+  (let* ((args (gensym "args"))
+         (ignore-bindings nil)
+         (bindings (loop for binding in bindings
+                         collect (if (null binding)
+                                     (let ((ignored (gensym "ignored-binding")))
+                                       (push ignored ignore-bindings)
+                                       ignored)
+                                     binding))))
     `(attach ,future-gen
        (lambda (&rest ,args)
          (let (,@bindings)
+           ,(when ignore-bindings
+              `(declare (ignore ,@ignore-bindings)))
            ,@(loop for b in bindings collect
-               `(setf ,b (car ,args)
-                      ,args (cdr ,args)))
+               (if (member b ignore-bindings)
+                   `(setf ,args (cdr ,args))
+                   `(setf ,b (car ,args)
+                          ,args (cdr ,args))))
            ,@body)))))
 
 (defmacro wait-for (future-gen &body body)
