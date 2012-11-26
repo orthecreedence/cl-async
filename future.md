@@ -34,7 +34,7 @@ Intro to futures
 ----------------
 A future is a representation of a value in the future. The idea is that you can
 attach actions to a future that will run once its value is computed, and also
-attach an event handler to make sure any problems are handled along the way.
+attach error handlers to make sure any problems are handled along the way.
 
 Futures not only give an important abstraction for asynchronous programming, but
 offer opportunities for [syntactic abstraction](#nicer-syntax) that make async
@@ -55,7 +55,7 @@ and you attach a callback to it, `attach` returns Future B. Future B gets
 [finished](#finish) with the return value(s) from the callback attached to
 Future A.
 - [Finishing](#finish) a future with another future as the first value results
-in the callbacks/event handler from the future being finished transferring over
+in the callbacks/errbacks from the future being finished transferring over
 to the future that is passed as the value. This, in addition to [attach](#attach)
 always returning a future, makes nesting futures possible. In other words, a
 future can result in a future which results in a future, and if the final future
@@ -131,8 +131,8 @@ Futures API
 ### future (class)
 The future class represents a future value. For your application, it's mostly
 an opaque object which can be operated on using the functions/macros below. It
-currently has no public accessors, and mainly just holds callbacks, values,
-events, etc.
+currently has no public accessors, and mainly just holds callbacks, errbacks,
+values, events, etc.
 
 The standard way to create a future is with [make-future](#make-future).
 
@@ -172,7 +172,7 @@ with all the saved up errors in the order they were received.
 ;; example
 (let ((future (make-future))
       (socket (tcp-send "musio.com" 80 nil)))
-  ;; set up our event handler
+  ;; set up our error/event handler
   (attach-errback future
     (lambda (ev)
       (handler-case (error ev)
