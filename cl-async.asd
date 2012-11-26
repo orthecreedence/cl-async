@@ -3,7 +3,7 @@
   :license "MIT"
   :version "0.2.6"
   :description "Asynchronous operations for Common Lisp."
-  :depends-on (#:cffi #:libevent2 #:babel #:cl-ppcre #:trivial-gray-streams #:puri)
+  :depends-on (#:cffi #:cl-libevent2 #:babel #:cl-ppcre #:trivial-gray-streams #:puri)
   :components
   ((:file "package")
    (:file "util" :depends-on ("package"))
