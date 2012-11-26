@@ -17,6 +17,9 @@
 %ignore "_EVENT_PACKAGE_VERSION";
 %ignore "LIBEVENT_VERSION";
 
+/* enable SSL */
+#define _EVENT_HAVE_OPENSSL 1
+
 #define AF_UNSPEC   0
 #define AF_UNIX 1
 #define AF_INET 2
@@ -122,6 +125,7 @@ typedef unsigned short ev_uint16_t;
 %include "/usr/local/include/event2/dns.h"
 %include "/usr/local/include/event2/bufferevent.h"
 %include "/usr/local/include/event2/bufferevent_struct.h"
+%include "/usr/local/include/event2/bufferevent_ssl.h"
 %include "/usr/local/include/event2/buffer.h"
 %include "/usr/local/include/event2/listener.h"
 %include "/usr/local/include/event2/http.h"

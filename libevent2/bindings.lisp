@@ -8,6 +8,8 @@
 
 
 
+(cl:defconstant #.(lispify "_EVENT_HAVE_OPENSSL" 'constant) 1)
+
 (cl:defconstant #.(lispify "AF_UNSPEC" 'constant) 0)
 
 (cl:defconstant #.(lispify "AF_UNIX" 'constant) 1)
@@ -89,69 +91,15 @@
 	(#.(lispify "thq_first" 'slotname) :pointer)
 	(#.(lispify "thq_last" 'slotname) :pointer))
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_ARPA_INET_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_CLOCK_GETTIME" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_DLFCN_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_FCNTL" 'constant) 1)
-
 (cl:defconstant #.(lispify "_EVENT_HAVE_FCNTL_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_FD_MASK" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_GETADDRINFO" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_GETEGID" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_GETEUID" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_GETNAMEINFO" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_GETPROTOBYNUMBER" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_GETSERVBYNAME" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_GETTIMEOFDAY" 'constant) 1)
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_INET_ATON" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_INET_NTOP" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_INET_PTON" 'constant) 1)
-
 (cl:defconstant #.(lispify "_EVENT_HAVE_INTTYPES_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_LIBZ" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_MEMORY_H" 'constant) 1)
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_MMAP" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_NETDB_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_NETINET_IN_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_PIPE" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_POLL" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_POLL_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_PTHREADS" 'constant) 1)
-
 (cl:defconstant #.(lispify "_EVENT_HAVE_PUTENV" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SA_FAMILY_T" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SELECT" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SETENV" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SETFD" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SIGACTION" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SIGNAL" 'constant) 1)
 
@@ -167,12 +115,6 @@
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_STRING_H" 'constant) 1)
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_STRLCPY" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_STRSEP" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_STRTOK_R" 'constant) 1)
-
 (cl:defconstant #.(lispify "_EVENT_HAVE_STRTOLL" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_STRUCT_ADDRINFO" 'constant) 1)
@@ -185,33 +127,17 @@
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_STRUCT_SOCKADDR_IN6" 'constant) 1)
 
+(cl:defconstant #.(lispify "_EVENT_HAVE_STRUCT_SOCKADDR_STORAGE" 'constant) 1)
+
 (cl:defconstant #.(lispify "_EVENT_HAVE_STRUCT_SOCKADDR_STORAGE_SS_FAMILY" 'constant) 1)
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_IOCTL_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_MMAN_H" 'constant) 1)
-
 (cl:defconstant #.(lispify "_EVENT_HAVE_SYS_PARAM_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_QUEUE_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_SELECT_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_SOCKET_H" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SYS_STAT_H" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SYS_TIME_H" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_SYS_TYPES_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_UIO_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_SYS_WAIT_H" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_TAILQFOREACH" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_TIMERADD" 'constant) 1)
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_TIMERCLEAR" 'constant) 1)
 
@@ -229,21 +155,17 @@
 
 (cl:defconstant #.(lispify "_EVENT_HAVE_UINTPTR_T" 'constant) 1)
 
+(cl:defconstant #.(lispify "_EVENT_HAVE_UMASK" 'constant) 1)
+
 (cl:defconstant #.(lispify "_EVENT_HAVE_UNISTD_H" 'constant) 1)
 
-(cl:defconstant #.(lispify "_EVENT_HAVE_UNSETENV" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_HAVE_VASPRINTF" 'constant) 1)
-
-(cl:defconstant #.(lispify "_EVENT_NUMERIC_VERSION" 'constant) #x02000a00)
+(cl:defconstant #.(lispify "_EVENT_NUMERIC_VERSION" 'constant) #x02001400)
 
 (cl:defconstant #.(lispify "_EVENT_SIZEOF_INT" 'constant) 4)
 
 (cl:defconstant #.(lispify "_EVENT_SIZEOF_LONG" 'constant) 4)
 
 (cl:defconstant #.(lispify "_EVENT_SIZEOF_LONG_LONG" 'constant) 8)
-
-(cl:defconstant #.(lispify "_EVENT_SIZEOF_PTHREAD_T" 'constant) 4)
 
 (cl:defconstant #.(lispify "_EVENT_SIZEOF_SHORT" 'constant) 2)
 
@@ -446,6 +368,14 @@
 (cffi:defcfun ("event_base_free" #.(lispify "event_base_free" 'function)) :void
   (arg0 :pointer))
 
+(cl:defconstant #.(lispify "EVENT_LOG_DEBUG" 'constant) 0)
+
+(cl:defconstant #.(lispify "EVENT_LOG_MSG" 'constant) 1)
+
+(cl:defconstant #.(lispify "EVENT_LOG_WARN" 'constant) 2)
+
+(cl:defconstant #.(lispify "EVENT_LOG_ERR" 'constant) 3)
+
 (cl:defconstant #.(lispify "_EVENT_LOG_DEBUG" 'constant) 0)
 
 (cl:defconstant #.(lispify "_EVENT_LOG_MSG" 'constant) 1)
@@ -497,6 +427,13 @@
 
 (cl:defconstant #.(lispify "EV_ET" 'constant) #x20)
 
+(cffi:defcfun ("event_new" #.(lispify "event_new" 'function)) :pointer
+  (arg0 :pointer)
+  (arg1 :int)
+  (arg2 :short)
+  (arg3 :pointer)
+  (arg4 :pointer))
+
 (cffi:defcfun ("event_assign" #.(lispify "event_assign" 'function)) :int
   (arg0 :pointer)
   (arg1 :pointer)
@@ -504,13 +441,6 @@
   (arg3 :short)
   (arg4 :pointer)
   (arg5 :pointer))
-
-(cffi:defcfun ("event_new" #.(lispify "event_new" 'function)) :pointer
-  (arg0 :pointer)
-  (arg1 :int)
-  (arg2 :short)
-  (arg3 :pointer)
-  (arg4 :pointer))
 
 (cffi:defcfun ("event_free" #.(lispify "event_free" 'function)) :void
   (arg0 :pointer))
@@ -524,21 +454,21 @@
   (arg5 :pointer))
 
 (cffi:defcfun ("event_add" #.(lispify "event_add" 'function)) :int
-  (arg0 :pointer)
-  (arg1 :pointer))
+  (ev :pointer)
+  (timeout :pointer))
 
 (cffi:defcfun ("event_del" #.(lispify "event_del" 'function)) :int
   (arg0 :pointer))
 
 (cffi:defcfun ("event_active" #.(lispify "event_active" 'function)) :void
-  (arg0 :pointer)
-  (arg1 :int)
-  (arg2 :short))
+  (ev :pointer)
+  (res :int)
+  (ncalls :short))
 
 (cffi:defcfun ("event_pending" #.(lispify "event_pending" 'function)) :int
-  (arg0 :pointer)
-  (arg1 :short)
-  (arg2 :pointer))
+  (ev :pointer)
+  (events :short)
+  (tv :pointer))
 
 (cffi:defcfun ("event_initialized" #.(lispify "event_initialized" 'function)) :int
   (ev :pointer))
@@ -572,7 +502,7 @@
 
 (cffi:defcfun ("event_get_version_number" #.(lispify "event_get_version_number" 'function)) :pointer)
 
-(cl:defconstant #.(lispify "LIBEVENT_VERSION_NUMBER" 'constant) #x02000a00)
+(cl:defconstant #.(lispify "LIBEVENT_VERSION_NUMBER" 'constant) #x02001400)
 
 (cl:defconstant #.(lispify "EVENT_MAX_PRIORITIES" 'constant) 256)
 
@@ -622,6 +552,8 @@
 (cl:defconstant #.(lispify "DNS_ERR_SHUTDOWN" 'constant) 68)
 
 (cl:defconstant #.(lispify "DNS_ERR_CANCEL" 'constant) 69)
+
+(cl:defconstant #.(lispify "DNS_ERR_NODATA" 'constant) 70)
 
 (cl:defconstant #.(lispify "DNS_IPv4_A" 'constant) 1)
 
@@ -674,7 +606,7 @@
 (cffi:defcfun ("evdns_base_nameserver_sockaddr_add" #.(lispify "evdns_base_nameserver_sockaddr_add" 'function)) :int
   (base :pointer)
   (sa :pointer)
-  (len :pointer)
+  (len :unsigned-int)
   (flags :unsigned-int))
 
 (cffi:defcfun ("evdns_base_resolve_ipv4" #.(lispify "evdns_base_resolve_ipv4" 'function)) :pointer
@@ -879,7 +811,7 @@
   (arg2 :int))
 
 (cffi:defcfun ("bufferevent_socket_connect_hostname" #.(lispify "bufferevent_socket_connect_hostname" 'function)) :int
-  (b :pointer)
+  (arg0 :pointer)
   (arg1 :pointer)
   (arg2 :int)
   (arg3 :string)
@@ -1101,6 +1033,34 @@
 	(#.(lispify "timeout_write" 'slotname) #.(lispify "timeval" 'classname))
 	(#.(lispify "enabled" 'slotname) :short))
 
+(cffi:defcenum #.(lispify "bufferevent_ssl_state" 'enumname)
+	(#.(lispify "BUFFEREVENT_SSL_OPEN" 'enumvalue :keyword) #.0)
+	(#.(lispify "BUFFEREVENT_SSL_CONNECTING" 'enumvalue :keyword) #.1)
+	(#.(lispify "BUFFEREVENT_SSL_ACCEPTING" 'enumvalue :keyword) #.2))
+
+(cffi:defcfun ("bufferevent_openssl_filter_new" #.(lispify "bufferevent_openssl_filter_new" 'function)) :pointer
+  (base :pointer)
+  (underlying :pointer)
+  (ssl :pointer)
+  (state #.(lispify "bufferevent_ssl_state" 'enumname))
+  (options :int))
+
+(cffi:defcfun ("bufferevent_openssl_socket_new" #.(lispify "bufferevent_openssl_socket_new" 'function)) :pointer
+  (base :pointer)
+  (fd :int)
+  (ssl :pointer)
+  (state #.(lispify "bufferevent_ssl_state" 'enumname))
+  (options :int))
+
+(cffi:defcfun ("bufferevent_openssl_get_ssl" #.(lispify "bufferevent_openssl_get_ssl" 'function)) :pointer
+  (bufev :pointer))
+
+(cffi:defcfun ("bufferevent_ssl_renegotiate" #.(lispify "bufferevent_ssl_renegotiate" 'function)) :int
+  (bev :pointer))
+
+(cffi:defcfun ("bufferevent_get_openssl_error" #.(lispify "bufferevent_get_openssl_error" 'function)) :unsigned-long
+  (bev :pointer))
+
 (cffi:defcstruct #.(lispify "evbuffer_ptr" 'classname)
 	(#.(lispify "pos" 'slotname) :pointer)
 	(#.(lispify "_internal" 'slotname) :pointer))
@@ -1108,6 +1068,10 @@
 (cffi:defcstruct #.(lispify "evbuffer_ptr__internal" 'classname)
 	(#.(lispify "chain" 'slotname) :pointer)
 	(#.(lispify "pos_in_chain" 'slotname) :unsigned-long))
+
+(cffi:defcstruct #.(lispify "evbuffer_iovec" 'classname)
+	(#.(lispify "iov_base" 'slotname) :pointer)
+	(#.(lispify "iov_len" 'slotname) :unsigned-long))
 
 (cffi:defcfun ("evbuffer_new" #.(lispify "evbuffer_new" 'function)) :pointer)
 
@@ -1124,6 +1088,16 @@
 (cffi:defcfun ("evbuffer_unlock" #.(lispify "evbuffer_unlock" 'function)) :void
   (buf :pointer))
 
+(cl:defconstant #.(lispify "EVBUFFER_FLAG_DRAINS_TO_FD" 'constant) 1)
+
+(cffi:defcfun ("evbuffer_set_flags" #.(lispify "evbuffer_set_flags" 'function)) :int
+  (buf :pointer)
+  (flags :pointer))
+
+(cffi:defcfun ("evbuffer_clear_flags" #.(lispify "evbuffer_clear_flags" 'function)) :int
+  (buf :pointer)
+  (flags :pointer))
+
 (cffi:defcfun ("evbuffer_get_length" #.(lispify "evbuffer_get_length" 'function)) :unsigned-long
   (buf :pointer))
 
@@ -1138,7 +1112,7 @@
   (buf :pointer)
   (size :pointer)
   (vec :pointer)
-  (n_vecs :int))
+  (n_vec :int))
 
 (cffi:defcfun ("evbuffer_commit_space" #.(lispify "evbuffer_commit_space" 'function)) :int
   (buf :pointer)
@@ -1185,10 +1159,10 @@
   (data :pointer)
   (datlen :unsigned-long)
   (cleanupfn :pointer)
-  (extra :pointer))
+  (cleanupfn_arg :pointer))
 
 (cffi:defcfun ("evbuffer_add_file" #.(lispify "evbuffer_add_file" 'function)) :int
-  (output :pointer)
+  (outbuf :pointer)
   (fd :int)
   (offset :pointer)
   (length :pointer))
@@ -1240,7 +1214,7 @@
 
 (cffi:defcfun ("evbuffer_ptr_set" #.(lispify "evbuffer_ptr_set" 'function)) :int
   (buffer :pointer)
-  (pos :pointer)
+  (ptr :pointer)
   (position :unsigned-long)
   (how #.(lispify "evbuffer_ptr_how" 'enumname)))
 
@@ -1250,17 +1224,17 @@
   (eol_len_out :pointer)
   (eol_style #.(lispify "evbuffer_eol_style" 'enumname)))
 
-(cffi:defcstruct #.(lispify "evbuffer_cb_info" 'classname)
-	(#.(lispify "orig_size" 'slotname) :unsigned-long)
-	(#.(lispify "n_added" 'slotname) :unsigned-long)
-	(#.(lispify "n_deleted" 'slotname) :unsigned-long))
-
 (cffi:defcfun ("evbuffer_peek" #.(lispify "evbuffer_peek" 'function)) :int
   (buffer :pointer)
   (len :pointer)
   (start_at :pointer)
   (vec_out :pointer)
   (n_vec :int))
+
+(cffi:defcstruct #.(lispify "evbuffer_cb_info" 'classname)
+	(#.(lispify "orig_size" 'slotname) :unsigned-long)
+	(#.(lispify "n_added" 'slotname) :unsigned-long)
+	(#.(lispify "n_deleted" 'slotname) :unsigned-long))
 
 (cffi:defcfun ("evbuffer_add_cb" #.(lispify "evbuffer_add_cb" 'function)) :pointer
   (buffer :pointer)
@@ -1531,6 +1505,9 @@
   (address :string)
   (port :unsigned-short))
 
+(cffi:defcfun ("evhttp_connection_get_bufferevent" #.(lispify "evhttp_connection_get_bufferevent" 'function)) :pointer
+  (evcon :pointer))
+
 (cffi:defcfun ("evhttp_request_own" #.(lispify "evhttp_request_own" 'function)) :void
   (req :pointer))
 
@@ -1661,6 +1638,10 @@
 
 (cffi:defcfun ("evhttp_uri_new" #.(lispify "evhttp_uri_new" 'function)) :pointer)
 
+(cffi:defcfun ("evhttp_uri_set_flags" #.(lispify "evhttp_uri_set_flags" 'function)) :void
+  (uri :pointer)
+  (flags :unsigned-int))
+
 (cffi:defcfun ("evhttp_uri_get_scheme" #.(lispify "evhttp_uri_get_scheme" 'function)) :string
   (uri :pointer))
 
@@ -1709,6 +1690,12 @@
 (cffi:defcfun ("evhttp_uri_set_fragment" #.(lispify "evhttp_uri_set_fragment" 'function)) :int
   (uri :pointer)
   (fragment :string))
+
+(cffi:defcfun ("evhttp_uri_parse_with_flags" #.(lispify "evhttp_uri_parse_with_flags" 'function)) :pointer
+  (source_uri :string)
+  (flags :unsigned-int))
+
+(cl:defconstant #.(lispify "EVHTTP_URI_NONCONFORMANT" 'constant) #x01)
 
 (cffi:defcfun ("evhttp_uri_parse" #.(lispify "evhttp_uri_parse" 'function)) :pointer
   (source_uri :string))
