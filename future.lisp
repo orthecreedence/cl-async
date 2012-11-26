@@ -248,6 +248,7 @@
    values, takes a form that generates a future."
   (let* ((args (gensym "args"))
          (ignore-bindings nil)
+         ;; replace nil bindings with symbols that will be explicitely ignored
          (bindings (loop for binding in bindings
                          collect (if (null binding)
                                      (let ((ignored (gensym "ignored-binding")))
@@ -257,14 +258,22 @@
     `(attach ,future-gen
        (lambda (&rest ,args)
          (let (,@bindings)
+           ;; ignore any nil bindings
            ,(when ignore-bindings
               `(declare (ignore ,@ignore-bindings)))
+           ;; set the values into our bindings
            ,@(loop for b in bindings collect
                (if (member b ignore-bindings)
                    `(setf ,args (cdr ,args))
                    `(setf ,b (car ,args)
                           ,args (cdr ,args))))
-           ,@body)))))
+           ;; wrap in another let in case users want to add their own declare
+           ;; statement, which we took away the possibility of with our setfs
+           ;; above
+           (let (,@(loop for b in bindings
+                         unless (member b ignore-bindings)
+                         collect (list b b)))
+             ,@body))))))
 
 (defmacro wait-for (future-gen &body body)
   "Wait for a future to finish, ignoring any values it returns. Can be useful
