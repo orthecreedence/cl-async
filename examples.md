@@ -43,6 +43,7 @@ returns information on a user.
 (define-condition server-error (error)
   ((status :initarg :code :accessor server-error-status :initform nil)))
 
+;; our driver function
 (defun get-user-from-server (id)
   "Spawn an HTTP request which grabs the given user by id. When the response
    comes in, finish the returned future with the parsed JSON of the response."
@@ -53,17 +54,18 @@ returns information on a user.
             ;; success. note we finish the future with multiple values (parsed json + status code)
             (finish future (yason:parse body) status)
             ;; error code, signal error
-            (signal-error future (make-instance 'server-error :code status)))
-        (finish future status headers body))
+            (signal-error future (make-instance 'server-error :code status))))
       (lambda (event)
         (let ((event-type (type-of event)))
           ;; ignore info events (careful, connection-error extends connection-info)
           (when (or (not (subtypep event-type 'as:connection-info))
                     (subtypep event-type 'as:connection-error))
+            ;; forward any errors to the future, to be caught with future-handler-case
             (signal-error future event))))
       :timeout 5)
     future))
 
+;; our app function
 (defun my-get-user (id)
   (future-handler-case
     ;; bind multiple values to the future returned from get-user-from-server
