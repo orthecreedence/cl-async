@@ -248,12 +248,6 @@ to the future will be fired, with the given values as their arguments.
       (format t "result: ~a~%" (* x y z)))))
 {% endhighlight %}
 
-<a id="attach-cb"></a>
-### attach-cb
-This function attaches a callback to a future. _Please_ note that although there
-are cases where calling this function directly are appropriate, the standard
-interface for attaching callbacks to is [attach](#attach).
-
 <a id="attach"></a>
 ### attach
 This macro attaches a callback to a future such that once the future computes,
