@@ -35,12 +35,12 @@ Quick links:
 - [Drivers](http://orthecreedence.github.com/cl-async/drivers)
 
 ### Quicklisp
-Although this library is quicklisp-loadable, I _strongly urge you_ to use the
-master branch of this repo until otherwise noted. A lot has been changed/fixed
-since it was included, and I suspect this trend will continue for at least a few
-more weeks. If you do use the quicklisp version, please check the
-[closed issues list](https://github.com/orthecreedence/cl-async/issues?state=closed)
-before complaining about something being broken.
+This library is now fully in quicklisp, along with its sister bindings,
+[cl-libevent2](/orthecreedence/cl-libevent2). If you want to keep up with the
+most recent changes (recommended, as many bugfixes happen on master), download
+from git, otherwise feel free to use the quicklisp release. Also, if using
+quicklisp, be familiar with the [closed issues list](/orthecreedence/cl-async/issues?state=closed).
+An issue you're having may have already been fixed =].
 
 ### Tests
 I'm slowly but surely adding tests via the [Eos test framework](https://github.com/adlai/Eos)
