@@ -217,7 +217,10 @@
          (lambda ,bind-vars
            ,(when ignore-bindings
               `(declare (ignore ,@ignore-bindings)))
-           ,@body)))))
+           (let (,@(loop for b in bind-vars
+                         unless (member b ignore-bindings)
+                         collect (list b b)))
+             ,@body))))))
 
 (defmacro alet* (bindings &body body)
   "Asynchronous let*. Allows calculating a number of values in sequence via
