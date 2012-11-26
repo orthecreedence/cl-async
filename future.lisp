@@ -229,22 +229,29 @@
    
    Also returns a future that fires with the values returned from the body form,
    which allows arbitrary nesting to get a final value(s)."
-  (if bindings
-      (let* ((binding (car bindings))
-             (bind (car binding))
-             (ignore-bind (not bind))
-             (bind (if ignore-bind (gensym "async-ignore") bind))
-             (future (cadr binding))
-             (args (gensym "args")))
-        ;; since this is in the tail-position, no need to explicitely set
-        ;; callbacks/event handler since they will be reattached automatically.
-        `(attach ,future
-           (lambda (&rest ,args)
-             (let ((,bind (car ,args)))
-               ,(when ignore-bind `(declare (ignore ,bind)))
-               ;; being recursive helps us keep the code cleaner...
-               (alet* ,(cdr bindings) ,@body)))))
-      `(progn ,@body)))
+  (let* ((ignore-bindings nil)
+         (bindings (loop for (bind form) in bindings
+                         collect (if bind
+                                     (list bind form)
+                                     (let ((ignore-sym (gensym "ignore")))
+                                       (push ignore-sym ignore-bindings)
+                                       (list ignore-sym form)))))
+         (body-form `(let (,@(loop for (b nil) in bindings
+                                   unless (member b ignore-bindings)
+                                   collect (list b b)))
+                       ,@body)))
+    (dolist (binding (reverse bindings))
+      (let ((bind (car binding))
+            (future (cadr binding))
+            (args (gensym "args")))
+        (setf body-form
+              `(attach ,future
+                 (lambda (&rest ,args)
+                   (let ((,bind (car ,args)))
+                     ,(when (member bind ignore-bindings)
+                        `(declare (ignore ,bind)))
+                     ,body-form))))))
+    body-form))
 
 (defmacro multiple-future-bind ((&rest bindings) future-gen &body body)
   "Like multiple-value-bind, but instead of a form that evaluates to multiple
