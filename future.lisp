@@ -217,6 +217,7 @@
          (lambda ,bind-vars
            ,(when ignore-bindings
               `(declare (ignore ,@ignore-bindings)))
+           ;; wrap body in let form which allows (declare ...)
            (let (,@(loop for b in bind-vars
                          unless (member b ignore-bindings)
                          collect (list b b)))
@@ -230,16 +231,21 @@
    Also returns a future that fires with the values returned from the body form,
    which allows arbitrary nesting to get a final value(s)."
   (let* ((ignore-bindings nil)
+         ;; any nil bindings are replaces with an ignored gensym symbol, which
+         ;; is also added to the ignore-bindings list
          (bindings (loop for (bind form) in bindings
                          collect (if bind
                                      (list bind form)
                                      (let ((ignore-sym (gensym "ignore")))
                                        (push ignore-sym ignore-bindings)
                                        (list ignore-sym form)))))
+         ;; wrap body in let form which allows (declare ...)
          (body-form `(let (,@(loop for (b nil) in bindings
                                    unless (member b ignore-bindings)
                                    collect (list b b)))
                        ,@body)))
+    ;; loop over bindings in reverse and build a nested list into the body-form
+    ;; variable
     (dolist (binding (reverse bindings))
       (let ((bind (car binding))
             (future (cadr binding))
@@ -278,8 +284,6 @@
                    `(setf ,b (car ,args)
                           ,args (cdr ,args))))
            ;; wrap in another let in case users want to add their own declare
-           ;; statement, which we took away the possibility of with our setfs
-           ;; above
            (let (,@(loop for b in bindings
                          unless (member b ignore-bindings)
                          collect (list b b)))
