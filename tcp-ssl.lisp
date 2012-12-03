@@ -47,12 +47,12 @@
     (setf *ssl-init-p* t))
 
   ;; wrap the socket in a libevent SSL wrapper
-  (let* ((data-pointer (as::create-data-pointer))
+  (let* ((data-pointer (create-data-pointer))
          (passed-in-stream (subtypep (type-of socket/stream) 'as:async-stream))
          (socket (if passed-in-stream
                      (stream-socket socket/stream)
                      socket/stream))
-         (bufferevent-orig (as::socket-c socket))
+         (bufferevent-orig (socket-c socket))
          ;; create an SSL client oontext
          (ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-client-method))))
     ;; make sure we init PROPERLY
@@ -76,18 +76,18 @@
       ;; get rid of any references to our original data pointers. this should free
       ;; up some potential memory issues associated with replacing the pointers
       ;; with the new sockets/streams/callbacks/etc below
-      (let ((original-data-pointer (as::deref-data-from-pointer bufferevent-orig)))
+      (let ((original-data-pointer (deref-data-from-pointer bufferevent-orig)))
         ;; make sure if there's any data/callbacks on the original data pointer,
         ;; we forward it to the new data pointer
-        (as::save-callbacks data-pointer (as::get-callbacks original-data-pointer))
-        (as::attach-data-to-pointer data-pointer (as::deref-data-from-pointer original-data-pointer))
-        (as::free-pointer-data original-data-pointer)
-        (as::free-pointer-data bufferevent-orig :preserve-pointer t))
+        (save-callbacks data-pointer (get-callbacks original-data-pointer))
+        (attach-data-to-pointer data-pointer (deref-data-from-pointer original-data-pointer))
+        (free-pointer-data original-data-pointer)
+        (free-pointer-data bufferevent-orig :preserve-pointer t))
 
       ;; allow our callbacks to deref data directly from the bev
-      (as::attach-data-to-pointer ssl-bev (list :data-pointer data-pointer
-                                                :socket ssl-socket
-                                                :stream ssl-tcp-stream))
+      (attach-data-to-pointer ssl-bev (list :data-pointer data-pointer
+                                            :socket ssl-socket
+                                            :stream ssl-tcp-stream))
       ;; setup the callbacks for our ssl bufferevent. notice we hijack the event
       ;; callback (since we need some special processing). it will call the
       ;; normal tcp-event-cb when it's done processing.
