@@ -20,7 +20,7 @@
          (socket (getf bev-data :socket))
          (event-cb (getf (get-callbacks data-pointer) :event-cb)))
     (catch-app-errors event-cb
-      (let ((errcode (le:bufferevent-get-openssl-error bev)))
+      (let ((errcode (le-ssl:bufferevent-get-openssl-error bev)))
         (unless (zerop errcode)
           (setf events le:+bev-event-error+)
           (cffi:with-foreign-object (buf :unsigned-char 256)
@@ -66,11 +66,11 @@
     ;; create our SSL socket/stream and make sure it grabs any callbacks/hooks
     ;; it needs to operate properly from the original bufferevent that tcp-send
     ;; created.
-    (let* ((ssl-bev (le:bufferevent-openssl-filter-new
+    (let* ((ssl-bev (le-ssl:bufferevent-openssl-filter-new
                       as::*event-base*
                       bufferevent  ; pass in the original bev
                       ssl-ctx
-                      (cffi:foreign-enum-value 'le:bufferevent-ssl-state ':+bufferevent-ssl-connecting+)
+                      (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':+bufferevent-ssl-connecting+)
                       (cffi:foreign-enum-value 'le:bufferevent-options ':+bev-opt-close-on-free+)))
            (ssl-socket (make-instance 'as:socket :c ssl-bev))
            (ssl-tcp-stream (when stream (make-instance 'as:async-io-stream :socket ssl-socket))))

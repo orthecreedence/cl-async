@@ -3,6 +3,6 @@
   :license "MIT"
   :version "0.2.6"
   :description "SSL Wrapper around cl-async socket implementation."
-  :depends-on (#:cffi #:cl+ssl #:libevent2 #:cl-async)
+  :depends-on (#:cffi #:cl+ssl #:cl-libevent2 #:cl-libevent2-ssl #:cl-async)
   :components
-  ((:file "ssl")))
+  ((:file "tcp-ssl")))
