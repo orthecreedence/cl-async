@@ -1,5 +1,5 @@
 (defpackage :cl-async-future
-  (:use :cl)
+  (:use :cl :cl-async-util)
   (:nicknames :asf)
   (:export #:future
            #:make-future
@@ -15,7 +15,7 @@
            #:future-handler-case))
 
 (defpackage :cl-async
-  (:use :cl :trivial-gray-streams)
+  (:use :cl :cl-async-util :trivial-gray-streams)
   (:nicknames :as)
   (:export #:+af-inet+
            #:+af-inet6+
