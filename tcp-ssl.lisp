@@ -1,10 +1,8 @@
 (defpackage :cl-async-ssl
-  (:use :cl :cl-async)
+  (:use :cl :cl-async :cl-async-util)
   (:nicknames :as-ssl)
   (:export #:wrap-socket-in-ssl))
 (in-package :cl-async-ssl)
-
-(use-package :cl-async)
 
 (defvar *ssl-init-p* nil)
 
