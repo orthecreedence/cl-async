@@ -217,7 +217,11 @@
          (lambda ,bind-vars
            ,(when ignore-bindings
               `(declare (ignore ,@ignore-bindings)))
-           ,@body)))))
+           ;; wrap body in let form which allows (declare ...)
+           (let (,@(loop for b in bind-vars
+                         unless (member b ignore-bindings)
+                         collect (list b b)))
+             ,@body))))))
 
 (defmacro alet* (bindings &body body)
   "Asynchronous let*. Allows calculating a number of values in sequence via
@@ -226,28 +230,41 @@
    
    Also returns a future that fires with the values returned from the body form,
    which allows arbitrary nesting to get a final value(s)."
-  (if bindings
-      (let* ((binding (car bindings))
-             (bind (car binding))
-             (ignore-bind (not bind))
-             (bind (if ignore-bind (gensym "async-ignore") bind))
-             (future (cadr binding))
-             (args (gensym "args")))
-        ;; since this is in the tail-position, no need to explicitely set
-        ;; callbacks/event handler since they will be reattached automatically.
-        `(attach ,future
-           (lambda (&rest ,args)
-             (let ((,bind (car ,args)))
-               ,(when ignore-bind `(declare (ignore ,bind)))
-               ;; being recursive helps us keep the code cleaner...
-               (alet* ,(cdr bindings) ,@body)))))
-      `(progn ,@body)))
+  (let* ((ignore-bindings nil)
+         ;; any nil bindings are replaces with an ignored gensym symbol, which
+         ;; is also added to the ignore-bindings list
+         (bindings (loop for (bind form) in bindings
+                         collect (if bind
+                                     (list bind form)
+                                     (let ((ignore-sym (gensym "ignore")))
+                                       (push ignore-sym ignore-bindings)
+                                       (list ignore-sym form)))))
+         ;; wrap body in let form which allows (declare ...)
+         (body-form `(let (,@(loop for (b nil) in bindings
+                                   unless (member b ignore-bindings)
+                                   collect (list b b)))
+                       ,@body)))
+    ;; loop over bindings in reverse and build a nested list into the body-form
+    ;; variable
+    (dolist (binding (reverse bindings))
+      (let ((bind (car binding))
+            (future (cadr binding))
+            (args (gensym "args")))
+        (setf body-form
+              `(attach ,future
+                 (lambda (&rest ,args)
+                   (let ((,bind (car ,args)))
+                     ,(when (member bind ignore-bindings)
+                        `(declare (ignore ,bind)))
+                     ,body-form))))))
+    body-form))
 
 (defmacro multiple-future-bind ((&rest bindings) future-gen &body body)
   "Like multiple-value-bind, but instead of a form that evaluates to multiple
    values, takes a form that generates a future."
   (let* ((args (gensym "args"))
          (ignore-bindings nil)
+         ;; replace nil bindings with symbols that will be explicitely ignored
          (bindings (loop for binding in bindings
                          collect (if (null binding)
                                      (let ((ignored (gensym "ignored-binding")))
@@ -257,14 +274,20 @@
     `(attach ,future-gen
        (lambda (&rest ,args)
          (let (,@bindings)
+           ;; ignore any nil bindings
            ,(when ignore-bindings
               `(declare (ignore ,@ignore-bindings)))
+           ;; set the values into our bindings
            ,@(loop for b in bindings collect
                (if (member b ignore-bindings)
                    `(setf ,args (cdr ,args))
                    `(setf ,b (car ,args)
                           ,args (cdr ,args))))
-           ,@body)))))
+           ;; wrap in another let in case users want to add their own declare
+           (let (,@(loop for b in bindings
+                         unless (member b ignore-bindings)
+                         collect (list b b)))
+             ,@body))))))
 
 (defmacro wait-for (future-gen &body body)
   "Wait for a future to finish, ignoring any values it returns. Can be useful
