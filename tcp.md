@@ -13,6 +13,7 @@ while using the TCP system.
 - [tcp-server](#tcp-server) _function_
 - [close-tcp-server](#close-tcp-server)
 - [socket](#socket) _class_
+  - [socket-c](#socket-c) _accessor_
   - [socket-data](#socket-data) _accessor_
 - [write-socket-data](#write-socket-data) _function_
 - [set-socket-timeouts](#set-socket-timeouts) _function_
@@ -172,6 +173,17 @@ callback functions, and allows you to perform certain actions on the socket
 
 It also exposes an accessor, [socket-data](#socket-data), which allows you to
 store arbitrary, app-specific data in the socket.
+
+<a id="socket-c"></a>
+##### socket-c
+This accessor lets you access the underlying [libevent bufferevent](http://www.wangafu.net/~nickm/libevent-book/Ref6_bufferevent.html)
+object for the socket. While this is not immediately useful for any cl-async
+related purpose (and manipulating it outside of cl-async may make your worst
+nightmares come true if you aren't careful), it can be very useful to do your
+own bufferevent operations through the [libevent bindings](https://github.com/orthecreedence/cl-libevent2).
+
+TL;DR: Don't touch this accessor unless you are fairly familiar with libevent's
+API and how it interacts with cl-async.
 
 <a id="socket-data"></a>
 ##### socket-data
