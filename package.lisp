@@ -93,6 +93,7 @@
            #:socket-closed
            ;; socket class/accessors
            #:socket
+           #:socket-c
            #:socket-data
            ;; tcp functions
            #:socket-closed-p
