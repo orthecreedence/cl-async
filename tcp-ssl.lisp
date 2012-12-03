@@ -63,7 +63,7 @@
     ;; it needs to operate properly from the original bufferevent that tcp-send
     ;; created.
     (let* ((ssl-bev (le-ssl:bufferevent-openssl-filter-new
-                      as::*event-base*
+                      *event-base*
                       bufferevent-orig  ; pass in the original bev
                       ssl-ctx
                       (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting)
@@ -94,7 +94,7 @@
       (le:bufferevent-setcb ssl-bev
                             (cffi:callback as::tcp-read-cb)
                             (cffi:callback as::tcp-write-cb)
-                            (cffi:callback as::ssl-event-cb)
+                            (cffi:callback ssl-event-cb)
                             data-pointer)
       (le:bufferevent-enable ssl-bev (logior le:+ev-read+ le:+ev-write+))
       
