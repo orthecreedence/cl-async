@@ -1,4 +1,6 @@
-;;; This file holds some useful helpers for all included systems.
+;;; This houses all common funcitonality/utilities for cl-async used throughout
+;;; the various extending packages. This package is meant to be used internally
+;;; only.
 
 (defpackage :cl-async-util
   (:use :cl)
@@ -32,6 +34,28 @@
            #:*catch-application-errors*
 
            #:*signal-handlers*
+           #:*default-event-handler*
+           #:catch-app-errors
+
+           #:make-foreign-type
+
+           #:make-pointer-eql-able
+           #:create-data-pointer
+           #:save-callbacks
+           #:get-callbacks
+           #:clear-callbacks
+           #:attach-data-to-pointer
+           #:deref-data-from-pointer
+           #:clear-pointer-data
+           #:free-pointer-data
+
+           #:split-usec-time
+
+           #:append-array
+
+           #:add-event-loop-exit-callback
+           #:process-event-loop-exit-callbacks
+           #:check-event-loop-running
 
            #:*ipv4-scanner*
            #:*ipv6-scanner*
@@ -101,6 +125,140 @@
 (defvar *signal-handlers* nil
   "Holds all the currently bound signal handlers, which can be used to unbind
    them all in one swift stroke.")
+
+(defvar *default-event-handler*
+  (lambda (err)
+    ;; throw the error so we can wrap it in a handler-case
+    (handler-case (error err)
+      ;; got a connection error, throw it (must do this explicitely since
+      ;; connection-error extends connection-info)
+      (connection-error () (error err))
+
+      ;; this is just info, let it slide
+      (connection-info () nil)
+      
+      ;; this an actual error. throw it back to toplevel
+      (t () (error err))))
+  "If an event-cb is not specified, this will be used as the event-cb IF
+   *catch-application-errors* is set to t.")
+
+(defmacro catch-app-errors (event-cb &body body)
+  "Wraps catching of application errors into a simple handler-case (if wanted),
+   otherwise just runs the body with no error/event handling."
+  (let ((evcb (gensym)))
+    `(if *catch-application-errors*
+         (let ((,evcb (if (functionp ,event-cb)
+                          ,event-cb
+                          *default-event-handler*)))
+           (handler-case
+             (progn ,@body)
+             (t (err) (funcall ,evcb err))))
+         (progn ,@body))))
+     
+(defmacro make-foreign-type ((var type &key initial type-size) bindings &body body)
+  "Convenience macro, makes creation and initialization of CFFI types easier.
+   Emphasis on initialization."
+  `(cffi:with-foreign-object (,var ,type)
+     ,(when initial
+        `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size ,type))))
+     ,@(loop for binding in bindings collect
+         `(setf (cffi:foreign-slot-value ,var ,type ,(car binding)) ,(cadr binding)))
+     ,@body))
+
+(defun make-pointer-eql-able (pointer)
+  "Abstraction to make a CFFI pointer #'eql to itself. Does its best to be the
+   most performant for the current implementation."
+  (when pointer
+    #+(or ccl)
+      pointer
+    #-(or ccl)
+      (if (cffi:pointerp pointer)
+          (cffi:pointer-address pointer)
+          pointer)))
+
+(defun create-data-pointer ()
+  "Creates a pointer in C land that can be used to attach data/callbacks to.
+   Note that this must be freed via clear-pointer-data."
+  (cffi:foreign-alloc :char :count 1))
+
+(defun save-callbacks (pointer callbacks)
+  "Save a set of callbacks, keyed by the given pointer."
+  (unless *fn-registry*
+    (setf *fn-registry* (make-hash-table :test #'eql)))
+  (let ((callbacks (if (listp callbacks)
+                       callbacks
+                       (list callbacks))))
+    (setf (gethash (make-pointer-eql-able pointer) *fn-registry*) callbacks)))
+
+(defun get-callbacks (pointer)
+  "Get all callbacks for the given pointer."
+  (when *fn-registry*
+    (gethash (make-pointer-eql-able pointer) *fn-registry*)))
+
+(defun clear-callbacks (pointer)
+  "Clear out all callbacks for the given pointer."
+  (when *fn-registry*
+    (remhash (make-pointer-eql-able pointer) *fn-registry*)))
+
+(defun attach-data-to-pointer (pointer data)
+  "Attach a lisp object to a foreign pointer."
+  (unless *data-registry*
+    (setf *data-registry* (make-hash-table :test #'eql)))
+  (setf (gethash (make-pointer-eql-able pointer) *data-registry*) data))
+
+(defun deref-data-from-pointer (pointer)
+  "Grab data attached to a CFFI pointer."
+  (when (and pointer *data-registry*)
+    (gethash (make-pointer-eql-able pointer) *data-registry*)))
+
+(defun clear-pointer-data (pointer)
+  "Clear the data attached to a CFFI pointer."
+  (when (and pointer *data-registry*)
+    (remhash (make-pointer-eql-able pointer) *data-registry*)))
+
+(defun free-pointer-data (pointer &key preserve-pointer)
+  "Clears out all data attached to a foreign pointer, and frees the pointer
+   (unless :preserve-pointer is t)."
+  (when pointer
+    (unwind-protect
+      (progn
+        (clear-callbacks pointer)
+        (clear-pointer-data pointer))
+      (unless preserve-pointer
+        (when (cffi:pointerp pointer)
+          (cffi:foreign-free pointer))))))
+
+(defun split-usec-time (time-s)
+  "Given a second value, ie 3.67, return the number of seconds as the first
+   value and the number of usecs for the second value."
+  (if (numberp time-s)
+      (multiple-value-bind (time-sec time-frac) (floor time-s)
+        (values time-sec (floor (* 1000000 time-frac))))
+      nil))
+
+(defun append-array (arr1 arr2)
+  "Create an array, made up of arr1 followed by arr2."
+  (let ((arr1-length (length arr1))
+        (arr2-length (length arr2)))
+    (let ((arr (make-array (+ arr1-length arr2-length)
+                           :element-type (array-element-type arr1))))
+      (replace arr arr1 :start1 0)
+      (replace arr arr2 :start1 arr1-length)
+      arr)))
+      
+(defun add-event-loop-exit-callback (fn)
+  "Add a function to be run when the event loop exits."
+  (push fn *event-loop-end-functions*))
+
+(defun process-event-loop-exit-callbacks ()
+  "run and clear out all event loop exit functions."
+  (dolist (fn *event-loop-end-functions*)
+    (funcall fn))
+  (setf *event-loop-end-functions* nil))
+
+(defun check-event-loop-running ()
+  (unless *event-base*
+    (error "Event loop not running. Start with function start-event-loop.")))
 
 (defparameter *ipv4-scanner*
   (cl-ppcre:create-scanner
