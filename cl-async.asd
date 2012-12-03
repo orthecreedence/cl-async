@@ -15,12 +15,12 @@
   :depends-on (#:cffi #:cl-libevent2 #:cl-async-util #:babel #:cl-ppcre #:trivial-gray-streams #:puri)
   :components
   ((:file "package")
-   (:file "common" :depends-on ("package"))
-   (:file "timer" :depends-on ("common"))
-   (:file "dns" :depends-on ("common"))
+   (:file "base" :depends-on ("package"))
+   (:file "timer" :depends-on ("base"))
+   (:file "dns" :depends-on ("base"))
    (:file "tcp" :depends-on ("dns"))
    (:file "tcp-stream" :depends-on ("tcp"))
    (:file "http" :depends-on ("tcp"))
-   (:file "signal" :depends-on ("common"))
-   (:file "future" :depends-on ("common"))))
+   (:file "signal" :depends-on ("base"))
+   (:file "future" :depends-on ("base"))))
 
