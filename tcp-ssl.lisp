@@ -1,6 +1,7 @@
 (defpackage :cl-async-ssl
   (:use :cl :cl-async)
-  (:export #:tcp-send-ssl))
+  (:nicknames :as-ssl)
+  (:export #:wrap-socket-in-ssl))
 (in-package :cl-async-ssl)
 
 (use-package :cl-async)
@@ -51,8 +52,8 @@
   (let* ((data-pointer (as::create-data-pointer))
          (passed-in-stream (subtypep (type-of socket/stream) 'as:async-stream))
          (socket (if passed-in-stream
-                     (stream-socket stream/socket)
-                     stream/socket))
+                     (stream-socket socket/stream)
+                     socket/stream))
          (bufferevent-orig (as::socket-c socket))
          ;; create an SSL client oontext
          (ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-client-method))))
@@ -65,7 +66,7 @@
     ;; created.
     (let* ((ssl-bev (le-ssl:bufferevent-openssl-filter-new
                       as::*event-base*
-                      bufferevent  ; pass in the original bev
+                      bufferevent-orig  ; pass in the original bev
                       ssl-ctx
                       (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting)
                       (cffi:foreign-enum-value 'le:bufferevent-options ':+bev-opt-close-on-free+)))
