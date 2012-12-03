@@ -1,50 +1,5 @@
 (in-package :cl-async)
 
-(defvar *event-base* nil
-  "THE event base (libevent) used to process all async operations.")
-(defvar *fn-registry* nil
-  "Function registry, allows the CFFI callbacks to run anonymous functions.")
-(defvar *data-registry* nil
-  "Data registry, gives CFFI callbacks access to anonymous data.")
-(defvar *event-loop-end-functions* nil
-  "Functions to call when the event loop closes")
-
-(defvar *dns-base* nil
-  "Holds the evdns-base object used for DNS lookups. One per event loop should
-   suffice.")
-
-(defvar *dns-ref-count* 0
-  "Counts how many open DNS queries there are, and allows freeing the DNS base
-   once there are no more references.")
-
-;; consider somehow moving these to tcp.lisp without creating circular deps
-;; (since they are initialized in start-event-loop as thread-local vars)
-(defparameter *buffer-size* 16384
-  "The amount of data we'll pull from the evbuffers when doing reading/writing.")
-(defvar *socket-buffer-c* nil
-  "A pointer to the buffer in C land that reads from sockets.")
-(defvar *socket-buffer-lisp* nil
-  "An array in lisp land that holds data copied from a socket.")
-
-(defvar *incoming-connection-count* 0
-  "Number of incoming TCP connections.")
-(defvar *outgoing-connection-count* 0
-  "Number of outgoing TCP connections.")
-(defvar *incoming-http-count* 0
-  "Number of incoming HTTP connections.")
-(defvar *outgoing-http-count* 0
-  "Number of outgoing HTTP connections.")
-
-(defvar *catch-application-errors* nil
-  "When t, permits cl-async to catch uncaught conditions in your application and
-   pass them to the event-cb callback given. If no event-cb is given for the
-   operation that triggered the condition, use *default-event-handler* as the
-   event-cb.")
-
-(defvar *signal-handlers* nil
-  "Holds all the currently bound signal handlers, which can be used to unbind
-   them all in one swift stroke.")
-
 (define-condition connection-info () ()
   (:documentation "Describes the base condition for any action on a connection."))
 
