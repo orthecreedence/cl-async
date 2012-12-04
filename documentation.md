@@ -16,6 +16,7 @@ abilities of cl-async:
   - [DNS](/cl-async/dns)
   - [TCP](/cl-async/tcp)
   - [TCP stream](/cl-async/tcp-stream)
+  - [TCP SSL](/cl-async/tcp-ssl)
   - [HTTP](/cl-async/http)
   - [Futures](/cl-async/future)
   - [Stats](/cl-async/stats)
