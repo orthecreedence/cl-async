@@ -6,7 +6,8 @@
   :depends-on (#:cffi #:cl-async #:eos)
   :components
   ((:module test
-	:components ((:file "base")
+	:components ((:file "util")
+	             (:file "base" :depends-on ("util"))
 	             (:file "run")
 		         (:file "timer" :depends-on ("base"))
 		         (:file "dns" :depends-on ("base"))
