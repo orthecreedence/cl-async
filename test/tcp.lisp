@@ -1,6 +1,8 @@
 (in-package :cl-async-test)
 (in-suite cl-async-test)
 
+;; TODO: timeouts (integer, float)
+
 (test tcp-simple-client-server
   "Test both tcp-send and tcp-server"
   (multiple-value-bind (server-reqs server-data connect-num client-replies client-data)
