@@ -76,6 +76,7 @@
     "Free a socket (bufferevent) and clear out all associated data."))
 
 (defmethod close-socket ((socket socket))
+  "Close and free a socket and all of it's underlying structures."
   ;; grab the data pointer associated with the bufferevent and free it. see
   ;; comment tcp-send about data-pointer for a better explanation.
   (check-socket-open socket)

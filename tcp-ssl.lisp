@@ -8,9 +8,30 @@
   (:report (lambda (c s) (format s "SSL connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Describes a general SSL connection error."))
 
-(defclass ssl-socket (socket) ())
+;; cl+ssl doesn't wrap these (bummer) so we have to do it manually...
+(defconstant +ssl-received-shutdown+ 2)  ; #define SSL_RECEIVED_SHUTDOWN   2
+(cffi:defcfun ("SSL_set_shutdown" ssl-set-shutdown) :void
+  (ssl :pointer)
+  (mode :int))
+(cffi:defcfun ("SSL_shutdown" ssl-shutdown) :int
+  (ssl :pointer))
+
+(defclass ssl-socket (socket)
+  ((ssl-ctx :accessor socket-ssl-ctx :initarg :ctx :initform nil)
+   (close-cb :accessor socket-close-cb :initarg :close-cb :initform nil)))
 
 (defmethod close-socket ((socket ssl-socket))
+  "Closes and frees an SSL socket."
+  ;; close the SSL context and call the close callback
+  (let ((ctx (socket-ssl-ctx socket))
+        (close-cb (socket-close-cb socket)))
+    (when (and (cffi:pointerp ctx)
+               (not (cffi:null-pointer-p ctx)))
+      (ssl-set-shutdown ctx +ssl-received-shutdown+)
+      (ssl-shutdown ctx))
+    (when close-cb
+      (funcall close-cb)))
+  ;; this will free the bufferevent/any SSL resources and close the connection
   (call-next-method))
 
 (cffi:defcallback ssl-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
@@ -70,6 +91,7 @@
                       (cffi:foreign-enum-value 'le:bufferevent-options ':+bev-opt-close-on-free+)))
            ;; make an SSL socket that matches the options of the original socket
            (ssl-socket (make-instance 'ssl-socket
+                                      :ctx ssl-ctx
                                       :c ssl-bev
                                       :drain-read-buffer (as::socket-drain-read-buffer socket)))
            (ssl-tcp-stream (when passed-in-stream (make-instance 'async-io-stream :socket ssl-socket))))
