@@ -4,13 +4,11 @@
   (:export #:wrap-socket-in-ssl))
 (in-package :cl-async-ssl)
 
-(defvar *ssl-init-p* nil)
-
-(define-condition tcp-ssl-error (as:tcp-error) ()
+(define-condition tcp-ssl-error (tcp-error) ()
   (:report (lambda (c s) (format s "SSL connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Describes a general SSL connection error."))
 
-(defclass ssl-socket (as:socket) ())
+(defclass ssl-socket (socket) ())
 
 (defmethod close-socket ((socket ssl-socket))
   (call-next-method))
@@ -18,9 +16,7 @@
 (cffi:defcallback ssl-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
    callback system to track failures/disconnects."
-  (let* ((event nil)
-         (dns-base (deref-data-from-pointer data-pointer))
-         (bev-data (deref-data-from-pointer bev))
+  (let* ((bev-data (deref-data-from-pointer bev))
          (socket (getf bev-data :socket))
          (event-cb (getf (get-callbacks data-pointer) :event-cb)))
     (catch-app-errors event-cb
@@ -30,34 +26,38 @@
           (cffi:with-foreign-object (buf :unsigned-char 256)
             (cl+ssl::err-error-string errcode buf)
             (let ((str (cffi:foreign-string-to-lisp buf)))
-              (funcall event-cb (make-instance 'tcp-ssl-error :code errcode :msg str)))))
+              (funcall event-cb (make-instance 'tcp-ssl-error :code errcode :msg str)))
+            (close-socket socket)))
         (cffi:foreign-funcall-pointer
-          (cffi:callback as::tcp-event-cb)
-          ()
+          (cffi:callback as::tcp-event-cb) ()
           :pointer bev :short events :pointer data-pointer)))))
 
-(defun wrap-socket-in-ssl (socket/stream)
+(defun wrap-socket-in-ssl (socket/stream &key certificate key password (method 'cl+ssl::ssl-v23-client-method) close-cb)
   "Wraps a cl-async socket/stream in the SSL protocol using libevent's SSL
    capabilities. Does some trickery when swapping out the event function for the
    new socket, but the original event-cb will still be called."
-  ;; load SSL if we have not
-  (unless *ssl-init-p*
-    (cl+ssl::ssl-load-error-strings)
-    (cl+ssl::ssl-library-init)
-    (setf *ssl-init-p* t))
+  (declare (ignore close-cb))
+  (cl+ssl:ensure-initialized :method method)  ; make sure SSL is ready to go
 
-  ;; wrap the socket in a libevent SSL wrapper
-  (let* ((data-pointer (create-data-pointer))
-         (passed-in-stream (subtypep (type-of socket/stream) 'as:async-stream))
+  (let* ((global-ctx cl+ssl::*ssl-global-context*)
+         (data-pointer (create-data-pointer))
+         (passed-in-stream (subtypep (type-of socket/stream) 'async-stream))
          (socket (if passed-in-stream
                      (stream-socket socket/stream)
                      socket/stream))
          (bufferevent-orig (socket-c socket))
          ;; create an SSL client oontext
-         (ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-client-method))))
+         (ssl-ctx (cl+ssl::ssl-new global-ctx)))
+    (cl+ssl::ssl-ctx-ctrl ssl-ctx
+                          cl+ssl::+SSL_CTRL_MODE+ 
+                          cl+ssl::+SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER+
+                          0)
+    (cl+ssl::ssl-set-connect-state ssl-ctx)
+    (cl+ssl::with-pem-password (password)
+      (cl+ssl::install-key-and-cert ssl-ctx key certificate))
     ;; make sure we init PROPERLY
     (when (cffi:null-pointer-p ssl-ctx)
-      (error "Problem initializing SSL."))
+      (error "Problem initializing SSL context."))
 
     ;; create our SSL socket/stream and make sure it grabs any callbacks/hooks
     ;; it needs to operate properly from the original bufferevent that tcp-send
@@ -72,11 +72,11 @@
            (ssl-socket (make-instance 'ssl-socket
                                       :c ssl-bev
                                       :drain-read-buffer (as::socket-drain-read-buffer socket)))
-           (ssl-tcp-stream (when passed-in-stream (make-instance 'as:async-io-stream :socket ssl-socket))))
+           (ssl-tcp-stream (when passed-in-stream (make-instance 'async-io-stream :socket ssl-socket))))
       ;; get rid of any references to our original data pointers. this should free
       ;; up some potential memory issues associated with replacing the pointers
       ;; with the new sockets/streams/callbacks/etc below
-      (let ((original-data-pointer (deref-data-from-pointer bufferevent-orig)))
+      (let ((original-data-pointer (getf (deref-data-from-pointer bufferevent-orig) :data-pointer)))
         ;; make sure if there's any data/callbacks on the original data pointer,
         ;; we forward it to the new data pointer
         (save-callbacks data-pointer (get-callbacks original-data-pointer))
@@ -97,6 +97,9 @@
                             (cffi:callback ssl-event-cb)
                             data-pointer)
       (le:bufferevent-enable ssl-bev (logior le:+ev-read+ le:+ev-write+))
+
+      ;; match up the socket timeouts
+      (set-socket-timeouts ssl-socket 1 nil)
       
       ;; depending on what object we passed in (socket/stream) return the SSL
       ;; equivalent
