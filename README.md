@@ -25,6 +25,7 @@ Quick links:
   - [DNS](http://orthecreedence.github.com/cl-async/dns)
   - [TCP](http://orthecreedence.github.com/cl-async/tcp)
   - [TCP stream](http://orthecreedence.github.com/cl-async/tcp-stream)
+  - [TCP SSL](http://orthecreedence.github.com/cl-async/tcp-ssl)
   - [HTTP](http://orthecreedence.github.com/cl-async/http)
   - [Futures](http://orthecreedence.github.com/cl-async/future)
   - [Stats](http://orthecreedence.github.com/cl-async/stats)
