@@ -48,9 +48,10 @@
    code, we have to essentially rebuild that macro here.
 
    NOTE: As libevent says, this function cannot be considered idempotent. In
-   other words, calling it more than once may result in different values
-   returned. So, call once and save the result until the next time an error
-   happens."
+   other words, it can become hideously turgid whe...what's that? OH IDEMpotent,
+   that makes more sense. Yes, calling it more than once may result in different
+   values returned. So, call once and save the result until the next time an
+   error happens."
   #+(or :windows :win32 :win64)
     (let ((code (cffi:foreign-funcall "WSAGetLastError" :int)))
       (values code
@@ -70,8 +71,12 @@
   "Return whether a socket is closed or not."
   (socket-closed socket))
 
-(defun close-socket (socket)
-  "Free a socket (bufferevent) and clear out all associated data."
+(defgeneric close-socket (socket)
+  (:documentation
+    "Free a socket (bufferevent) and clear out all associated data."))
+
+(defmethod close-socket ((socket socket))
+  "Close and free a socket and all of it's underlying structures."
   ;; grab the data pointer associated with the bufferevent and free it. see
   ;; comment tcp-send about data-pointer for a better explanation.
   (check-socket-open socket)
