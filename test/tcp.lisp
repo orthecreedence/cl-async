@@ -4,7 +4,7 @@
 ;; TODO: timeouts (integer, float)
 
 (test tcp-simple-client-server
-  "Test both tcp-send and tcp-server"
+  "Test both tcp-connect and tcp-server"
   (multiple-value-bind (server-reqs server-data connect-num client-replies client-data)
       (async-let ((server-reqs 0)
                   (server-data "")
@@ -23,13 +23,14 @@
                         (incf connect-num)))
 
         (dolist (addr '("127.0.0.1" "localhost"))
-          (as:tcp-send addr 31388 "hai "
+          (as:tcp-connect addr 31388
             (lambda (sock data)
               (incf client-replies)
               (unless (as:socket-closed-p sock)
                 (as:close-socket sock))
               (setf client-data (concat client-data (babel:octets-to-string data))))
-            (lambda (ev) (error ev))))
+            (lambda (ev) (error ev))
+            :data "hai "))
 
         (as:delay (lambda () (as:exit-event-loop))
                   :time 2))
@@ -43,8 +44,9 @@
   "Make sure a tcp connection fails"
   (signals as:tcp-timeout
     (async-let ()
-      (as:tcp-send "1.24.3.4" 3 "hai"
+      (as:tcp-connect "1.24.3.4" 3
         (lambda (sock data) (declare (ignore sock data)))
         (lambda (ev) (error ev))
+        :data "hai"
         :read-timeout 1))))
 

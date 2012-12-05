@@ -78,7 +78,7 @@
 (defmethod close-socket ((socket socket))
   "Close and free a socket and all of it's underlying structures."
   ;; grab the data pointer associated with the bufferevent and free it. see
-  ;; comment tcp-send about data-pointer for a better explanation.
+  ;; comment tcp-connect about data-pointer for a better explanation.
   (check-socket-open socket)
   (let* ((bev (socket-c socket))
          (bev-data (deref-data-from-pointer bev))
@@ -372,9 +372,9 @@
                                      :listener listener
                                      :tcp-server tcp-server))))
 
-(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) stream)
-  "Open a TCP connection asynchronously. An event loop must be running for this
-   to work."
+(defun tcp-connect (host port read-cb event-cb &key data write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) stream)
+  "Open a TCP connection asynchronously. Optionally send data out once connected
+   via the :data keyword (can be a string or byte array)."
   (check-event-loop-running)
 
   (let* ((data-pointer (create-data-pointer))
@@ -412,6 +412,16 @@
         tcp-stream
         socket)))
 
+(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) stream)
+  "DEPRECATED, exists for backwards compatibility. Use tcp-connect."
+  (apply #'tcp-connect (append (list host port read-cb event-cb
+                                     :data data
+                                     :write-cb write-cb
+                                     :read-timeout read-timeout
+                                     :write-timeout write-timeout)
+                               (when dont-drain-read-buffer-supplied-p
+                                 (list :dont-drain-read-buffer dont-drain-read-buffer)))))
+                                     
 (defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1))
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"

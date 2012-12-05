@@ -93,8 +93,8 @@
       (error "Problem initializing SSL context."))
 
     ;; create our SSL socket/stream and make sure it grabs any callbacks/hooks
-    ;; it needs to operate properly from the original bufferevent that tcp-send
-    ;; created.
+    ;; it needs to operate properly from the original bufferevent that
+    ;; tcp-connect created.
     (let* ((ssl-bev (le-ssl:bufferevent-openssl-filter-new
                       *event-base*
                       bufferevent-orig  ; pass in the original bev

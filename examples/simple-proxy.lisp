@@ -96,9 +96,9 @@
                        #'proxy-event-handler
                        :connect-cb (lambda (sock-local)
                                      ;; on local connect, establish the remote connection
-                                     (setf sock-remote (as:tcp-send remote-host remote-port nil
-                                                                    #'proxy-remote-response
-                                                                    #'proxy-event-handler))
+                                     (setf sock-remote (as:tcp-connect remote-host remote-port
+                                                                       #'proxy-remote-response
+                                                                       #'proxy-event-handler))
                                      ;; pair the local and remote sockets. if
                                      ;; one closes, so does the other.
                                      (pair-sockets sock-local sock-remote))

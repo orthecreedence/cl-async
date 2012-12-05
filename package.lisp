@@ -103,6 +103,7 @@
            #:set-socket-timeouts
            #:enable-socket
            #:disable-socket
+           #:tcp-connect
            #:tcp-send
            #:tcp-server
 
