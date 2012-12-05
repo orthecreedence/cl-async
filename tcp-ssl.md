@@ -31,9 +31,12 @@ It can be passed to any cl-async function that takes a `socket` argument.
 
 <a id="wrap-in-ssl"></a>
 ### wrap-in-ssl
+_Note: `wrap-in-ssl` has only been testing with outgoing sockets, not servers.
+There is more work to do before server SSL sockets are supported._
+
 Wraps a socket or stream in SSL. The callbacks and timeouts on the original
 socket/stream are reattached to the new SSL socket/stream, meaning you can
-convert a non-SSL oscket to SSL fairly simply. It's important to note that this
+convert a non-SSL socket to SSL fairly simply. It's important to note that this
 function does *not* replace the socket/stream passed to it, it returns a *new*
 socket if a socket was passed in, and a *new* stream if a stream was passed in.
 
