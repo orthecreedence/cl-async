@@ -9,6 +9,8 @@ This section details resolving hostnames to addresses, as well as
 conditions/events that occur while using the DNS system.
 
 - [dns-lookup](#dns-lookup) _function_
+- [start-dns-logging](#start-dns-logging) _function_
+- [stop-dns-logging](#stop-dns-logging) _function_
 - [Conditions](#conditions)
 - [dns-error](#dns-error) _condition_
 
@@ -39,6 +41,48 @@ The `:family` keyword can be one of `+af-inet+`, `+af-inet6+`, `+af-unspec+`.
 {% endhighlight %}
 
 `ip-address-family` will be either `+af-inet+` or `+af-inet6+`.
+
+<a id="start-dns-logging"></a>
+### start-dns-logging
+Log all DNS messages through a callback. Libevent doesn't support matching
+specific messages to a DNS base, so this is a global function that will spit out
+*all* DNS activity. Its main use is for debugging.
+
+It provides an `event-cb` in case any errors occur during log processing that
+your app wishes to catch.
+
+{% highlight cl %}
+;; definition
+(start-dns-logging log-cb &key event-cb)
+
+;; example
+(start-dns-logging
+  (lambda (is-warning message)
+    (format t "(~a) ~s~%" (if (zerop is-warning)
+                              "log"
+                              "warning")
+                          message))
+  :event-cb (lambda (err) (format t "err processing DNS log: ~a~%" err)))
+{% endhighlight %}
+
+<a id="start-dns-logging-log-cb"></a>
+##### log-cb definition
+{% highlight cl %}
+(lambda (is-warning message) ...)
+{% endhighlight %}
+
+`is-warning` is an integer indicating if the message is a log or a warning, and
+the `message` is a string.
+
+<a id="stop-dns-logging"></a>
+### stop-dns-logging
+Since logging is global and you may only want to log for a specific set of time,
+you can *stop* logging DNS queries by simply calling this function.
+
+{% highlight cl %}
+;; definition
+(stop-dns-logging)
+{% endhighlight %}
 
 <a id="conditions"></a>
 Conditions
