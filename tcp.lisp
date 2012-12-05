@@ -288,9 +288,11 @@
          (connect-cb (getf callbacks :connect-cb)))
     (catch-app-errors event-cb
       (unwind-protect
+        ;; if we just connected and we have a connect-cb, call it
+        (when (and connect-cb (logand events le:+bev-event-connected+))
+          (funcall connect-cb socket))
+        ;; process any errors we received
         (cond
-          ((< 0 (and connect-cb (logand events le:+bev-event-connected+)))
-           (funcall connect-cb socket))
           ((< 0 (logand events (logior le:+bev-event-error+
                                        le:+bev-event-timeout+)))
            (multiple-value-bind (errcode errstr) (get-last-tcp-err)
