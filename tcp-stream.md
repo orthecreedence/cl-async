@@ -6,23 +6,23 @@ layout: default
 TCP stream
 ==========
 A TCP stream wraps a [tcp-socket](/cl-async/tcp#socket), which is returned by
-[tcp-send](/cl-async/tcp#tcp-send):
+[tcp-connect](/cl-async/tcp#tcp-connect):
 
 {% highlight cl %}
-(let ((socket (tcp-send "google.com" 80 ... :dont-drain-read-buffer t)))
+(let ((socket (tcp-connect "google.com" 80 ... :dont-drain-read-buffer t)))
   (make-instance 'async-io-stream :socket socket))
 {% endhighlight %}
 
-`tcp-send` makes this a bit more convenient as well:
+`tcp-connect` makes this a bit more convenient as well:
 
 {% highlight cl %}
-(tcp-send "google.com" 80 ... :stream t)
+(tcp-connect "google.com" 80 ... :stream t)
 {% endhighlight %}
 
 The stream we just created is a normal lisp stream which can be operated on via
 `close`, `read-sequence`, `write-sequence`, etc. One caveat is that the stream
 does not block when pulling data from it, so reading from the stream should be
-triggered by the `read-cb` given to `tcp-send`.
+triggered by the `read-cb` given to `tcp-connect`.
 
 See the [notes on buffer draining](#tcp-stream-notes) section for an explanation
 of the `:dont-drain-read-buffer` parameter.
@@ -67,17 +67,17 @@ socket.
 Example usage
 -------------
 {% highlight cl %}
-(tcp-send "musio.com" 80
-  (format nil "GET /~C~C" #\return #\newline)
+(tcp-connect "musio.com" 80
   (lambda (sock stream)
     (let* ((seq (make-array 4096 :element-type '(unsigned-byte 8)))
            (num-bytes (read-sequence seq stream :end 4096)))
       (format t "~a" (babel:octets-to-string (subseq seq 0 num-bytes)))))
   (lambda (ev) (format t "ev: ~a~%" ev))
+  :data (format nil "GET /~C~C" #\return #\newline)
   :stream t
   :read-timeout 5)
 {% endhighlight %}
 
-Note that you can write the socket returned by `(tcp-send ... :stream t)` with
+Note that you can write the socket returned by `(tcp-connect ... :stream t)` with
 `write-sequence` like any other stream.
 

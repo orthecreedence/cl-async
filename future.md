@@ -171,7 +171,7 @@ with all the saved up errors in the order they were received.
 
 ;; example
 (let ((future (make-future))
-      (socket (tcp-send "musio.com" 80 nil)))
+      (socket (tcp-connect "musio.com" 80)))
   ;; set up our error/event handler
   (attach-errback future
     (lambda (ev)
@@ -204,12 +204,13 @@ on a future by [settin up errbacks](#attach-errback) on the future.
 (let ((future (make-future)))
   ;; send out a request and finish our future when we get a response, but also
   forward any events get to the future to the handler can process them
-  (tcp-send "musio.com" 80 (format nil "GET /~c~c" #\return #\newline)
+  (tcp-connect "musio.com" 80
     (lambda (sock data)
       (finish future data))
     (lambda (ev)
       ;; signal the event on the future
-      (signal-error future ev)))
+      (signal-error future ev))
+	:data (format nil "GET /~c~c" #\return #\newline))
 
   ;; attach a callback to the tcp op
   (attach future

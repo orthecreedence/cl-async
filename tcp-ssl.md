@@ -53,13 +53,13 @@ by libevent, it still requires that an SSL context be set up, which
 
 ;; example
 ;; init a socket, send nil data (so it just connects)
-(let* ((socket (tcp-send "www.google.com" 443 nil
-                         (lambda (sock data)
-                           (declare (ignore sock))
-                           (format t "GOT: ~a~%" (if (stringp data) data (babel:octets-to-string data))))
-                         (lambda (ev)
-                           (format t "event: ~a~%" ev))
-                         :read-timeout 3))
+(let* ((socket (tcp-connect "www.google.com" 443
+                            (lambda (sock data)
+                              (declare (ignore sock))
+                              (format t "GOT: ~a~%" (if (stringp data) data (babel:octets-to-string data))))
+                            (lambda (ev)
+                              (format t "event: ~a~%" ev))
+                            :read-timeout 3))
        ;; now wrap the normal socket in SSL, save the new socket
        (socket-ssl (wrap-in-ssl socket)))
   ;; send out the request on the SSL socket

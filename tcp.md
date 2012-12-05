@@ -9,7 +9,8 @@ This section details sending and receving data over TCP, along with how to deal
 with cl-async sockets. It also goes over conditions/events one might run into
 while using the TCP system.
 
-- [tcp-send](#tcp-send) _function_
+- [tcp-connect](#tcp-connect) _function_
+  - [tcp-send](#tcp-send) _function (deprecated)_
 - [tcp-server](#tcp-server) _function_
 - [close-tcp-server](#close-tcp-server)
 - [socket](#socket) _class_
@@ -33,70 +34,70 @@ while using the TCP system.
   - [tcp-accept-error-tcp-server](#tcp-accept-error-tcp-server) _accessor_
 - [socket-closed](#socket-closed) _condition_
 
-<a id="tcp-send"></a>
-### tcp-send
-Open an asynchronous TCP connection to a host (IP or hostname) and port, once
-connected send the given data (byte array or string) and process any response
-with the given read callback. Also supports timing out after no data is read /
-written in (in seconds). 
+<a id="tcp-connect"></a>
+### tcp-connect
+Open an asynchronous TCP connection to a host (IP or hostname) and port. You can
+specify data to be sent once the connection is established via the `:data`
+keyword. All incoming data will be sent to the [read-cb](#tcp-connect-read-cb),
+and any events will be sent to the [event-cb](/cl-async/event-handling).
 
-`tcp-send` returns a [socket](#socket) class. If you just want to connect and
-worry about sending data later, you can call `tcp-send` with `data = nil`
-and then later use [write-socket-data](#write-socket-data) to write to the
-socket that `tcp-send` returns.
+`tcp-connect` returns a [socket](#socket) class, which wraps the libevent socket
+implementation and also allows storing arbitrary data with the socket.
 
-`tcp-send` can also return a stream of type [async-io-stream](/cl-async/tcp-stream#async-io-stream)
+`tcp-connect` can also return a stream of type [async-io-stream](/cl-async/tcp-stream#async-io-stream)
 when the keyword argument `:stream` is `T`. This allows [normal stream
 operations on top of a non-blocking socket](/cl-async/tcp-stream).
 
-Note that `tcp-send` always opens a new connection. If you want to send data on
-and existing connection (and also be able to set new read/write/event callbacks
-on it), check out [write-socket-data](#write-socket-data), or in the case of a
-stream, you can use `write-sequence` to send new data on the stream.
+Note that `tcp-connect` always opens a new connection. If you want to send data
+on and existing connection (and also be able to set new read/write/event
+callbacks on it), check out [write-socket-data](#write-socket-data), or in the
+case of a stream, you can use `write-sequence` to send new data on the stream.
 
 Note that the `host` can be an IP address *or* a hostname. The hostname will
-be looked up asynchronously via libevent's DNS implementation. Also note that
-the DNS lookup does __not__ use [dns-lookup](/cl-async/dns#dns-lookup), but
-directly calls into the libevent DNS functions.
+be looked up asynchronously via libevent's DNS implementation.
 
 {% highlight cl %}
 ;; definition:
-(tcp-send host port data read-cb event-cb &key read-timeout write-timeout)  =>  socket
+(tcp-connect host port read-cb event-cb
+             &key data stream write-cb
+                  (read-timeout -1)
+                  (write-timeout -1)
+                  (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p)) => socket
 
 ;; example:
-(tcp-send "www.google.com" 80
-          (format nil "GET /~c~c" #\return #\newline)
-          (lambda (socket data)
-            (when (pretend-http-package:process-http-stream data) 
-              (close-socket socket)))  ; close the socket if done processing
-          #'my-app-error-handler)
+(tcp-connect "www.google.com" 80
+             (lambda (socket data)
+               (when (pretend-http-package:process-http-stream data) 
+                 (close-socket socket)))  ; close the socket if done processing
+             #'my-app-error-handler
+             :data (format nil "GET /~c~c" #\return #\newline))
 {% endhighlight %}
 
 See the [tcp-stream page](/cl-async/tcp-stream) for some examples on stream
 usage.
 
-<a id="tcp-send-read-cb"></a>
+<a id="tcp-connect-read-cb"></a>
 ##### read-cb definition (default)
 
 {% highlight cl %}
 (lambda (socket byte-array) ...)
 {% endhighlight %}
 
-<a id="tcp-send-read-cb-stream"></a>
-##### read-cb definition (when tcp-send's :stream is T)
+<a id="tcp-connect-read-cb-stream"></a>
+##### read-cb definition (when tcp-connect's :stream is t)
 
 {% highlight cl %}
 (lambda (socket stream) ...)
 {% endhighlight %}
 
 Note that in this case, `stream` replaces the data byte array's position. Also,
-when calling `:stream T` in `tcp-send`, the read buffer for the socket is not
+when calling `:stream t` in `tcp-connect`, the read buffer for the socket is not
 drained and is only done so by [reading from the stream](/cl-async/tcp-stream).
 
-`stream` is always the same object returned from `tcp-send` with `:stream t`. It
-wraps the `socket` object.
+`stream` is always the same object returned from `tcp-connect` with `:stream t`.
+It wraps the `socket` object.
 
-<a id="tcp-send-write-cb"></a>
+<a id="tcp-connect-write-cb"></a>
 ##### write-cb definition
 
 {% highlight cl %}
@@ -104,12 +105,19 @@ wraps the `socket` object.
 {% endhighlight %}
 
 The `write-cb` will be called after data written to the socket's buffer is
-flushed out to the socket.
+flushed out to the socket. If you want to send a command to a server and
+immediately disconnect once you know the data was sent, you could close the
+connection in your `write-cb`.
+
+<a id="tcp-send"></a>
+### tcp-send _deprecated_
+This function is a deprecated version of [tcp-connect](#tcp-connect). Use it
+instead, as `tcp-send` may be removed in later versions.
 
 <a id="tcp-server"></a>
 ### tcp-server
 Bind an asynchronous listener to the given bind address/port and start accepting
-connections on it. It takes read and event callbacks (like [tcp-send](#tcp-send)).
+connections on it. It takes read and event callbacks (like [tcp-connect](#tcp-connect)).
 If `nil` is passed into the bind address, it effectively binds the listener to
 "0.0.0.0" (listens from any address). A connection backlog can be specified when
 creating the server via `:backlog`, which defaults to -1. A `connect-cb` can
@@ -194,7 +202,7 @@ to the outgoing socket inside the incoming socket).
 
 <a id="write-socket-data"></a>
 ### write-socket-data
-Write data to an existing socket (such as one passed into a `tcp-send` read-cb).
+Write data to an existing socket (such as one passed into a `tcp-connect` read-cb).
 Data can be a byte array or string (converted to a byte array via babel).
 Supports resetting the callbacks on the given socket. The `write-cb` is useful
 if you want to close the connection after sending data on the socket but want to
@@ -222,8 +230,8 @@ If you were to close the socket right after sending the data to the buffer,
 there's no guarantee it would be sent out. Setting a `write-cb` guarantees that
 the data is sent when called.
 
-Note that `write-socket-data`'s callbacks are identical to [tcp-send](#tcp-send)'s
-and if specified, will override those set by [tcp-send](#tcp-send).
+Note that `write-socket-data`'s callbacks are identical to [tcp-connect](#tcp-connect)'s
+and if specified, will override those set by [tcp-connect](#tcp-connect).
 
 <a id="set-socket-timeouts"></a>
 ### set-socket-timeouts
@@ -248,7 +256,7 @@ throw a [socket-closed](#socket-closed) condition.
 <a id="enable-socket"></a>
 ### enable-socket
 Enable read/write monitoring on a socket. This is done automatically by
-[tcp-send](#tcp-send) and [write-socket-data](#write-socket-data) so you
+[tcp-connect](#tcp-connect) and [write-socket-data](#write-socket-data) so you
 probably don't need to worry too much about when to use it. On the other hand,
 [disable-socket](#disable-socket) will probably be a bit more useful.
 
