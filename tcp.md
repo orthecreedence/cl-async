@@ -59,7 +59,8 @@ be looked up asynchronously via libevent's DNS implementation.
 {% highlight cl %}
 ;; definition:
 (tcp-connect host port read-cb event-cb
-             &key data stream write-cb
+             &key data stream
+                  connect-cb write-cb
                   (read-timeout -1)
                   (write-timeout -1)
                   (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p)) => socket
@@ -96,6 +97,19 @@ drained and is only done so by [reading from the stream](/cl-async/tcp-stream).
 
 `stream` is always the same object returned from `tcp-connect` with `:stream t`.
 It wraps the `socket` object.
+
+<a id="tcp-connect-connect-cb"></a>
+##### connect-cb definition
+{% highlight cl %}
+(lambda (socket ...))
+{% endhighlight %}
+
+The `connect-cb` will be fired when the connection from `tcp-connect` has been
+established. Since sending data over the socket is somewhat transparent (either
+via `:data` or [write-socket-data](#write-socket-data)), you don't really have
+to know when a socket is ready to be written to. In some instances though, it
+may be useful to know when the connection has been established, which is why
+`:connect-cb` is exposed.
 
 <a id="tcp-connect-write-cb"></a>
 ##### write-cb definition
