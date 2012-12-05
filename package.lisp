@@ -78,6 +78,8 @@
            ;; dns conditions
            #:dns-error
            ;; dns functions
+           #:start-dns-logging
+           #:stop-dns-logging
            #:dns-lookup
 
            ;; tcp conditions/accessors

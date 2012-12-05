@@ -40,6 +40,15 @@
     (setf *dns-ref-count* 0)
     (setf *dns-base* nil)))
 
+(cffi:defcallback dns-log-cb :void ((is-warning :int) (msg :string))
+  "Callback for DNS logging."
+  (let* ((callbacks (get-callbacks :dns-callbacks))
+         (event-cb (getf callbacks :event-cb))
+         (log-cb (getf callbacks :log-cb)))
+    (catch-app-errors event-cb
+      (when log-cb
+        (funcall log-cb is-warning msg)))))
+
 (cffi:defcallback dns-cb :void ((errcode :int) (addrinfo :pointer) (data-pointer :pointer))
   "Callback for DNS lookups."
   (let* ((callbacks (get-callbacks data-pointer))
@@ -87,6 +96,18 @@
                 (le:evutil-freeaddrinfo addrinfo)))))
       (free-pointer-data data-pointer)
       (release-dns-base))))
+
+(defun start-dns-logging (log-cb &key event-cb)
+  "Send all DNS messages to log-cb. Optionally takes an event-cb to catch errors
+   that occur during log processing."
+  (save-callbacks :dns-callbacks (list :log-cb log-cb
+                                       :event-cb event-cb))
+  (le:evdns-set-log-fn (cffi:callback dns-log-cb)))
+
+(defun stop-dns-logging ()
+  "Stop logging DNS messages through the log-cb passed to start-dns-logging."
+  (free-pointer-data :dns-callbacks :preserve-pointer t)
+  (le:evdns-set-log-fn (cffi:null-pointer)))
 
 (defun dns-lookup (host resolve-cb event-cb &key (family +af-unspec+))
   "Asynchronously lookup a DNS address. Note that if an IP address is passed,
