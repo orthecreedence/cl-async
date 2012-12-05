@@ -11,6 +11,7 @@ conditions it uses.
 
 - [start-event-loop](#start-event-loop) _function_
 - [exit-event-loop](#exit-event-loop) _function_
+- [dump-event-loop-status](#dump-event-loop-status) _function_
 - [connection-info](#connection-info) _condition_
 - [connection-error](#connection-error) _condition_
   - [conn-errcode](#conn-errcode) _accessor_
@@ -81,6 +82,23 @@ has the added benefit of letting any connected clients finish their requests
 {% highlight cl %}
 ;; definition
 (exit-event-loop)
+{% endhighlight %}
+
+<a id="dump-event-loop-status"></a>
+### dump-event-loop-status
+This is a debugging function that can help shed *some* light on why an event
+loop isn't exiting by dumping out all the events the loop currently holds.
+Although it's not very specific about the events it contains, it can still be
+useful.
+
+Since libevent only lets you dump the events to a file, the default is for you
+to specify which file to dump into, which is then read back as a string (and the
+file is then removed). If you wish the keep the file, pass
+`:return-as-string nil`.
+
+{% highlight cl %}
+;; definition
+(dump-event-loop-status file &key (return-as-string t))
 {% endhighlight %}
 
 <a id="connection-info"></a>
