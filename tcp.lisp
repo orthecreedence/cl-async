@@ -372,7 +372,7 @@
                                      :listener listener
                                      :tcp-server tcp-server))))
 
-(defun tcp-connect (host port read-cb event-cb &key data write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) stream)
+(defun tcp-connect (host port read-cb event-cb &key data stream write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
   (check-event-loop-running)
@@ -418,7 +418,8 @@
                                      :data data
                                      :write-cb write-cb
                                      :read-timeout read-timeout
-                                     :write-timeout write-timeout)
+                                     :write-timeout write-timeout
+                                     :stream stream)
                                (when dont-drain-read-buffer-supplied-p
                                  (list :dont-drain-read-buffer dont-drain-read-buffer)))))
                                      
