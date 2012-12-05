@@ -283,10 +283,14 @@
          (dns-base (deref-data-from-pointer data-pointer))
          (bev-data (deref-data-from-pointer bev))
          (socket (getf bev-data :socket))
-         (event-cb (getf (get-callbacks data-pointer) :event-cb)))
+         (callbacks (get-callbacks data-pointer))
+         (event-cb (getf callbacks :event-cb))
+         (connect-cb (getf callbacks :connect-cb)))
     (catch-app-errors event-cb
       (unwind-protect
         (cond
+          ((< 0 (and connect-cb (logand events le:+bev-event-connected+)))
+           (funcall connect-cb socket))
           ((< 0 (logand events (logior le:+bev-event-error+
                                        le:+bev-event-timeout+)))
            (multiple-value-bind (errcode errstr) (get-last-tcp-err)
@@ -372,7 +376,7 @@
                                      :listener listener
                                      :tcp-server tcp-server))))
 
-(defun tcp-connect (host port read-cb event-cb &key data stream write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
   (check-event-loop-running)
@@ -383,12 +387,21 @@
          (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
                                      t
                                      dont-drain-read-buffer))
-         (socket (make-instance 'socket :c bev :direction 'out :drain-read-buffer (not dont-drain-read-buffer)))
+         (socket (make-instance 'socket :c bev
+                                        :direction 'out
+                                        :drain-read-buffer (not dont-drain-read-buffer)))
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
 
-    (le:bufferevent-setcb bev (cffi:callback tcp-read-cb) (cffi:callback tcp-write-cb) (cffi:callback tcp-event-cb) data-pointer)
+    (le:bufferevent-setcb bev
+                          (cffi:callback tcp-read-cb)
+                          (cffi:callback tcp-write-cb)
+                          (cffi:callback tcp-event-cb)
+                          data-pointer)
     (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
-    (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :write-cb write-cb))
+    (save-callbacks data-pointer (list :read-cb read-cb
+                                       :event-cb event-cb
+                                       :write-cb write-cb
+                                       :connect-cb connect-cb))
     (write-to-evbuffer (le:bufferevent-get-output bev) data)
     (set-socket-timeouts bev read-timeout write-timeout :socket-is-bufferevent t)
 
