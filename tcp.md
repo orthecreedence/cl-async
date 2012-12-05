@@ -111,8 +111,8 @@ connection in your `write-cb`.
 
 <a id="tcp-send"></a>
 ### tcp-send  (_deprecated_)
-This function is a deprecated version of [tcp-connect](#tcp-connect). Use it
-instead, as `tcp-send` may be removed in later versions.
+This function is a deprecated version of [tcp-connect](#tcp-connect). Use
+`tcp-connect` instead, as `tcp-send` may be removed in later versions.
 
 <a id="tcp-server"></a>
 ### tcp-server
