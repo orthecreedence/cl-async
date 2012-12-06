@@ -352,11 +352,6 @@
       ;; track the connection. will be decf'ed when close-socket is called
       (incf *incoming-connection-count*)
 
-      ;; if we have a read cb, let it know a connection has happened by calling
-      ;; with nil data.
-      (let ((connect-cb (getf callbacks :connect-cb)))
-        (when connect-cb (funcall connect-cb socket)))
-
       ;; save the callbacks given to the listener onto each socket individually
       (save-callbacks per-conn-data-pointer callbacks)
       (le:bufferevent-setcb bev
