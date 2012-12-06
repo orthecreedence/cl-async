@@ -14,6 +14,17 @@
          ,@body))
      (values ,@(loop for (binding . nil) in bindings collect binding))))
 
+(defun test-timeout (seconds)
+  "Make sure a test times out after the given num seconds. An event loop can't
+   do this itself without skewing results."
+  (let ((event-base cl-async-util::*event-base*)
+        (base-id cl-async-util::*event-base-id*))
+    (as::enable-threading-support)
+    (bt:make-thread (lambda ()
+                      (sleep seconds)
+                      (when (eql cl-async-util::*event-base-id* base-id)
+                        (le:event-base-loopexit event-base (cffi:null-pointer)))))))
+
 (defun concat (&rest args)
   "Shortens string concatenation."
   (apply #'concatenate (append '(string) args)))
