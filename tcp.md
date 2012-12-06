@@ -181,9 +181,10 @@ however it *can* be passed to other cl-async functions that take a `socket` arg.
 (defun close-tcp-server (tcp-server))
 {% endhighlight %}
 
-Takes a `tcp-server` class, created by [tcp-server](#tcp-server) and closes the
-server it wraps. This can be useful if you want to shut down a TCP server
-without forcibly closing all its connections.
+Takes a `tcp-server` object, created by [tcp-server](#tcp-server) and closes the
+server it wraps gracefully. This can be useful if you want to shut down a TCP
+server without forcibly closing all its connections (via [exit-event-loop](/cl-async/base#exit-eent-loop),
+for instance).
 
 If the given server is already closed, this function returns without doing
 anything.
