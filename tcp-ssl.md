@@ -32,7 +32,9 @@ It can be passed to any cl-async function that takes a `socket` argument.
 <a id="wrap-in-ssl"></a>
 ### wrap-in-ssl
 {% highlight cl %}
-(defun wrap-in-ssl (socket/stream &key certificate key password (method 'cl+ssl::ssl-v23-client-method) close-cb))
+(defun wrap-in-ssl (socket/stream &key certificate key password
+                                       (method 'cl+ssl::ssl-v23-client-method)
+                                       close-cb))
   => socket/stream
 {% endhighlight %}
 
@@ -55,6 +57,8 @@ one attached to the given socket/stream. Although this is handled transparently
 by libevent, it still requires that an SSL context be set up, which
 `wrap-in-ssl` uses [cl+ssl](http://common-lisp.net/project/cl-plus-ssl/) for.
 
+The `close-cb` function passed in will be called when the SSL socket is closed.
+
 {% highlight cl %}
 ;; example
 ;; init a socket, send nil data (so it just connects)
@@ -69,6 +73,13 @@ by libevent, it still requires that an SSL context be set up, which
        (socket-ssl (wrap-in-ssl socket)))
   ;; send out the request on the SSL socket
   (write-socket-data socket-ssl (format nil "GET /~c~c" #\return #\newline)))
+{% endhighlight %}
+
+<a id="wrap-in-ssl-close-cb"></a>
+##### close-cb definition
+`close-cb` is a lambda with no arguments.
+{% highlight cl %}
+(lambda () ...)
 {% endhighlight %}
 
 <a id="tcp-ssl-error"></a>
