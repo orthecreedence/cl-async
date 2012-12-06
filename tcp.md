@@ -36,6 +36,15 @@ while using the TCP system.
 
 <a id="tcp-connect"></a>
 ### tcp-connect
+{% highlight cl %}
+(defun tcp-connect (host port read-cb event-cb
+                    &key data stream
+                         connect-cb write-cb
+                         (read-timeout -1) (write-timeout -1)
+                  (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+  => socket/stream
+{% endhighlight %}
+
 Open an asynchronous TCP connection to a host (IP or hostname) and port. You can
 specify data to be sent once the connection is established via the `:data`
 keyword. All incoming data will be sent to the [read-cb](#tcp-connect-read-cb),
@@ -57,14 +66,6 @@ Note that the `host` can be an IP address *or* a hostname. The hostname will
 be looked up asynchronously via libevent's DNS implementation.
 
 {% highlight cl %}
-;; definition:
-(tcp-connect host port read-cb event-cb
-             &key data stream
-                  connect-cb write-cb
-                  (read-timeout -1)
-                  (write-timeout -1)
-                  (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p)) => socket
-
 ;; example:
 (tcp-connect "www.google.com" 80
              (lambda (socket data)
@@ -130,6 +131,11 @@ This function is a deprecated version of [tcp-connect](#tcp-connect). Use
 
 <a id="tcp-server"></a>
 ### tcp-server
+{% highlight cl %}
+(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1)))
+  => tcp-server
+{% endhighlight %}
+
 Bind an asynchronous listener to the given bind address/port and start accepting
 connections on it. It takes read and event callbacks (like [tcp-connect](#tcp-connect)).
 If `nil` is passed into the bind address, it effectively binds the listener to
@@ -142,9 +148,6 @@ This function returns a `tcp-server` class, which allows you to close the
 server via [close-tcp-server](#close-tcp-server).
 
 {% highlight cl %}
-;; definition
-(tcp-server bind-address port read-cb event-cb &key connect-cb (backlog -1))  =>  tcp-server
-
 ;; example
 (tcp-server "127.0.0.1" 8080
             (lambda (socket data)
@@ -174,17 +177,16 @@ however it *can* be passed to other cl-async functions that take a `socket` arg.
 
 <a id="close-tcp-server"></a>
 ### close-tcp-server
+{% highlight cl %}
+(defun close-tcp-server (tcp-server))
+{% endhighlight %}
+
 Takes a `tcp-server` class, created by [tcp-server](#tcp-server) and closes the
 server it wraps. This can be useful if you want to shut down a TCP server
 without forcibly closing all its connections.
 
 If the given server is already closed, this function returns without doing
 anything.
-
-{% highlight cl %}
-;; definition
-(close-tcp-server tcp-server)
-{% endhighlight %}
 
 <a id="socket"></a>
 ### socket
@@ -216,6 +218,11 @@ to the outgoing socket inside the incoming socket).
 
 <a id="write-socket-data"></a>
 ### write-socket-data
+{% highlight cl %}
+(defun write-socket-data (socket data &key read-cb write-cb event-cb))
+  => nil
+{% endhighlight %}
+
 Write data to an existing socket (such as one passed into a `tcp-connect` read-cb).
 Data can be a byte array or string (converted to a byte array via babel).
 Supports resetting the callbacks on the given socket. The `write-cb` is useful
@@ -226,9 +233,6 @@ Note that if you call this using a socket that has been closed already, it will
 throw a [socket-closed](#socket-closed) condition.
 
 {% highlight cl %}
-;; definition
-(write-socket-data socket data &key read-cb write-cb event-cb)
-
 ;; examples
 (write-socket-data socket "thanks for connecting. how are you? (good|bad)"
                    :read-cb (lambda (socket data)
@@ -249,6 +253,11 @@ and if specified, will override those set by [tcp-connect](#tcp-connect).
 
 <a id="set-socket-timeouts"></a>
 ### set-socket-timeouts
+{% highlight cl %}
+(defun set-socket-timeouts (socket read-sec write-sec))
+  => nil
+{% endhighlight %}
+
 Set the read/write timeouts (in seconds) on a socket. If nil, the timeout is
 cleared, otherwise if a number, the timeout is set into the socket such that
 when the socket is active and hasn't been read from/written to in the specified
@@ -260,60 +269,59 @@ Note that if you call this using a socket that has been closed already, it will
 throw a [socket-closed](#socket-closed) condition.
 
 {% highlight cl %}
-;; definition
-(set-socket-timeouts socket read-sec write-sec)
-
 ;; example
 (set-socket-timeouts socket 10.5 nil)
 {% endhighlight %}
 
 <a id="enable-socket"></a>
 ### enable-socket
+{% highlight cl %}
+(defun enable-socket (socket &key read write))
+  => nil
+{% endhighlight %}
+
 Enable read/write monitoring on a socket. This is done automatically by
 [tcp-connect](#tcp-connect) and [write-socket-data](#write-socket-data) so you
 probably don't need to worry too much about when to use it. On the other hand,
 [disable-socket](#disable-socket) will probably be a bit more useful.
 
 {% highlight cl %}
-;; definition
-(enable-socket socket &key read write)
-
 ;;example
 (enable-socket socket :read t :write t)  ; enable read and write monitoring on this socket
 {% endhighlight %}
 
 <a id="disable-socket"></a>
 ### disable-socket
+{% highlight cl %}
+(defun disable-socket (socket &key read write))
+  => nil
+{% endhighlight %}
+
 Disable read/write monitoring on a socket. This is useful if you get the data
 you need from a socket, but while you're processing the data, you don't want the
 socket's read timeout to fire. This will both disable the timeouts and callbacks
 associated with the socket until enabled again.
 
-{% highlight cl %}
-;; definition
-(disable-socket socket &key read write)
-{% endhighlight %}
-
 <a id="socket-closed-p"></a>
 ### socket-closed-p
-Determines if a socket has been closed already.
-
 {% highlight cl %}
-;; definition
-(socket-closed-p socket)
+(defun socket-closed-p (socket))
+  => t/nil
 {% endhighlight %}
+
+Determines if a socket has been closed already.
 
 <a id="close-socket"></a>
 ### close-socket
+{% highlight cl %}
+(defun close-socket (socket))
+  => nil
+{% endhighlight %}
+
 Close a socket and free its callbacks.
 
 Note that if you call this using a socket that has been closed already, it will
 throw a [socket-closed](#socket-closed) condition.
-
-{% highlight cl %}
-;; definition
-(close-socket socket)
-{% endhighlight %}
 
 <a id="conditions"></a>
 Conditions

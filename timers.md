@@ -14,15 +14,17 @@ event loop pass or at a specific time in the future).
 
 <a id="delay"></a>
 ### delay
+{% highlight cl %}
+(defun delay (callback &key time event-cb))
+  => nil
+{% endhighlight %}
+
 Run a function asynchronously. Takes two optional parameters: `time`, the number
 of seconds to wait before running the given function (run with no delay if
 `nil`), and `event-cb` which can be used to catch application errors should they
 occur while running `callback`.
 
 {% highlight cl %}
-;; definition:
-(delay callback &key time event-cb)
-
 ;; example:
 (delay (lambda () (format t "Run me immediately after control is given to the event loop.~%")))
 (delay (lambda () (format t "I will run 3.2 seconds after calling (delay).~%")) :time 3.2)

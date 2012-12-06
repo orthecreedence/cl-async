@@ -20,7 +20,7 @@ conditions it uses.
 <a id="start-event-loop"></a>
 ### start-event-loop
 {% highlight cl %}
-(start-event-loop start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors)
+(defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors))
   => integer
 {% endhighlight %}
 
@@ -75,7 +75,8 @@ the same values for each thread.
 <a id="exit-event-loop"></a>
 ### exit-event-loop
 {% highlight cl %}
-(defun exit-event-loop ()) => nil
+(defun exit-event-loop ())
+  => nil
 {% endhighlight %}
 
 Exit the event loop. This will free up all resources internally and close down
