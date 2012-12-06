@@ -11,7 +11,6 @@ conditions/events that occur while using the DNS system.
 - [dns-lookup](#dns-lookup) _function_
 - [start-dns-logging](#start-dns-logging) _function_
 - [stop-dns-logging](#stop-dns-logging) _function_
-- [Conditions](#conditions)
 - [dns-error](#dns-error) _condition_
 
 <a id="dns-lookup"></a>

@@ -22,7 +22,6 @@ while using the TCP system.
 - [disable-socket](#disable-socket) _function_
 - [socket-closed-p](#socket-closed-p) _function_
 - [close-socket](#close-socket) _function_
-- [Conditions](#conditions)
 - [tcp-info](#tcp-info) _condition_
   - [tcp-socket](#tcp-socket) _accessor_
 - [tcp-error](#tcp-error) _condition_
@@ -144,7 +143,7 @@ creating the server via `:backlog`, which defaults to -1. A `connect-cb` can
 be passed in as a keyword arg, which sets a callback to be called whenever a new
 connection comes in.
 
-This function returns a `tcp-server` class, which allows you to close the
+This function returns a `tcp-server` object, which allows you to close the
 server via [close-tcp-server](#close-tcp-server).
 
 {% highlight cl %}
@@ -179,11 +178,12 @@ however it *can* be passed to other cl-async functions that take a `socket` arg.
 ### close-tcp-server
 {% highlight cl %}
 (defun close-tcp-server (tcp-server))
+  => nil
 {% endhighlight %}
 
 Takes a `tcp-server` object, created by [tcp-server](#tcp-server) and closes the
 server it wraps gracefully. This can be useful if you want to shut down a TCP
-server without forcibly closing all its connections (via [exit-event-loop](/cl-async/base#exit-eent-loop),
+server without forcibly closing all its connections (via [exit-event-loop](/cl-async/base#exit-event-loop),
 for instance).
 
 If the given server is already closed, this function returns without doing

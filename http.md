@@ -20,7 +20,6 @@ and conditions one might run into while using the HTTP system.
   - [http-request-querystring](#http-request-querystring) _accessor_
   - [http-request-headers](#http-request-headers) _accessor_
   - [http-request-body](#http-request-body) _accessor_
-- [Conditions](#conditions)
 - [http-info](#http-info) _condition_
 - [http-error](#http-error) _condition_
 - [http-timeout](#http-timeout) _condition_
@@ -28,6 +27,11 @@ and conditions one might run into while using the HTTP system.
 
 <a id="http-client"></a>
 ### http-client
+{% highlight cl %}
+(defun http-client (uri request-cb event-cb &key (method :GET))
+  => nil
+{% endhighlight %}
+
 Asynchronously communicates with an HTTP server. Allows setting the method,
 headers, and body in the request which should be enough to make just about any
 HTTP request. This functionality wraps the libevent HTTP client.
@@ -41,9 +45,6 @@ over to use cl-async, which should alleviate many issues with the `http-client`.
 The `timeout` arg is in seconds.
 
 {% highlight cl %}
-;; definition
-(http-client uri request-cb event-cb &key (method :GET) headers body timeout)
-
 ;; example
 (http-client "http://musio.com/"
              (lambda (status headers body)
@@ -69,11 +70,16 @@ needed.
 
 <a id="http-server"></a>
 ### http-server
+{% highlight cl %}
+(defun http-server (bind port request-cb event-cb))
+   => http-server
+{% endhighlight %}
+
 Start a server that asynchronously processes HTTP requests. It takes data out of
 the request and populates the [http-request](#http-request) with it, which is
 passed into the request callback.
 
-This function returns an `http-server` class, which allows you to close the
+This function returns an `http-server` object, which allows you to close the
 server via [close-http-server](#close-http-server).
 
 Once the application is done processing the request, it must respond by calling
@@ -82,9 +88,6 @@ the [http-response](#http-response) function.
 If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
 
 {% highlight cl %}
-;; definition
-(http-server bind port request-cb event-cb)  =>  http-server
-
 ;; example
 (http-server "192.168.0.1" 8090
              (lambda (req)
@@ -103,6 +106,11 @@ If `nil` is passed in into the `bind` arg, the server is bound to "0.0.0.0"
 
 <a id="close-http-server"></a>
 ### close-http-server
+{% highlight cl %}
+(defun close-http-server (http-server))
+  => nil
+{% endhighlight %}
+
 Takes an `http-server` class, created by [http-server](#http-server) and closes
 the server it wraps. This can be useful if you want to shut down a HTTP server
 without forcibly closing all its connections.
@@ -115,9 +123,6 @@ current requests are finished processing, it frees all resources associated with
 the server. In other words, a graceful exit.
 
 {% highlight cl %}
-;; definition
-(close-http-server http-server)
-
 ;; example
 (let ((server (http-server "127.0.0.1" 80 ...)))
   (signal-handler 2 (lambda (sig)
@@ -128,15 +133,17 @@ the server. In other words, a graceful exit.
 
 <a id="http-response"></a>
 ### http-response
+{% highlight cl %}
+(defun http-response (http-request &key (status 200) headers (body "")))
+  => nil
+{% endhighlight %}
+
 This is the function called by the application using an [http-server](#http-server)
 after it is done processing a request. It takes the [http-request](#http-request)
 object passed into the request callback, along with some information about the
 response we're sending.
 
 {% highlight cl %}
-;; definition
-(http-response http-request &key (status 200) headers (body ""))
-
 ;; example
 (http-server nil 80
              (lambda (req)

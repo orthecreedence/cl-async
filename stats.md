@@ -13,6 +13,11 @@ in your app.
 
 <a id="stats"></a>
 ### stats
+{% highlight cl %}
+(defun stats ())
+  => plist
+{% endhighlight %}
+
 This function returns data on the current state of the cl-async internals. How
 many incoming/outgoing connections, how many registered callbacks, how many
 registered data objects, how many open DNS requests, etc.
@@ -20,7 +25,7 @@ registered data objects, how many open DNS requests, etc.
 Data is a plist. Stats might change in the near future.
 
 {% highlight cl %}
-;; definition
+;; example output
 (stats)  =>  
   '(:open-dns-queries 3
     :fn-registry-count 418

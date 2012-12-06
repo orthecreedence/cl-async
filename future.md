@@ -138,14 +138,16 @@ The standard way to create a future is with [make-future](#make-future).
 
 <a id="make-future"></a>
 ### make-future
+{% highlight cl %}
+(defun make-future (&key preserve-callbacks (reattach-callbacks t)))
+  => future
+{% endhighlight %}
+
 Create a future. Supports persistent callbacks (can be fired more than once) and
 reattaching callbacks to another future (when this future is [finished](#finish)
 with another future as the value).
 
 {% highlight cl %}
-;; definition
-(make-future &key preserve-callbacks (reattach-callbacks t))
-
 ;; example
 (let ((future (make-future)))
   (attach future
@@ -156,6 +158,11 @@ with another future as the value).
 
 <a id="attach-errback"></a>
 ### attach-errback
+{% highlight cl %}
+(defun attach-errback (future errback))
+  => future
+{% endhighlight %}
+
 This adds an "errback" (an error callback) to the future, to be called whenever
 [signal-error](#signal-error) is called on the future. A future can hold
 multiple errbacks, allowing different pieces of your application to set up
@@ -166,9 +173,6 @@ future are saved until an errback is added, at which point the errback is called
 with all the saved up errors in the order they were received.
 
 {% highlight cl %}
-;; definition
-(attach-errback future cb)
-
 ;; example
 (let ((future (make-future))
       (socket (tcp-connect "musio.com" 80)))
@@ -192,14 +196,16 @@ with all the saved up errors in the order they were received.
 
 <a id="signal-error"></a>
 ### signal-error
+{% highlight cl %}
+(defun signal-error (future condition))
+  => nil
+{% endhighlight %}
+
 Signal an error on the future. Many async operations will signal events/errors,
 and this allows you to "transfer" these events to a future. You handle errors
 on a future by [settin up errbacks](#attach-errback) on the future.
 
 {% highlight cl %}
-;; definition
-(signal-error future condition)
-
 ;; example
 (let ((future (make-future)))
   ;; send out a request and finish our future when we get a response, but also
@@ -225,22 +231,25 @@ on a future by [settin up errbacks](#attach-errback) on the future.
 
 <a id="futurep"></a>
 ### futurep
-Test if the given object is a future.
-
 {% highlight cl %}
-;; definition
-(futurep object)
+(defun futurep (object))
+  => t/nil
 {% endhighlight %}
+
+Test if the given object is a future.
 
 <a id="finish"></a>
 ### finish
+{% highlight cl %}
+(defun finish (future &rest values))
+  => future
+{% endhighlight %}
+
 Finish a future with one or more values. When finished, all callbacks attached
-to the future will be fired, with the given values as their arguments.
+to the future will be fired, with the given values as their arguments. The same
+future passed in is returned.
 
 {% highlight cl %}
-;; definition
-(finish future &rest values)
-
 ;; example
 (let ((future (make-future)))
   (as:delay (lambda () (finish future 1 2 3)))
@@ -251,6 +260,11 @@ to the future will be fired, with the given values as their arguments.
 
 <a id="attach"></a>
 ### attach
+{% highlight cl %}
+(defmacro attach (future-gen callback))
+  => new-future
+{% endhighlight %}
+
 This macro attaches a callback to a future such that once the future computes,
 the callback will be called with the future's finished value(s) as its
 arguments.
@@ -283,9 +297,6 @@ CPS style by allowing the results from async operations several levels deep to
 be viewable by the top-level caller.
 
 {% highlight cl %}
-;; definition (future-gen is an operation that may generate multiple values)
-(attach future-gen callback)
-
 ;; example
 (attach (my-async-op-which-returns-a-future)
   (lambda (x)
@@ -302,6 +313,11 @@ possible while dealing with asynchronous operations.
 
 <a id="alet"></a>
 ### alet
+{% highlight cl %}
+(defmacro alet (bindings &body body))
+  => new-future
+{% endhighlight %}
+
 This macro allows `(let)` syntax with async functions that return futures. It
 binds the future return values to the given bindings (in parallel), then runs
 the body when all the futures have finished.
@@ -318,9 +334,6 @@ If an `alet` binding form results in multiple values, the first value will be
 bound to the variable (just like `let`).
 
 {% highlight cl %}
-;; definition
-(alet bindings &body body)
-
 ;; example (x and y compute in parallel)
 (alet ((x (grab-x-from-server))
        (y (grab-y-from-server)))
@@ -335,6 +348,11 @@ bound to the variable (just like `let`).
 
 <a id="alet-star"></a>
 ### alet*
+{% highlight cl %}
+(defmacro alet* (bindings &body body))
+  => new-future
+{% endhighlight %}
+
 This macro allows `(let*)` syntax with async functions that return futures. It
 binds the future return values to the given bindings (in sequence), allowing
 later bindings to be able to use the values from previous bindings, and then
@@ -352,9 +370,6 @@ If an `alet*` binding form results in multiple values, the first value will be
 bound to the variable (just like `let*`).
 
 {% highlight cl %}
-;; definition
-(alet* bindings &body body)
-
 ;; example (note we calculate uid THEN name)
 (alet* ((uid (grab-user-id-from-server))
         (name (get-user-name-from-id uid)))
@@ -369,6 +384,11 @@ bound to the variable (just like `let*`).
 
 <a id="multiple-future-bind"></a>
 ### multiple-future-bind
+{% highlight cl %}
+(defmacro multiple-future-bind ((&rest bindings) future-gen &body body))
+  => new-future
+{% endhighlight %}
+
 Like `multiple-value-bind` but for futures. Really, it's just a tiny macro
 wrapper around [attach](#attach).
 
@@ -381,9 +401,6 @@ any value(s), and the bindings will just attach to the given value(s) (in which
 case it works exactly like `multiple-value-bind`.
 
 {% highlight cl %}
-;; definition
-(multiple-future-bind ((&rest bindings) future-gen &body body))
-
 ;; example
 (multiple-future-bind (id name)
     (get-user-from-server)  ; returns a future
@@ -392,13 +409,15 @@ case it works exactly like `multiple-value-bind`.
 
 <a id="wait-for"></a>
 ### wait-for
+{% highlight cl %}
+(defmacro wait-for (future-gen &body body))
+  => new-future
+{% endhighlight %}
+
 Wait on a future without using any of the return values. This is good if you
 want to know when an operation has finished but don't care about the result.
 
 {% highlight cl %}
-;; definition
-(wait-for future-gen &body body)
-
 ;; example: run-command can return a future
 (wait-for (run-command)
   (format t "Command finished.~%"))
@@ -413,6 +432,11 @@ handling for futures closely follows how you would handle errors in native lisp.
 
 <a id="future-handler-case"></a>
 ### future-handler-case
+{% highlight cl %}
+(defmacro future-handler-case (body-form &rest error-forms))
+  => body-form-return
+{% endhighlight %}
+
 This macro wraps any of the above macros (`attach`, `alet`, `alet*`,
 `multiple-future-bind`, `wait-for`) with `handler-case` like error handling.
 
@@ -429,9 +453,6 @@ If you want to call a function that operates asynchronously from *within* a
 handlers.
 
 {% highlight cl %}
-;; definition
-(future-handler-case body-form &rest error-forms)
-
 ;; simple example
 (future-handler-case
   (alet ((record (get-record-from-server)))
