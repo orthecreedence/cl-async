@@ -16,6 +16,7 @@
            #:+bev-opt-close-on-free+
 
            #:*event-base*
+           #:*event-base-id*
            #:*fn-registry*
            #:*data-registry*
            #:*event-loop-end-functions*
@@ -85,6 +86,8 @@
 
 (defvar *event-base* nil
   "THE event base (libevent) used to process all async operations.")
+(defvar *event-base-id* 0
+  "The numeric identifier assigned to each new event base.")
 (defvar *fn-registry* nil
   "Function registry, allows the CFFI callbacks to run anonymous functions.")
 (defvar *data-registry* nil

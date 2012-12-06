@@ -114,6 +114,7 @@
         (*incoming-http-count* 0)
         (*outgoing-http-count* 0)
         (callbacks nil))
+    (incf *event-base-id*)
     ;; set up a callback for dealing with fatal errors
     (when fatal-cb
       (setf callbacks (append callbacks (list :fatal-cb fatal-cb)))
