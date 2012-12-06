@@ -1,6 +1,6 @@
 ---
 title: HTTP | Documentation
-layout: default
+layout: documentation
 ---
 
 HTTP

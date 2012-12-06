@@ -1,6 +1,6 @@
 ---
 title: TCP | Documentation
-layout: default
+layout: documentation
 ---
 
 TCP
