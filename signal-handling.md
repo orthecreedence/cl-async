@@ -1,6 +1,6 @@
 ---
 title: Signal handling | Documentation
-layout: default
+layout: documentation
 ---
 
 Signal handling

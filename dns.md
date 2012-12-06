@@ -1,6 +1,6 @@
 ---
 title: DNS | Documentation
-layout: default
+layout: documentation
 ---
 
 DNS

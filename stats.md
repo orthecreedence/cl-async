@@ -1,6 +1,6 @@
 ---
 title: Statistics
-layout: default
+layout: documentation
 ---
 
 Stastistics

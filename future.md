@@ -1,6 +1,6 @@
 ---
 title: Futures | Documentation
-layout: default
+layout: documentation
 ---
 
 Futures

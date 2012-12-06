@@ -1,6 +1,6 @@
 ---
 title: Timers | Documentation
-layout: default
+layout: documentation
 ---
 
 <a id="timers"></a>

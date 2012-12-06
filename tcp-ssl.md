@@ -1,6 +1,6 @@
 ---
 title: SSL over TCP | Documentation
-layout: default
+layout: documentation
 ---
 
 SSL over TCP

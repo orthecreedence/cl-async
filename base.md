@@ -1,6 +1,6 @@
 ---
 title: Base system | Documentation
-layout: default
+layout: documentation
 ---
 
 <a id="base-system"></a>

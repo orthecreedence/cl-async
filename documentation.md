@@ -1,6 +1,6 @@
 ---
 title: Documentation
-layout: default
+layout: documentation
 ---
 
 <a id="documentation"></a>

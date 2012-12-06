@@ -1,6 +1,6 @@
 ---
 title: TCP stream | Documentation
-layout: default
+layout: documentation
 ---
 
 TCP stream
