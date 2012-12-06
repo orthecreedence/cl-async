@@ -19,6 +19,11 @@ conditions it uses.
 
 <a id="start-event-loop"></a>
 ### start-event-loop
+{% highlight cl %}
+(defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors))
+  => integer
+{% endhighlight %}
+
 Start the event loop, giving a function that will be run inside the event loop
 once started. `start-event-loop` blocks the main thread until the event loop
 returns, which doesn't happen until the loop is empty *or*
@@ -32,10 +37,10 @@ It allows specifying callbacks for the fatal errors in libevent (called when
 libevent would normally exit, taking your app with it), logging, and default
 application error handling.
 
-{% highlight cl %}
-;; definition:
-(start-event-loop start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors)
+`start-event-loop` returns 1 if the event loop exited naturally, and 0 if it was
+forced to close via [exit-event-loop](#exit-event-loop).
 
+{% highlight cl %}
 ;; example:
 (start-event-loop (lambda () (format t "Event loop started.~%")))
 {% endhighlight %}
@@ -69,6 +74,10 @@ the same values for each thread.
 
 <a id="exit-event-loop"></a>
 ### exit-event-loop
+{% highlight cl %}
+(defun exit-event-loop ()) => nil
+{% endhighlight %}
+
 Exit the event loop. This will free up all resources internally and close down
 the event loop.
 
@@ -79,13 +88,13 @@ process). You can do this by freeing your signal handlers, servers, etc. This
 has the added benefit of letting any connected clients finish their requests
 (without accepting new ones) without completely cutting them off.
 
-{% highlight cl %}
-;; definition
-(exit-event-loop)
-{% endhighlight %}
-
 <a id="dump-event-loop-status"></a>
 ### dump-event-loop-status
+{% highlight cl %}
+(defun dump-event-loop-status (file &key (return-as-string t)))
+  => string
+{% endhighlight %}
+
 This is a debugging function that can help shed *some* light on why an event
 loop isn't exiting by dumping out all the events the loop currently holds.
 Although it's not very specific about the events it contains, it can still be
@@ -95,11 +104,6 @@ Since libevent only lets you dump the events to a file, the default is for you
 to specify which file to dump into, which is then read back as a string (and the
 file is then removed). If you wish the keep the file, pass
 `:return-as-string nil`.
-
-{% highlight cl %}
-;; definition
-(dump-event-loop-status file &key (return-as-string t))
-{% endhighlight %}
 
 <a id="connection-info"></a>
 ### connection-info
