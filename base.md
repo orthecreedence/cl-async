@@ -20,7 +20,7 @@ conditions it uses.
 <a id="start-event-loop"></a>
 ### start-event-loop
 {% highlight cl %}
-(defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors))
+(start-event-loop start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors)
   => integer
 {% endhighlight %}
 
