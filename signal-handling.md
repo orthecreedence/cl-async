@@ -83,9 +83,6 @@ This is useful if you don't want to track all the signals you've bound and
 [free](#free-signal-handler) them manually, but don't want to [exit the event
 loop forcibly](/cl-async/base#exit-event-loop).
 
-{% highlight cl %}
-{% endhighlight %}
-
 <a id="signal-definitions"></a>
 ### Signal definitions
 These signals correspond directly to the [unix signals](http://unixhelp.ed.ac.uk/CGI/man-cgi?signal+7):
