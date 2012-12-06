@@ -65,7 +65,7 @@ The `close-cb` function passed in will be called when the SSL socket is closed.
 (let* ((socket (tcp-connect "www.google.com" 443
                             (lambda (sock data)
                               (declare (ignore sock))
-                              (format t "GOT: ~a~%" (if (stringp data) data (babel:octets-to-string data))))
+                              (format t "GOT: ~a~%" (babel:octets-to-string data)))
                             (lambda (ev)
                               (format t "event: ~a~%" ev))
                             :read-timeout 3))

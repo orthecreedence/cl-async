@@ -290,7 +290,7 @@ callback gets called, and then the future that was returned from `attach` is
 fired with the return values from the callback.
 
 Also note that if a `future` is [finished](#finish) with another future as the
-first value, the original future's callbacks/event handlers are _transfered_ to
+first value, the original future's callbacks/errorbacks are _transfered_ to
 the new future. This, on top of `attach` always returning a future, makes
 possible some incredible syntactic abstractions which can somewhat mimick non
 CPS style by allowing the results from async operations several levels deep to
@@ -389,8 +389,8 @@ bound to the variable (just like `let*`).
   => new-future
 {% endhighlight %}
 
-Like `multiple-value-bind` but for futures. Really, it's just a tiny macro
-wrapper around [attach](#attach).
+Like `multiple-value-bind` but for futures. Allows wrapping around a future that
+finishes with multiple values.
 
 It's important to note that `multiple-future-bind` returns a future, meaning it
 can have a callback [attached to it](#attach), just like any other
