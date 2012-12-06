@@ -32,7 +32,7 @@ footer p {float: right; margin: 0; padding: 0;}
 a {color: #4183C4; text-decoration: none;}
 a:hover {text-decoration: underline;}
 h1, h2, h3, h4, h5 {margin: 20px 0 10px 0; font-weight: normal;}
-h1, h2, h3 {margin-left: -8px;}  /* really helps to set headers/sections out visually */
+h1, h2, h3 {margin-left: -14px;}  /* really helps to set headers/sections out visually */
 h1 {font-size: 28px; line-height: 1.2em;}
 h2 {font-size: 24px; border-bottom: 1px solid #e9e9e9;}
 h3 {font-size: 18px;}
