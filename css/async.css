@@ -82,7 +82,7 @@ pre code {white-space: pre; margin: 0; padding: 0; background: none; border: non
 .highlight .m{color:#009999}
 .highlight .s{color:#d14}
 .highlight .na{color:#008080}
-.highlight .nb{color:#0086B3}
+.highlight .nb{color:#0086B3; color:#a03653;}
 .highlight .nc{color:#445588;font-weight:bold}
 .highlight .no{color:#008080}
 .highlight .ni{color:#800080}
