@@ -44,8 +44,7 @@ quicklisp, be familiar with the [closed issues list](/orthecreedence/cl-async/is
 An issue you're having may have already been fixed =].
 
 ### Tests
-I'm slowly but surely adding tests via the [Eos test framework](https://github.com/adlai/Eos)
-under `test/`:
+There is a fairly complete suite of tests in the `cl-async-test` package:
 
 ```common-lisp
 (ql:quickload :cl-async-test)
@@ -53,8 +52,8 @@ under `test/`:
 (cl-async-test:run-tests)
 ```
 
-I'm adding tests to the system as I think of them and when I have time, so it
-will be a while longer before there's a complete set of tests. Stay tuned.
+As bugs happen (or as I remember old bugs and encounter new bugs) I'll be adding
+more tests.
 
 ### TODO
 See the [TODO list](https://github.com/orthecreedence/cl-async/issues).
