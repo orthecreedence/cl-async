@@ -113,7 +113,7 @@
 (test pointer-callbacks
   "Test that pointer callbacks are assigned and also cleared correctly"
   (let ((fn (lambda (x) (1+ x)))
-        (fn-size (hash-table-count *fn-registry*))
+        (fn-size (if *fn-registry* (hash-table-count *fn-registry*) 0))
         (data-pointer (create-data-pointer)))
     (save-callbacks data-pointer (list :test fn))
     (is (= (funcall (getf (get-callbacks data-pointer) :test) 6) 7))
@@ -124,7 +124,7 @@
 (test pointer-data
   "Test that pointer data is assigned and also cleared correctly"
   (let ((my-data (make-hash-table :size 5))
-        (data-size (hash-table-count *data-registry*))
+        (data-size (if *data-registry* (hash-table-count *data-registry*) 0))
         (data-pointer (create-data-pointer)))
     (attach-data-to-pointer data-pointer my-data)
     (is (equal my-data (deref-data-from-pointer data-pointer)))
