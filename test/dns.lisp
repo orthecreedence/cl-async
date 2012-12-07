@@ -57,10 +57,14 @@
             :family as:+af-inet6+)))))
 
 (test dns-fail
-  "Tests DNS failure on fake host"
-  (signals as:dns-error
-    (async-let ((lookup nil))
-      (as:dns-lookup "all your children are poor unfortunate victims of lies you believe."
-        (lambda (addr fam) (list addr fam))
-        (lambda (ev) (error ev))))))
+  "Tests DNS failure on fake host, makes sure event-cb gets fires once"
+  (let ((num-err 0))
+    (signals as:dns-error
+      (async-let ((lookup nil))
+        (as:dns-lookup "all your children are poor unfortunate victims of lies you believe."
+          (lambda (addr fam) (list addr fam))
+          (lambda (ev)
+            (incf num-err)
+            (error ev)))))
+    (is (= num-err 1))))
 

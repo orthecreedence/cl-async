@@ -33,6 +33,7 @@
            #:*outgoing-http-count*
 
            #:catch-app-errors
+           #:run-event-cb
 
            #:make-foreign-type
 
@@ -129,6 +130,8 @@
    If event-cbs are called via run-event-cb, makes sure the event-cb is NOT
    double-called with the same condition twice."
   (let ((evcb (gensym "evcb")))
+    ;; define a binding for tracking already-fired errors. run-event-cb will
+    ;; use this binding
     `(let ((_evcb-err nil))
        (if cl-async:*catch-application-errors*
            (let ((,evcb (if (functionp ,event-cb)
@@ -137,8 +140,11 @@
              (handler-case
                (progn ,@body)
                (t (err)
-                 (unless (equal err _evcb-err)
-                   (funcall ,evcb err)))))
+                 (if (equal err _evcb-err)
+                     ;; error was already sent to eventcb, retrigger
+                     (error err)
+                     ;; what do you know, a new error. send to event-cb =]
+                     (funcall ,evcb err)))))
            (progn ,@body)))))
 
 (defmacro run-event-cb (event-cb &rest args)
@@ -146,8 +152,12 @@
    errors are caught and saved, making it so an event-cb isn't called twice with
    the same condition."
   `(handler-case
+     ;; run the event handler
      (funcall ,event-cb ,@args)
+     ;; catch any errors and track them
      (t (e)
+       ;; track the error so we don't re-fire (_evcb-err is defined in
+       ;; catch-app-errors)
        (setf _evcb-err e)
        (error e))))
      
