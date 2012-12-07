@@ -196,7 +196,7 @@
            (run-event-cb event-cb (make-instance 'http-timeout :code -1 :msg "HTTP connection timed out.")))
           ;; connection refused
           ((eq (le:evhttp-request-get-response-code request) 0)
-           (run-event-cb event-cb (make-instance 'http-refused :code -1 "HTTP connection refused.")))
+           (run-event-cb event-cb (make-instance 'http-refused :code -1 :msg "HTTP connection refused.")))
           ;; got response back, parse and send off to request-cb
           (t
            (let ((status (le:evhttp-request-get-response-code request))
