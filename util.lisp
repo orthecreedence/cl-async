@@ -67,7 +67,7 @@
            #:addrinfo-ai-addr))
 (in-package :cl-async-util)
 
-;; kind of a hack, need to define these so the `catch-app-errors` macro will
+;; kind of a hack, need to define this so the `catch-app-errors` macro will
 ;; compile. annoying that i have to do this, but w/e it works.
 (defpackage :cl-async
   (:use :cl)
