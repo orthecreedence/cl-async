@@ -45,14 +45,18 @@
 
 (test tcp-connect-fail
   "Make sure a tcp connection fails"
-  (signals as:tcp-timeout
-    (async-let ()
-      (test-timeout 2)
-      (as:tcp-connect "1.24.3.4" 3
-        (lambda (sock data) (declare (ignore sock data)))
-        (lambda (ev) (error ev))
-        :data "hai"
-        :read-timeout 1))))
+  (let ((num-err 0))
+    (signals as:tcp-timeout
+      (async-let ()
+        (test-timeout 2)
+        (as:tcp-connect "1.24.3.4" 3
+          (lambda (sock data) (declare (ignore sock data)))
+          (lambda (ev)
+            (incf num-err)
+            (error ev))
+          :data "hai"
+          :read-timeout 1)))
+    (is (= num-err 1))))
 
 (test tcp-server-close
   "Make sure a tcp-server closes gracefully"
