@@ -292,7 +292,7 @@
         ;; outgoing connections though, since incoming are handled in the
         ;; accept-cb)
         (when (and connect-cb
-                   (eq (socket-direction socket 'out))
+                   (eq (socket-direction socket) 'out)
                    (logand events le:+bev-event-connected+))
           (funcall connect-cb socket))
         ;; process any errors we received
