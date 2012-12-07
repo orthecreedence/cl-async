@@ -45,3 +45,12 @@
     (is (= data-pt 4))
     (is (= fn-pt 5))))
 
+(test exit-callbacks
+  "Test that functions assigned to be called when event loop exits are run"
+  (multiple-value-bind (yes-ran)
+      (async-let ((yes-ran nil))
+        (add-event-loop-exit-callback
+          (lambda ()
+            (setf yes-ran :omglolwtf)))
+        (as:delay (lambda () nil) :time .2))
+    (is (eq yes-ran :omglolwtf))))

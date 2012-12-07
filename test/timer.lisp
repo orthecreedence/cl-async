@@ -28,3 +28,4 @@
     (is (identity timer1))
     (is (identity timer2))
     (is (identity timer3))))
+

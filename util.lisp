@@ -265,7 +265,7 @@
 
 (defparameter *ipv4-scanner*
   (cl-ppcre:create-scanner
-    "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$"
+    "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{2}|[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{2}|[0-9])$"
     :case-insensitive-mode t)
   "Scanner that detects if a string is an IPV4 address.")
 

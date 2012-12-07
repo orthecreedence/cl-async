@@ -47,6 +47,7 @@
   "Make sure a tcp connection fails"
   (signals as:tcp-timeout
     (async-let ()
+      (test-timeout 2)
       (as:tcp-connect "1.24.3.4" 3
         (lambda (sock data) (declare (ignore sock data)))
         (lambda (ev) (error ev))

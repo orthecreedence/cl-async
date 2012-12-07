@@ -12,7 +12,7 @@
 		         (:file "timer" :depends-on ("base"))
 		         (:file "dns" :depends-on ("base"))
 		         (:file "tcp" :depends-on ("base"))
-		         (:file "tcp-ssl" :depends-on ("tcp"))
+		         (:file "tcp-stream" :depends-on ("tcp"))
 		         (:file "http" :depends-on ("base"))
 		         (:file "signal" :depends-on ("base"))
 		         (:file "future" :depends-on ("base"))))))
