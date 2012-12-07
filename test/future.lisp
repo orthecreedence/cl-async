@@ -80,7 +80,7 @@
       (is (= val-y 7)))))
 
 (test future-multiple-future-bind
-  "Test multiple-future-bind"
+  "Test multiple-future-bind macro"
   (multiple-value-bind (name age)
       (async-let ((name-res nil)
                   (age-res nil))
@@ -91,4 +91,44 @@
     (is (string= name "andrew"))
     (is (= age 69))))
 
+(test future-wait-for
+  "Test wait-for macro"
+  (multiple-value-bind (res1 res2)
+      (async-let ((res1 nil)
+                  (res2 nil))
+        (wait-for (future-gen nil)
+          (setf res1 2))
+        (wait-for (future-gen nil)
+          (setf res2 4)))
+    (is (= res1 2))
+    (is (= res2 4))))
+
+(define-condition test-error-lol (error) ())
+
+(test future-handler-case
+  "Test future error handling"
+  (multiple-value-bind (err1 err2)
+      (async-let ((err1 nil)
+                  (err2 nil))
+        (future-handler-case
+          (future-handler-case
+            (alet ((x (future-gen 'sym1)))
+              (+ x 7))
+            (type-error (e)
+              (setf err1 e)))
+          (t (e)
+            (declare (ignore e))
+            (setf err1 :failwhale)))
+        (future-handler-case
+          (future-handler-case
+            (multiple-future-bind (name age)
+                (future-gen "leonard" 69)
+              (declare (ignore name age))
+              (error (make-instance 'test-error-lol)))
+            (type-error (e)
+              (setf err2 e)))
+          (t (e)
+            (setf err2 e))))
+    (is (eq (type-of err1) 'type-error))
+    (is (subtypep (type-of err2) 'test-error-lol))))
 

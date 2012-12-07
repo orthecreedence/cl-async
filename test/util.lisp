@@ -11,7 +11,8 @@
   `(let ,bindings
      (as:start-event-loop
        (lambda ()
-         ,@body))
+         ,@body)
+       :catch-app-errors t)
      (values ,@(loop for (binding . nil) in bindings collect binding))))
 
 (defun test-timeout (seconds)
