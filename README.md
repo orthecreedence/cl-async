@@ -52,8 +52,7 @@ There is a fairly complete suite of tests in the `cl-async-test` package:
 (cl-async-test:run-tests)
 ```
 
-As bugs happen (or as I remember old bugs and encounter new bugs) I'll be adding
-more tests.
+As bugs happen (or as I remember old bugs) I'll be adding more tests.
 
 ### TODO
 See the [TODO list](https://github.com/orthecreedence/cl-async/issues).
