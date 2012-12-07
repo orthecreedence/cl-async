@@ -51,12 +51,14 @@
 (defun proxy-event-handler (ev)
   "Handle all proxy events."
   (handler-case
-      (error ev)
+    (error ev)
     ;; if a socket times out, close the paired socket
     (as:tcp-timeout ()
       (close-paired-socket (as:tcp-socket ev)))
     ;; if we get a socket eof, close the paired socket, but delay it so that any
     ;; data being sent out before closing has a chance to "escape."
+    (as:tcp-error ()
+      (as:delay (lambda () (close-paired-socket (as:tcp-socket ev)))))
     (as:tcp-eof ()
       (as:delay (lambda () (close-paired-socket (as:tcp-socket ev)))))
     ;; just echo the event
