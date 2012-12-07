@@ -9,6 +9,32 @@
   (:report (lambda (c s) (format s "Connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
   (:documentation "Describes a general connection error."))
 
+(defvar *catch-application-errors* nil
+  "When t, permits cl-async to catch uncaught conditions in your application and
+   pass them to the event-cb callback given. If no event-cb is given for the
+   operation that triggered the condition, use *default-event-handler* as the
+   event-cb.")
+
+(defvar *signal-handlers* nil
+  "Holds all the currently bound signal handlers, which can be used to unbind
+   them all in one swift stroke.")
+
+(defvar *default-event-handler*
+  (lambda (err)
+    ;; throw the error so we can wrap it in a handler-case
+    (handler-case (error err)
+      ;; got a connection error, throw it (must do this explicitely since
+      ;; connection-error extends connection-info)
+      (connection-error () (error err))
+
+      ;; this is just info, let it slide
+      (connection-info () nil)
+      
+      ;; this an actual error. throw it back to toplevel
+      (t () (error err))))
+  "If an event-cb is not specified, this will be used as the event-cb IF
+   *catch-application-errors* is set to t.")
+
 (cffi:defcallback fatal-cb :void ((err :int))
   "Used to handle fatal libevent errors."
   (let ((fatal-cb (getf (get-callbacks *event-base*) :fatal-cb)))

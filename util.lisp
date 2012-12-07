@@ -32,10 +32,6 @@
            #:*incoming-http-count*
            #:*outgoing-http-count*
 
-           #:*catch-application-errors*
-
-           #:*signal-handlers*
-           #:*default-event-handler*
            #:catch-app-errors
 
            #:make-foreign-type
@@ -70,6 +66,13 @@
            #:*addrinfo*
            #:addrinfo-ai-addr))
 (in-package :cl-async-util)
+
+;; kind of a hack, need to define these so the `catch-app-errors` macro will
+;; compile. annoying that i have to do this, but w/e it works.
+(defpackage :cl-async
+  (:use :cl)
+  (:export #:*catch-application-errors*
+           #:*default-event-handler*))
 
 (defconstant +af-inet+ le:+af-inet+)
 (defconstant +af-inet6+ le:+af-inet-6+)
@@ -119,40 +122,14 @@
 (defvar *outgoing-http-count* 0
   "Number of outgoing HTTP connections.")
 
-(defvar *catch-application-errors* nil
-  "When t, permits cl-async to catch uncaught conditions in your application and
-   pass them to the event-cb callback given. If no event-cb is given for the
-   operation that triggered the condition, use *default-event-handler* as the
-   event-cb.")
-
-(defvar *signal-handlers* nil
-  "Holds all the currently bound signal handlers, which can be used to unbind
-   them all in one swift stroke.")
-
-(defvar *default-event-handler*
-  (lambda (err)
-    ;; throw the error so we can wrap it in a handler-case
-    (handler-case (error err)
-      ;; got a connection error, throw it (must do this explicitely since
-      ;; connection-error extends connection-info)
-      (connection-error () (error err))
-
-      ;; this is just info, let it slide
-      (connection-info () nil)
-      
-      ;; this an actual error. throw it back to toplevel
-      (t () (error err))))
-  "If an event-cb is not specified, this will be used as the event-cb IF
-   *catch-application-errors* is set to t.")
-
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
    otherwise just runs the body with no error/event handling."
   (let ((evcb (gensym)))
-    `(if *catch-application-errors*
+    `(if cl-async:*catch-application-errors*
          (let ((,evcb (if (functionp ,event-cb)
                           ,event-cb
-                          *default-event-handler*)))
+                          cl-async:*default-event-handler*)))
            (handler-case
              (progn ,@body)
              (t (err) (funcall ,evcb err))))
