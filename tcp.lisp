@@ -327,7 +327,7 @@
            (release-dns-base)))
         (when event
           (unwind-protect
-            (when event-cb (funcall event-cb event))
+            (when event-cb (run-event-cb event-cb event))
             ;; if the app closed the socket in the event cb (perfectly fine),
             ;; make sure we don't trigger an error trying to close it again.
             (handler-case (close-socket socket)
@@ -367,11 +367,12 @@
   (let* ((tcp-server (deref-data-from-pointer data-pointer))
          (callbacks (get-callbacks data-pointer))
          (event-cb (getf callbacks :event-cb)))
-    (funcall event-cb (make-instance 'tcp-accept-error
-                                     :code -1
-                                     :msg "Error accepting client connection"
-                                     :listener listener
-                                     :tcp-server tcp-server))))
+    (catch-app-errors event-cb
+      (run-event-cb event-cb (make-instance 'tcp-accept-error
+                                            :code -1
+                                            :msg "Error accepting client connection"
+                                            :listener listener
+                                            :tcp-server tcp-server)))))
 
 (defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected

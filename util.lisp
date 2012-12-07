@@ -124,16 +124,32 @@
 
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
-   otherwise just runs the body with no error/event handling."
-  (let ((evcb (gensym)))
-    `(if cl-async:*catch-application-errors*
-         (let ((,evcb (if (functionp ,event-cb)
-                          ,event-cb
-                          cl-async:*default-event-handler*)))
-           (handler-case
-             (progn ,@body)
-             (t (err) (funcall ,evcb err))))
-         (progn ,@body))))
+   otherwise just runs the body with no error/event handling.
+
+   If event-cbs are called via run-event-cb, makes sure the event-cb is NOT
+   double-called with the same condition twice."
+  (let ((evcb (gensym "evcb")))
+    `(let ((_evcb-err nil))
+       (if cl-async:*catch-application-errors*
+           (let ((,evcb (if (functionp ,event-cb)
+                            ,event-cb
+                            cl-async:*default-event-handler*)))
+             (handler-case
+               (progn ,@body)
+               (t (err)
+                 (unless (equal err _evcb-err)
+                   (funcall ,evcb err)))))
+           (progn ,@body)))))
+
+(defmacro run-event-cb (event-cb &rest args)
+  "Used inside of catch-app-errors, wraps the calling of an event-cb such that
+   errors are caught and saved, making it so an event-cb isn't called twice with
+   the same condition."
+  `(handler-case
+     (funcall ,event-cb ,@args)
+     (t (e)
+       (setf _evcb-err e)
+       (error e))))
      
 (defmacro make-foreign-type ((var type &key initial type-size) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.

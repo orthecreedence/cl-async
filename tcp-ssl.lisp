@@ -57,7 +57,7 @@
           (cffi:with-foreign-object (buf :unsigned-char 256)
             (cl+ssl::err-error-string errcode buf)
             (let ((str (cffi:foreign-string-to-lisp buf)))
-              (funcall event-cb (make-instance 'tcp-ssl-error :code errcode :msg str))))
+              (run-event-cb event-cb (make-instance 'tcp-ssl-error :code errcode :msg str))))
           ;; make sure to close the socket after an error
           (close-socket socket))
         ;; call directly into the tcp-event-cb function

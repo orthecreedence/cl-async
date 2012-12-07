@@ -58,7 +58,7 @@
       (catch-app-errors event-cb
         (if (not (zerop errcode))
             ;; DNS call failed, get error
-            (funcall event-cb (make-instance 'dns-error :code errcode :msg (le:evutil-gai-strerror errcode)))
+            (run-event-cb event-cb (make-instance 'dns-error :code errcode :msg (le:evutil-gai-strerror errcode)))
 
             ;; success, pull out address
             (let ((family (le-a:addrinfo-ai-family addrinfo))
@@ -89,7 +89,7 @@
                   (funcall resolve-cb addr family)
                   ;; hmm, didn't get an address. either cam back as ipv6 or 
                   ;; there was some horrible, horrible error.
-                  (funcall event-cb (make-instance 'dns-error :code -1 :msg (format nil "Error pulling out address from family: ~a" family))))
+                  (run-event-cb event-cb (make-instance 'dns-error :code -1 :msg (format nil "Error pulling out address from family: ~a" family))))
 
               ;; clean up
               (unless (cffi:null-pointer-p addrinfo)
