@@ -288,8 +288,12 @@
          (connect-cb (getf callbacks :connect-cb)))
     (catch-app-errors event-cb
       (unwind-protect
-        ;; if we just connected and we have a connect-cb, call it
-        (when (and connect-cb (logand events le:+bev-event-connected+))
+        ;; if we just connected and we have a connect-cb, call it (only for
+        ;; outgoing connections though, since incoming are handled in the
+        ;; accept-cb)
+        (when (and connect-cb
+                   (eq (socket-direction socket 'out))
+                   (logand events le:+bev-event-connected+))
           (funcall connect-cb socket))
         ;; process any errors we received
         (cond
@@ -344,13 +348,18 @@
                                          +bev-opt-close-on-free+))
          (socket (make-instance 'socket :c bev :direction 'in))
          (callbacks (get-callbacks data-pointer))
-         (event-cb (getf callbacks :event-cb)))
+         (event-cb (getf callbacks :event-cb))
+         (connect-cb (getf callbacks :connect-cb)))
     (catch-app-errors event-cb
       ;; attach our data-pointer/socket class to the bev
       (attach-data-to-pointer bev (list :data-pointer per-conn-data-pointer :socket socket))
 
       ;; track the connection. will be decf'ed when close-socket is called
       (incf *incoming-connection-count*)
+
+      ;; if we have a connect-cb, call it
+      (when connect-cb
+        (funcall connect-cb socket))
 
       ;; save the callbacks given to the listener onto each socket individually
       (save-callbacks per-conn-data-pointer callbacks)
