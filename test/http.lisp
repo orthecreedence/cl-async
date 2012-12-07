@@ -28,6 +28,10 @@
               (incf client-replies)
               (setf client-data (concat client-data (babel:octets-to-string body))))
             (lambda (ev) (error ev))
+            ;; NOTE: disabled until i figure out how to force http-server to
+            ;; read the body of GET requests. in other words, this test SHOULD
+            ;; fail until the server is fixed.
+            ;:method :post
             :body "hai "))
 
         (as:delay (lambda () (as:exit-event-loop))
