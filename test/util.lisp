@@ -24,7 +24,7 @@
     (as::enable-threading-support)
     (let ((cancel nil))
       ;; if the event loop exits naturally, cancel the break
-      (cl-async-util::add-event-loop-exit-callback
+      (as:add-event-loop-exit-callback
         (lambda () (setf cancel t)))
       ;; spawn the thread to kill the event loop
       (bt:make-thread (lambda ()
