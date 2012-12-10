@@ -11,6 +11,7 @@ conditions it uses.
 
 - [start-event-loop](#start-event-loop) _function_
 - [exit-event-loop](#exit-event-loop) _function_
+- [add-event-loop-exit-callback](#add-event-loop-exit-callback) _function_
 - [dump-event-loop-status](#dump-event-loop-status) _function_
 - [event-info](#event-info) _condition_
 - [event-error](#event-error) _condition_
@@ -88,6 +89,19 @@ lisp, try to let your event loop exit of "natural causes" (ie, no events left to
 process). You can do this by freeing your signal handlers, servers, etc. This
 has the added benefit of letting any connected clients finish their requests
 (without accepting new ones) without completely cutting them off.
+
+<a id="add-event-loop-exit-callback"></a>
+### add-event-loop-exit-callback
+{% highlight cl %}
+(defun add-event-loop-exit-callback (fn))
+  => nil
+{% endhighlight %}
+
+Adds a callback to the event loop that will be fired when it exits. The callback
+takes no arguments. It can be used to clean up/alert various sections of your
+code that would benefit from knowing that an event loop has exited (generally
+you can just put this cleanup directly after calling [start-event-loop](#start-event-loop),
+but it can make sense to pass in closures that do cleanup for you.
 
 <a id="dump-event-loop-status"></a>
 ### dump-event-loop-status
