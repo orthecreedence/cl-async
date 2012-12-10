@@ -22,10 +22,16 @@
   (let ((event-base cl-async-util::*event-base*)
         (base-id cl-async-util::*event-base-id*))
     (as::enable-threading-support)
-    (bt:make-thread (lambda ()
-                      (sleep seconds)
-                      (when (eql cl-async-util::*event-base-id* base-id)
-                        (le:event-base-loopexit event-base (cffi:null-pointer)))))))
+    (let ((cancel nil))
+      ;; if the event loop exits naturally, cancel the break
+      (cl-async-util::add-event-loop-exit-callback
+        (lambda () (setf cancel t)))
+      ;; spawn the thread to kill the event loop
+      (bt:make-thread (lambda ()
+                        (sleep seconds)
+                        (when (and (eql cl-async-util::*event-base-id* base-id)
+                                   (not cancel))
+                          (le:event-base-loopexit event-base (cffi:null-pointer))))))))
 
 (defun concat (&rest args)
   "Shortens string concatenation because I'm lazy and really who the hell wants
