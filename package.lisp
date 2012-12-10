@@ -32,6 +32,7 @@
            ;; common functions
            #:stats
            #:dump-event-loop-status
+           #:add-event-loop-exit-callback
            #:start-event-loop
            #:exit-event-loop
 

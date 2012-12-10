@@ -1,7 +1,7 @@
 (asdf:defsystem cl-async-util
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
-  :version "0.3.0"
+  :version "0.3.1"
   :description "Internal utilities for cl-async."
   :depends-on (#:cffi #:cl-libevent2 #:cl-ppcre)
   :components
