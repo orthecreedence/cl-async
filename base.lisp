@@ -1,13 +1,14 @@
 (in-package :cl-async)
 
-(define-condition connection-info () ()
-  (:documentation "Describes the base condition for any action on a connection."))
+(define-condition event-info () ()
+  (:documentation "Describes the base event for any action in cl-async.")
+  (:report (lambda (c s) (format s "Info event: ~a" c))))
 
-(define-condition connection-error (connection-info)
-  ((code :initarg :code :reader conn-errcode :initform 0)
-   (msg :initarg :msg :reader conn-errmsg :initform nil))
-  (:report (lambda (c s) (format s "Connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
-  (:documentation "Describes a general connection error."))
+(define-condition event-error (event-info)
+  ((code :initarg :code :reader event-errcode :initform 0)
+   (msg :initarg :msg :reader event-errmsg :initform nil))
+  (:report (lambda (c s) (format s "Error event: ~a: ~a" (event-errcode c) (event-errmsg c))))
+  (:documentation "Describes a general error event."))
 
 (defvar *catch-application-errors* nil
   "When t, permits cl-async to catch uncaught conditions in your application and
@@ -24,14 +25,11 @@
     ;; throw the error so we can wrap it in a handler-case
     (handler-case (error err)
       ;; got a connection error, throw it (must do this explicitely since
-      ;; connection-error extends connection-info)
-      (connection-error () (error err))
+      ;; event-error extends event-info)
+      (event-error () (error err))
 
       ;; this is just info, let it slide
-      (connection-info () nil)
-      
-      ;; this an actual error. throw it back to toplevel
-      (t () (error err))))
+      (event-info () nil)))
   "If an event-cb is not specified, this will be used as the event-cb IF
    *catch-application-errors* is set to t.")
 

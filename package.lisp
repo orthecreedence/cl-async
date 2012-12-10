@@ -25,10 +25,10 @@
            #:*catch-application-errors*
            #:*default-event-handler*
            ;; common conditions/accessors
-           #:connection-info
-           #:connection-error
-           #:conn-errcode
-           #:conn-errmsg
+           #:event-info
+           #:event-error
+           #:event-errcode
+           #:event-errmsg
            ;; common functions
            #:stats
            #:dump-event-loop-status

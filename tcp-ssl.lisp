@@ -7,7 +7,7 @@
 (in-package :cl-async-ssl)
 
 (define-condition tcp-ssl-error (tcp-error) ()
-  (:report (lambda (c s) (format s "SSL connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:report (lambda (c s) (format s "SSL connection error: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Describes a general SSL connection error."))
 
 ;; cl+ssl doesn't wrap these (bummer) so we have to do it manually...

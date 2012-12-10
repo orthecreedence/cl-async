@@ -1,18 +1,18 @@
 (in-package :cl-async)
 
-(define-condition http-info (connection-info) ()
+(define-condition http-info (event-info) ()
   (:documentation "Base HTTP condition. Holds the socket object."))
 
-(define-condition http-error (connection-error http-info) ()
-  (:report (lambda (c s) (format s "HTTP connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+(define-condition http-error (event-error http-info) ()
+  (:report (lambda (c s) (format s "HTTP connection error: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Describes a general HTTP connection error."))
 
 (define-condition http-timeout (http-error) ()
-  (:report (lambda (c s) (format s "HTTP connection timeout: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:report (lambda (c s) (format s "HTTP connection timeout: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to an event callback when an HTTP connection times out."))
 
 (define-condition http-refused (http-error) ()
-  (:report (lambda (c s) (format s "HTTP connection refused: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:report (lambda (c s) (format s "HTTP connection refused: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to an event callback when an HTTP connection is refused."))
 
 (defclass http-request ()

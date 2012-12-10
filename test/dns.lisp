@@ -56,7 +56,7 @@
               (lambda (ev)
                 (error ev))
               :family as:+af-inet6+))
-          (t (e) (as:conn-errmsg e))))))
+          (t (e) (as:event-errmsg e))))))
 
 (test dns-fail
   "Tests DNS failure on fake host, makes sure event-cb gets fires once"

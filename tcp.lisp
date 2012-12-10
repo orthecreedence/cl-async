@@ -1,11 +1,11 @@
 (in-package :cl-async)
 
-(define-condition tcp-info (connection-info)
+(define-condition tcp-info (event-info)
   ((socket :initarg :socket :accessor tcp-socket :initform nil))
   (:documentation "Base TCP condition. Holds the socket object."))
 
-(define-condition tcp-error (connection-error tcp-info) ()
-  (:report (lambda (c s) (format s "TCP connection error: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+(define-condition tcp-error (event-error tcp-info) ()
+  (:report (lambda (c s) (format s "TCP connection error: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Describes a general TCP connection error."))
 
 (define-condition tcp-eof (tcp-info) ()
@@ -13,11 +13,11 @@
   (:documentation "Passed to an event callback when a peer closes a TCP connection."))
 
 (define-condition tcp-timeout (tcp-error) ()
-  (:report (lambda (c s) (format s "TCP connection timeout: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:report (lambda (c s) (format s "TCP connection timeout: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to an event callback when a TCP connection times out."))
 
 (define-condition tcp-refused (tcp-error) ()
-  (:report (lambda (c s) (format s "TCP connection refused: ~a: ~a" (conn-errcode c) (conn-errmsg c))))
+  (:report (lambda (c s) (format s "TCP connection refused: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to an event callback when a TCP connection is refused."))
 
 (define-condition tcp-accept-error (tcp-error)

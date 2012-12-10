@@ -1,7 +1,7 @@
 (in-package :cl-async)
 
-(define-condition dns-error (connection-error) ()
-  (:report (lambda (c s) (format s "Connection DNS error: ~a, ~a" (conn-errcode c) (conn-errmsg c))))
+(define-condition dns-error (event-error) ()
+  (:report (lambda (c s) (format s "Connection DNS error: ~a, ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
 
 (defun get-dns-base ()
