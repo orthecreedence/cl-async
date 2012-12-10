@@ -7,9 +7,10 @@ Drivers built on cl-async
 =========================
 A number of drivers are planned to be built on top of cl-async:
 
+- [Drakma](https://github.com/orthecreedence/drakma-async)
+(async port, would essentially replace [http-client](/cl-async/http#http-client))
 - [beanstalkd](https://github.com/orthecreedence/beanstalk-async)
 - MongoDB
-- Drakma (async port, would essentially replace [http-client](/cl-async/http#http-client))
 - Amazon S3/Cloudfront
 - SMTP
 - Redis
