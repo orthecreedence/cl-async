@@ -457,8 +457,8 @@ handlers.
 (future-handler-case
   (alet ((record (get-record-from-server)))
     (format t "got record: ~a~%" record))
-  (connection-error (e)
-    (format t "oh no, a connection error.~%")))
+  (event-error (e)
+    (format t "oh no, an error.~%")))
 
 ;; nesting example
 
@@ -479,8 +479,10 @@ handlers.
           (process-results x y)))
       (type-error (e)
         (format t "Got a type error, x or y possibly isn't a number: ~a~%" e))))
-  (connection-error (e)
+  (tcp-error (e)
     (format t "Error connecting to server: ~a~%" e))
+  (event-error (e)
+    (format t "Got an error event: ~a~%" e))
   (t (e)
     (format t "Got general error: ~a~%" e)))
 {% endhighlight %}

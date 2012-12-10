@@ -57,9 +57,9 @@ returns information on a user.
             (signal-error future (make-instance 'server-error :code status))))
       (lambda (event)
         (let ((event-type (type-of event)))
-          ;; ignore info events (careful, connection-error extends connection-info)
-          (when (or (not (subtypep event-type 'as:connection-info))
-                    (subtypep event-type 'as:connection-error))
+          ;; ignore info events (careful, event-error extends event-info)
+          (when (or (not (subtypep event-type 'as:event-info))
+                    (subtypep event-type 'as:event-error))
             ;; forward any errors to the future, to be caught with future-handler-case
             (signal-error future event))))
       :timeout 5)

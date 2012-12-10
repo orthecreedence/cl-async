@@ -94,7 +94,7 @@ These are the conditions the DNS system can signal in [event callbacks](/cl-asyn
 
 <a id="dns-error"></a>
 ### dns-error
-_extends [connection-error](/cl-async/base#connection-error)_
+_extends [event-error](/cl-async/base#event-error)_
 
 This explains a DNS error (for instance if a DNS lookup fails).
 

@@ -55,14 +55,11 @@ this variable will be used as the `event-cb`. The default:
   ;; throw the event so we can wrap it in a handler-case
   (handler-case (error ev)
     ;; got a connection error, throw it (must do this explicitely since
-    ;; connection-error extends connection-info)
-    (connection-error () (error ev))
+    ;; event-error extends event-info)
+    (event-error () (error ev))
 
     ;; this is just info, let it slide
-    (connection-info () nil)
-
-    ;; this an actual error. throw it back to toplevel
-    (t () (error ev))))
+    (event-info () nil)))
 {% endhighlight %}
 
 This can be changed by your application if different behavior is desired.

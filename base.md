@@ -12,10 +12,10 @@ conditions it uses.
 - [start-event-loop](#start-event-loop) _function_
 - [exit-event-loop](#exit-event-loop) _function_
 - [dump-event-loop-status](#dump-event-loop-status) _function_
-- [connection-info](#connection-info) _condition_
-- [connection-error](#connection-error) _condition_
-  - [conn-errcode](#conn-errcode) _accessor_
-  - [conn-errmsg](#conn-errmsg) _accessor_
+- [event-info](#event-info) _condition_
+- [event-error](#event-error) _condition_
+  - [event-errcode](#event-errcode) _accessor_
+  - [event-errmsg](#event-errmsg) _accessor_
 
 <a id="start-event-loop"></a>
 ### start-event-loop
@@ -106,26 +106,25 @@ to specify which file to dump into, which is then read back as a string (and the
 file is then removed). If you wish the keep the file, pass
 `:return-as-string nil`.
 
-<a id="connection-info"></a>
-### connection-info
-Base connection condition. Signals that "something" happened on a connection.
-Meant to be extended.
+<a id="event-info"></a>
+### event-info
+Base event. Signals that "something" happened. Meant to be extended.
 
-<a id="connection-error"></a>
-### connection-error
-_extends [connection-info](#connection-info)_
+<a id="event-error"></a>
+### event-error
+_extends [event-info](#event-info)_
 
-Base connection error. Signals that "something bad" happened on a connection.
+Base error event. Signals that "something bad" (an error) happened.
 
-<a id="conn-errcode"></a>
-##### conn-errcode
-The error code associated with the connection error. This is generally retrieved
+<a id="event-errcode"></a>
+##### event-errcode
+The error code associated with the error event. This is generally retrieved
 from the underlying OS, but sometimes cl-async will generate its own error
 conditions, in which case errcode will be -1.
 
-<a id="conn-errmsg"></a>
-##### conn-errmsg
-Much like `conn-errcode`, this is generally a system message explaining a
-connection error. If it is a cl-async generated error, it will have a string
-value explaining what happened.
+<a id="event-errmsg"></a>
+##### event-errmsg
+Much like `event-errcode`, this is generally a system message explaining the
+error. If it is a cl-async generated error, it will have a string value
+explaining what happened.
 

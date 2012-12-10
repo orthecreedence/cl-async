@@ -24,7 +24,7 @@ future-generating forms with one top-level handler.
     (format t "got user ~a, who is ~a years old.~%" name age))
   (user-not-found ()
     (format t "Sorry, user wasn't found.~%"))
-  (connection-error ()
+  (event-error ()
     (format t "Error connecting to server.~%")))
 {% endhighlight %}
 

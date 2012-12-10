@@ -331,7 +331,7 @@ These are the conditions the TCP system can signal in [event callbacks](/cl-asyn
 
 <a id="tcp-info"></a>
 ### tcp-info
-_extends [connection-info](/cl-async/base#connection-info)_
+_extends [event-info](/cl-async/base#event-info)_
 
 Base TCP condition, says "something" happened on a TCP connection.
 
@@ -341,7 +341,7 @@ Holds the TCP socket class. Can be used to write to the socket or close it.
 
 <a id="tcp-error"></a>
 ### tcp-error
-_extends [connection-error](/cl-async/base#connection-error) and [tcp-info](#tcp-info)_
+_extends [event-error](/cl-async/base#event-error) and [tcp-info](#tcp-info)_
 
 Describes a general error on a TCP connection. If this is triggered, the socket
 will generally be closed by cl-async, and the app doesn't need to worry about

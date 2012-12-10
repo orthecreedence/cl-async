@@ -233,13 +233,13 @@ These are the conditions the HTTP system can signal in [event callbacks](/cl-asy
 
 <a id="http-info"></a>
 ### http-info
-_extends [connection-info](/cl-async/base#connection-info)_
+_extends [event-info](/cl-async/base#event-info)_
 
 Base HTTP condition.
 
 <a id="http-error"></a>
 ### http-error
-_extends [connection-error](/cl-async/base#connection-error) and [http-info](#http-info)_
+_extends [event-error](/cl-async/base#event-error) and [http-info](#http-info)_
 
 Base HTTP error condition.
 
