@@ -1,9 +1,7 @@
 cl-async - Asynchronous operations for Common Lisp
 ==================================================
-Cl-async is a library for general purpose, non-blocking programming in
-Common Lisp. I tried other non-blocking libraries, but they either require a
-large number of dependencies, aren't portable, or are too specialized to one task.
-Cl-async uses [Libevent2](http://libevent.org/) as the async backend, which is
+Cl-async is a library for general purpose, non-blocking programming in Common
+Lisp.  Cl-async uses [Libevent2](http://libevent.org/) as the backend, which is
 a fast, stable, portable library for asynchronous IO (see my [notes on choosing Libevent](http://orthecreedence.github.com/cl-async/implementation-notes#libevent)).
 
 The main goal is to provide an experience that makes general asynchronous 
