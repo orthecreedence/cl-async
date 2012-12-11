@@ -129,6 +129,6 @@
               (setf err2 e)))
           (t (e)
             (setf err2 e))))
-    (is (eq (type-of err1) 'type-error))
+    (is (subtypep (type-of err1) 'type-error))
     (is (subtypep (type-of err2) 'test-error-lol))))
 
