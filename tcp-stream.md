@@ -30,6 +30,10 @@ of the `:dont-drain-read-buffer` parameter.
 <a id="tcp-stream-classes"></a>
 Classes
 -------
+<a id="async-stream"></a>
+### async-stream
+The base async stream, extended by all other cl-async TCP streams.
+
 <a id="async-output-stream"></a>
 ### async-output-stream
 The base output stream, can only be used to send data on a socket.
