@@ -159,8 +159,9 @@
 (defmacro attach (future-gen cb)
   "Macro wrapping attachment of callback to a future (takes multiple values into
    account, which a simple function cannot)."
-  `(let ((future-gen-vals (multiple-value-list ,future-gen)))
-     (cl-async-future::attach-cb future-gen-vals ,cb)))
+  (let ((future-values (gensym "future-values")))
+    `(let ((,future-values (multiple-value-list ,future-gen)))
+       (cl-async-future::attach-cb ,future-values ,cb))))
 
 ;; -----------------------------------------------------------------------------
 ;; start our syntactic abstraction section (rolls off the tongue nicely)
