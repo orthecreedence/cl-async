@@ -335,8 +335,8 @@ bound to the variable (just like `let`).
 
 {% highlight cl %}
 ;; example (x and y compute in parallel)
-(alet ((x (grab-x-from-server))
-       (y (grab-y-from-server)))
+(alet ((x (grab-x-from-server1))
+       (y (grab-y-from-server2)))
   (format t "x + y = ~a~%" (+ x y)))
 
 ;; alet can bind to nil, meaning that the future is run, but the result is
@@ -345,6 +345,11 @@ bound to the variable (just like `let`).
        (nil (run-command-i-dont-need-the-return-val-for)))
   (format t "got: ~a~%" x))
 {% endhighlight %}
+
+__Note:__ `alet` is a useful tool for running operations in parallel, however
+use caution when running multiple commands on the same socket, since many
+drivers will get confused as to which response goes to which request. Sometimes
+opening N connections is easier than trying to match request/response pairs.
 
 <a id="alet-star"></a>
 ### alet*
