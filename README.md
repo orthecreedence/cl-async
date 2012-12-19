@@ -8,7 +8,9 @@ The main goal is to provide an experience that makes general asynchronous
 programming in lisp natural, and to also provide a number of
 [drivers](http://orthecreedence.github.com/cl-async/drivers) on top of cl-async.
 
-*This library's current status is BETA*
+*This library's current status is BETA.* You will generally have a better
+experience by using the git version of this library and the git version of
+[the libevent2 bindings](/orthecreedence/cl-libevent2).
 
 ### [Documentation](http://orthecreedence.github.com/cl-async/documentation)
 Please see the [cl-async website](http://orthecreedence.github.com/cl-async) for
