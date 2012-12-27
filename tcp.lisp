@@ -383,13 +383,14 @@
                                             :listener listener
                                             :tcp-server tcp-server)))))
 
-(defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun tcp-connect (host port read-cb event-cb &key data stream (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
   (check-event-loop-running)
 
   (let* ((data-pointer (create-data-pointer))
-         (bev (le:bufferevent-socket-new *event-base* -1 +bev-opt-close-on-free+))
+         (fd (or fd -1))
+         (bev (le:bufferevent-socket-new *event-base* fd +bev-opt-close-on-free+))
          ;; assume dont-drain-read-buffer if unspecified and requesting a stream
          (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
                                      t
@@ -417,17 +418,19 @@
                                       :socket socket
                                       :stream tcp-stream))
 
-    ;; connect the socket
+    ;; track the connection
     (incf *outgoing-connection-count*)
-    (if (ip-address-p host)
-        ;; got an IP so just connect directly
-        (with-ip-to-sockaddr ((sockaddr sockaddr-size) host port)
-          (le:bufferevent-socket-connect bev sockaddr sockaddr-size))
+    ;; only connect if we didn't get an existing fd passed in
+    (when (= fd -1)
+      (if (ip-address-p host)
+          ;; got an IP so just connect directly
+          (with-ip-to-sockaddr ((sockaddr sockaddr-size) host port)
+            (le:bufferevent-socket-connect bev sockaddr sockaddr-size))
 
-        ;; get a DNS base and do an async lookup
-        (let ((dns-base (get-dns-base)))
-          (attach-data-to-pointer data-pointer dns-base)
-          (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port)))
+          ;; get a DNS base and do an async lookup
+          (let ((dns-base (get-dns-base)))
+            (attach-data-to-pointer data-pointer dns-base)
+            (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port))))
     (if stream
         tcp-stream
         socket)))
