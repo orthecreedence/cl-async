@@ -37,7 +37,7 @@ while using the TCP system.
 ### tcp-connect
 {% highlight cl %}
 (defun tcp-connect (host port read-cb event-cb
-                    &key data stream
+                    &key data stream (fd -1)
                          connect-cb write-cb
                          (read-timeout -1) (write-timeout -1)
                   (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
@@ -55,6 +55,10 @@ implementation and also allows storing arbitrary data with the socket.
 `tcp-connect` can also return a stream of type [async-io-stream](/cl-async/tcp-stream#async-io-stream)
 when the keyword argument `:stream` is `T`. This allows [normal stream
 operations on top of a non-blocking socket](/cl-async/tcp-stream).
+
+`tcp-connect` can wrap around an existing file descriptor via the `:fd` keyword
+arg. If an existing fd is passed in, `tcp-connect` will *not* attempt to connect
+on that fd, but will instead assume it has already been connected.
 
 Note that `tcp-connect` always opens a new connection. If you want to send data
 on and existing connection (and also be able to set new read/write/event
