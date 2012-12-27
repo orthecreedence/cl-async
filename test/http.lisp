@@ -37,7 +37,7 @@
         (as:delay (lambda () (as:exit-event-loop))
                   :time 1))
     (is (= server-reqs 2) "number of server requests")
-    (is (string= server-data "hai hai ") "received server data")
+    (is (string= server-data "hai hai ") "Wrong data recieved by server (known bug: https://github.com/orthecreedence/cl-async/issues/39)")
     (is (= client-replies 2) "number of replies sent to client")
     (is (string= client-data "thxlol thxlol ") "received client data")))
 
