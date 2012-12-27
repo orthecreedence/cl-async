@@ -467,7 +467,7 @@
         (error "Couldn't create listener: ~a~%" listener))
       (attach-data-to-pointer data-pointer server-class)
       ;; setup an accept error cb
-      (le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
+      ;(le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
       (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
       ;; return the listener, which can be closed by the app if needed
       server-class)))
