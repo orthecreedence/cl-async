@@ -34,29 +34,31 @@
 
 (test dns-lookup-ipv4
   "Test IPV4 family"
-  (is (as::ipv4-address-p
-        (async-let ((ipv4 nil))
-          (as:dns-lookup "google.com"
-            (lambda (addr fam)
-              (declare (ignore fam))
-              (setf ipv4 addr))
-            (lambda (ev)
-              (error ev))
-            :family as:+af-inet+)))))
+  (multiple-value-bind (ipv4)
+      (async-let ((ipv4 nil))
+        (as:dns-lookup "google.com"
+          (lambda (addr fam)
+            (declare (ignore fam))
+            (setf ipv4 addr))
+          (lambda (ev)
+            (error ev))
+          :family as:+af-inet+))
+    (is (cl-async-util::ipv4-address-p ipv4))))
 
 (test dns-lookup-ipv6
   "Test IPV6 family: can fail in linux, for some reason (Slack, at least)"
-  (is (as::ipv6-address-p
-        (handler-case
-          (async-let ((ipv6 nil))
-            (as:dns-lookup "google.com"
-              (lambda (addr fam)
-                (declare (ignore fam))
-                (setf ipv6 addr))
-              (lambda (ev)
-                (error ev))
-              :family as:+af-inet6+))
-          (t (e) (as:event-errmsg e))))))
+  (multiple-value-bind (ipv6)
+      (handler-case
+        (async-let ((ipv6 nil))
+          (as:dns-lookup "google.com"
+            (lambda (addr fam)
+              (declare (ignore fam))
+              (setf ipv6 addr))
+            (lambda (ev)
+              (error ev))
+            :family as:+af-inet6+))
+        (t (e) (as:event-errmsg e)))
+    (is (cl-async-util::ipv6-address-p ipv6))))
 
 (test dns-fail
   "Tests DNS failure on fake host, makes sure event-cb gets fires once"

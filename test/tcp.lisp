@@ -103,3 +103,45 @@
           (lambda (ev) (declare (ignore ev)))
           :data "HELLO!"))
     (is (string= server-data "HELLO!"))))
+                          
+(defun get-usocket-fd (connection)
+  "Gets the fd from a usocket connection."
+  (let* ((type (type-of connection))
+         (stream (cond ((subtypep type 'usocket:stream-usocket)
+                        (usocket:socket-stream connection))
+                       ((subtypep type 'stream)
+                        connection))))
+    (when stream
+      #+sbcl
+        (sb-sys:fd-stream-fd stream)
+      #+cmu
+        (system:fd-stream-fd stream)
+      #+ccl
+        (ccl::ioblock-device (ccl::stream-ioblock stream t))
+      #+clisp
+        (ext:stream-handles stream))))
+
+(test wrap-existing-fd
+  "Make sure wrapping an existing file descriptor works"
+  (multiple-value-bind (response)
+      (async-let ((response nil))
+        (test-timeout 3)
+        (let* ((server (as:tcp-server nil 31311
+                         (lambda (sock data)
+                           (as:write-socket-data sock (concat (babel:octets-to-string data) " lol")))
+                         (lambda (ev) (declare (ignore ev))))))
+          (as:delay
+            (lambda ()
+              (let* ((conn (usocket:socket-connect "127.0.0.1" 31311))
+                     (sock (as:tcp-connect nil 1
+                             (lambda (sock data)
+                               (setf response (babel:octets-to-string data))
+                               (as:close-socket sock)
+                               (as:close-tcp-server server))
+                             (lambda (ev)
+                               (format t "EV: ~a~%" ev))
+                             :fd (get-usocket-fd conn))))
+                (as:write-socket-data sock "omg")))
+            :time .2)))
+    (is (string= response "omg lol"))))
+                           
