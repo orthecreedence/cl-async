@@ -150,9 +150,9 @@ Bind an asynchronous listener to the given bind address/port and start accepting
 connections on it. It takes read and event callbacks (like [tcp-connect](#tcp-connect)).
 If `nil` is passed into the bind address, it effectively binds the listener to
 "0.0.0.0" (listens from any address). A connection backlog can be specified when
-creating the server via `:backlog`, which defaults to -1. A `connect-cb` can
-be passed in as a keyword arg, which sets a callback to be called whenever a new
-connection comes in.
+creating the server via `:backlog`, which defaults to -1. A [connect-cb](#tcp-server-connect-cb)
+can be passed in as a keyword arg, which sets a callback to be called whenever a
+new connection comes in.
 
 `tcp-server` accepts a `:stream` arg, which when `T` will call its [read-cb](#tcp-server-read-cb-stream)
 with an [async-io-stream](/cl-async/tcp-stream#async-io-stream) instead of a
