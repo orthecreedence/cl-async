@@ -82,4 +82,24 @@
                   :time 1)))
           (as:delay (lambda () (as:close-tcp-server server)) :time .1)))
     (is-true closedp)))
-                          
+
+(test tcp-server-stream
+  "Make sure a tcp-server stream functions properly"
+  (multiple-value-bind (server-data)
+      (async-let ((server-data nil))
+        (test-timeout 3)
+        (as:tcp-server nil 41818
+          (lambda (sock stream)
+            (let ((buff (make-array 1024 :element-type '(unsigned-byte 8))))
+              (loop for n = (read-sequence buff stream)
+                    while (< 0 n) do
+                (setf server-data (concat server-data (babel:octets-to-string (subseq buff 0 n))))))
+            (as:close-socket sock)
+            (as:exit-event-loop))
+          (lambda (ev) (declare (ignore ev)))
+          :stream t)
+        (as:tcp-connect "127.0.0.1" 41818
+          (lambda (sock data) (declare (ignore sock data)))
+          (lambda (ev) (declare (ignore ev)))
+          :data "HELLO!"))
+    (is (string= server-data "HELLO!"))))
