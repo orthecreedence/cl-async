@@ -179,9 +179,6 @@ to close the server via [close-tcp-server](#close-tcp-server).
 (lambda (socket byte-array) ...)
 {% endhighlight %}
 
-`socket` should never be dealt with directly as it may change in the future,
-however it *can* be passed to other cl-async functions that take a `socket` arg.
-
 <a id="tcp-server-read-cb-stream"></a>
 ##### read-cb definition (when tcp-server is called with :stream t)
 
