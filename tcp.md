@@ -11,6 +11,7 @@ while using the TCP system.
 
 - [tcp-connect](#tcp-connect) _function_
   - [tcp-send](#tcp-send) _function (deprecated)_
+- [tcp-server](#tcp-server-class) _class_
 - [tcp-server](#tcp-server) _function_
 - [close-tcp-server](#close-tcp-server)
 - [socket](#socket) _class_
@@ -128,10 +129,16 @@ connection in your `write-cb`.
 This function is a deprecated version of [tcp-connect](#tcp-connect). Use
 `tcp-connect` instead, as `tcp-send` may be removed in later versions.
 
+<a id="tcp-server-class"></a>
+### tcp-server (class)
+This is an opaque class which is returned by the function [tcp-server](#tcp-server)
+to allow [closing the server](#close-tcp-server) and allowing for future
+expansion of the server's abilities. It has no public accessors.
+
 <a id="tcp-server"></a>
 ### tcp-server
 {% highlight cl %}
-(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1)))
+(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1) stream))
   => tcp-server
 {% endhighlight %}
 
@@ -143,8 +150,12 @@ creating the server via `:backlog`, which defaults to -1. A `connect-cb` can
 be passed in as a keyword arg, which sets a callback to be called whenever a new
 connection comes in.
 
-This function returns a `tcp-server` object, which allows you to close the
-server via [close-tcp-server](#close-tcp-server).
+`tcp-server` accepts a `:stream` arg, which when `T` will call its [read-cb](#tcp-server-read-cb-stream)
+with an [async-io-stream](/cl-async/tcp-stream#async-io-stream) instead of a
+byte array.
+
+This function returns a [tcp-server](#tcp-server-class) object, which allows you
+to close the server via [close-tcp-server](#close-tcp-server).
 
 {% highlight cl %}
 ;; example
@@ -158,7 +169,7 @@ server via [close-tcp-server](#close-tcp-server).
 {% endhighlight %}
 
 <a id="tcp-server-read-cb"></a>
-##### read-cb definition
+##### read-cb definition (default)
 
 {% highlight cl %}
 (lambda (socket byte-array) ...)
@@ -167,12 +178,26 @@ server via [close-tcp-server](#close-tcp-server).
 `socket` should never be dealt with directly as it may change in the future,
 however it *can* be passed to other cl-async functions that take a `socket` arg.
 
+<a id="tcp-server-read-cb-stream"></a>
+##### read-cb definition (when tcp-server is called with :stream t)
+
+{% highlight cl %}
+(lambda (socket stream) ...)
+{% endhighlight %}
+
+Note that in this case, `stream` replaces the data byte array's position. Also,
+when calling `:stream t` in `tcp-stream`, the read buffer for the connecting
+socket is not drained and is only done so by [reading from the stream](/cl-async/tcp-stream).
+
 <a id="tcp-server-connect-cb"></a>
 ##### connect-cb definition
 
 {% highlight cl %}
 (lambda (socket) ...)
 {% endhighlight %}
+
+Called when a client connects (but not necessarily when it has sent data). If
+present, is *always* called before the [read-cb](#tcp-server-read-cb).
 
 <a id="close-tcp-server"></a>
 ### close-tcp-server
