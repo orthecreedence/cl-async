@@ -40,7 +40,8 @@
 
 (defclass tcp-server ()
   ((c :accessor tcp-server-c :initarg :c :initform (cffi:null-pointer))
-   (closed :accessor tcp-server-closed :initarg :closed :initform nil))
+   (closed :accessor tcp-server-closed :initarg :closed :initform nil)
+   (stream :accessor tcp-server-stream :initarg :stream :initform nil))
   (:documentation "Wraps around a libevent connection listener."))
 
 (defun get-last-tcp-err ()
@@ -263,7 +264,7 @@
              (le:evbuffer-drain (le:bufferevent-get-input bev) *buffer-size*))
             (t
              ;; we're not draining and we don't have a callback, so this is
-             ;; probably sme sort of stream operation
+             ;; probably some sort of stream operation
              nil)))))
 
 (cffi:defcallback tcp-write-cb :void ((bev :pointer) (data-pointer :pointer))
@@ -346,13 +347,18 @@
          (bev (le:bufferevent-socket-new event-base
                                          fd
                                          +bev-opt-close-on-free+))
-         (socket (make-instance 'socket :c bev :direction 'in))
          (callbacks (get-callbacks data-pointer))
+         (server-class (deref-data-from-pointer data-pointer))
+         (stream-data-p (tcp-server-stream server-class))
+         (socket (make-instance 'socket :c bev :direction 'in :drain-read-buffer (not stream-data-p)))
+         (stream (when stream-data-p (make-instance 'async-io-stream :socket socket)))
          (event-cb (getf callbacks :event-cb))
          (connect-cb (getf callbacks :connect-cb)))
     (catch-app-errors event-cb
-      ;; attach our data-pointer/socket class to the bev
-      (attach-data-to-pointer bev (list :data-pointer per-conn-data-pointer :socket socket))
+      ;; attach our data-pointer/socket/stream class to the bev
+      (attach-data-to-pointer bev (list :data-pointer per-conn-data-pointer
+                                        :socket socket
+                                        :stream stream))
 
       ;; track the connection. will be decf'ed when close-socket is called
       (incf *incoming-connection-count*)
@@ -443,7 +449,7 @@
                                (when dont-drain-read-buffer-supplied-p
                                  (list :dont-drain-read-buffer dont-drain-read-buffer)))))
                                      
-(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1))
+(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1) stream)
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (check-event-loop-running)
@@ -456,7 +462,7 @@
                                                   backlog
                                                   sockaddr
                                                   sockaddr-size))
-           (server-class (make-instance 'tcp-server :c listener)))
+           (server-class (make-instance 'tcp-server :c listener :stream stream)))
       (add-event-loop-exit-callback (lambda ()
                                       (close-tcp-server server-class)
                                       (free-pointer-data data-pointer)))
