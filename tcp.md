@@ -11,6 +11,8 @@ while using the TCP system.
 
 - [tcp-connect](#tcp-connect) _function_
   - [tcp-send](#tcp-send) _function (deprecated)_
+- [init-tcp-socket](#init-tcp-socket) _function_
+- [connect-tcp-socket](#connect-tcp-socket) _function_
 - [tcp-server](#tcp-server-class) _class_
 - [tcp-server](#tcp-server) _function_
 - [close-tcp-server](#close-tcp-server)
@@ -38,7 +40,7 @@ while using the TCP system.
 ### tcp-connect
 {% highlight cl %}
 (defun tcp-connect (host port read-cb event-cb
-                    &key data stream (fd -1)
+                    &key data stream
                          connect-cb write-cb
                          (read-timeout -1) (write-timeout -1)
                   (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
@@ -56,10 +58,6 @@ implementation and also allows storing arbitrary data with the socket.
 `tcp-connect` can also return a stream of type [async-io-stream](/cl-async/tcp-stream#async-io-stream)
 when the keyword argument `:stream` is `T`. This allows [normal stream
 operations on top of a non-blocking socket](/cl-async/tcp-stream).
-
-`tcp-connect` can wrap around an existing file descriptor via the `:fd` keyword
-arg. If an existing fd is passed in, `tcp-connect` will *not* attempt to connect
-on that fd, but will instead assume it has already been connected.
 
 Note that `tcp-connect` always opens a new connection. If you want to send data
 on and existing connection (and also be able to set new read/write/event
@@ -132,6 +130,40 @@ connection in your `write-cb`.
 ### tcp-send  (_deprecated_)
 This function is a deprecated version of [tcp-connect](#tcp-connect). Use
 `tcp-connect` instead, as `tcp-send` may be removed in later versions.
+
+<a id="init-tcp-socket"></a>
+### init-tcp-socket
+{% highlight cl %}
+(defun init-tcp-socket (read-cb event-cb
+                        &key data stream (fd -1)
+                             connect-cb write-cb
+                             (read-timeout -1) (write-timeout -1)
+                             (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+  => socket/stream
+{% endhighlight %}
+
+This function is much like [tcp-connect](#tcp-sonnect) but with a few
+exceptions:
+
+ 1. It only initializes a [socket](#socket) object, it doesn't connect it
+ 2. It doesn't accept host/port arguments
+ 3. It accepts a `:fd` keyword argument, which allows wrapping the socket being
+ initialized around an existing file descriptor.
+
+In other words, `init-tcp-socket` is `tcp-connect`'s lower-level brother. Once
+initialized, an unconnected socket can be connected using [connect-tcp-socket](#connect-tcp-socket).
+
+<a id="connect-tcp-socket"></a>
+### connect-tcp-socket
+{% highlight cl %}
+(defun connect-tcp-socket (socket/stream host port))
+  => socket/stream
+{% endhighlight %}
+
+This is mean to be used with an unconnected socket created by [init-tcp-socket](#init-tcp-socket).
+If you want to initialize and connect a socket in one function call, use [tcp-connect](#tcp-connect),
+however if you want more control over when a socket is connected, you can use
+[init-tcp-socket](#init-tcp-socket) along with `connect-tcp-socket`.
 
 <a id="tcp-server-class"></a>
 ### tcp-server (class)
