@@ -35,6 +35,7 @@ while using the TCP system.
   - [tcp-accept-error-listener](#tcp-accept-error-listener) _accessor_
   - [tcp-accept-error-tcp-server](#tcp-accept-error-tcp-server) _accessor_
 - [socket-closed](#socket-closed) _condition_
+- [tcp-server-bind-error](#tcp-server-bind-error) _condition_
 
 <a id="tcp-connect"></a>
 ### tcp-connect
@@ -192,6 +193,10 @@ byte array.
 
 This function returns a [tcp-server](#tcp-server-class) object, which allows you
 to close the server via [close-tcp-server](#close-tcp-server).
+
+If binding to an address/port fails, `tcp-server` will throw a [tcp-server-bind-error](#tcp-server-bind-error)
+exception. Generally this only happens if the port is already in use or the
+port is "privileged".
 
 {% highlight cl %}
 ;; example
@@ -448,3 +453,9 @@ _extends [tcp-error](#tcp-error)_
 This exception is thrown by cl-async when the app tries to perform an operation
 on a socket that has already been closed via [close-socket](#close-socket).
 
+<a id="tcp-server-bind-error"></a>
+### tcp-server-bind-error
+_extends [tcp-error](#tcp-error)_
+
+This exception is thrown when [tcp-server](#tcp-server) fails to bind to the
+address/port it has been given.
