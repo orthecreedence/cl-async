@@ -24,6 +24,13 @@ complete list of what needs to be done.
 	</ul>
 </div>
 
+### Windows binaries
+Since some people have had trouble getting the libevent library compiled on
+Windows, I've decided to make a [Windows 32-bit DLL package](/cl-async/files/libevent-2.0.20-x86-bin.zip)
+that works in both 64bit and 32bit versions of Windows (compiled using
+MSYS/MinGW GCC 4.7.0). Unzip it anywhere in your %PATH% and you should be able
+to jump right in without problems.
+
 ## Library updates
 {% for post in site.posts %}
 ##### [{{ post.title }}](/cl-async{{ post.url }}) - <small>{{ post.date | date: "%b %d, %Y" }}</small>
