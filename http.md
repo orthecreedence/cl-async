@@ -3,7 +3,7 @@ title: HTTP | Documentation
 layout: documentation
 ---
 
-### DEPRECATED
+### [DEPRECATED](/cl-async/2012/12/29/deprecating-http)
 cl-async's HTTP implementation is now deprecated. The libevent HTTP server is
 not, in my opinion, something I would use for a production server, and the
 [http-client](#http-client) function has now been replaced with
