@@ -94,6 +94,7 @@
            #:tcp-accept-error-listener
            #:tcp-accept-error-tcp-server
            #:socket-closed
+           #:tcp-server-bind-error
            ;; socket class/accessors
            #:socket
            #:socket-c
