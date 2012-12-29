@@ -17,6 +17,10 @@
   "This is always a binary stream."
   '(unsigned-byte 8))
 
+(defmethod stream-element-type ((stream async-stream))
+  "This is always a binary stream."
+  '(unsigned-byte 8))
+
 (defmethod open-stream-p ((stream async-stream))
   "Test the underlying socket to see if this stream is open."
   (let ((socket (stream-socket stream)))
