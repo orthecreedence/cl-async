@@ -389,9 +389,8 @@
                                             :listener listener
                                             :tcp-server tcp-server)))))
 
-(defun tcp-connect (host port read-cb event-cb &key data stream (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
-  "Open a TCP connection asynchronously. Optionally send data out once connected
-   via the :data keyword (can be a string or byte array)."
+(defun init-tcp-socket (read-cb event-cb &key data stream (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+  "Initialize an async socket, but do not connect it."
   (check-event-loop-running)
 
   (let* ((data-pointer (create-data-pointer))
@@ -416,30 +415,54 @@
                                        :event-cb event-cb
                                        :write-cb write-cb
                                        :connect-cb connect-cb))
-    (write-to-evbuffer (le:bufferevent-get-output bev) data)
+    (when data
+      (write-to-evbuffer (le:bufferevent-get-output bev) data))
     (set-socket-timeouts bev read-timeout write-timeout :socket-is-bufferevent t)
 
     ;; allow the data pointer/socket class to be referenced directly by the bev
     (attach-data-to-pointer bev (list :data-pointer data-pointer
                                       :socket socket
                                       :stream tcp-stream))
-
-    ;; track the connection
-    (incf *outgoing-connection-count*)
-    ;; only connect if we didn't get an existing fd passed in
-    (when (= fd -1)
-      (if (ip-address-p host)
-          ;; got an IP so just connect directly
-          (with-ip-to-sockaddr ((sockaddr sockaddr-size) host port)
-            (le:bufferevent-socket-connect bev sockaddr sockaddr-size))
-
-          ;; get a DNS base and do an async lookup
-          (let ((dns-base (get-dns-base)))
-            (attach-data-to-pointer data-pointer dns-base)
-            (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port))))
     (if stream
         tcp-stream
         socket)))
+
+(defun connect-tcp-socket (socket/stream host port)
+  "Connect a tcp socket initialized with init-tcp-socket."
+  (let* ((socket (if (subtypep (type-of socket/stream) 'async-stream)
+                     (stream-socket socket/stream)
+                     socket/stream))
+         (bev (socket-c socket))
+         (data-pointer (getf (deref-data-from-pointer bev) :data-pointer)))
+    ;; track the connection
+    (incf *outgoing-connection-count*)
+    ;; only connect if we didn't get an existing fd passed in
+    (if (ip-address-p host)
+        ;; got an IP so just connect directly
+        (with-ip-to-sockaddr ((sockaddr sockaddr-size) host port)
+          (le:bufferevent-socket-connect bev sockaddr sockaddr-size))
+
+        ;; get a DNS base and do an async lookup
+        (let ((dns-base (get-dns-base)))
+          (attach-data-to-pointer data-pointer dns-base)
+          (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port))))
+  socket/stream)
+
+(defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+  "Open a TCP connection asynchronously. Optionally send data out once connected
+   via the :data keyword (can be a string or byte array)."
+  (let ((socket/stream (apply #'init-tcp-socket
+                              (append (list read-cb event-cb
+                                            :data data
+                                            :stream stream
+                                            :connect-cb connect-cb
+                                            :write-cb write-cb
+                                            :read-timeout read-timeout
+                                            :write-timeout write-timeout)
+                                      (when dont-drain-read-buffer-supplied-p
+                                        (list :dont-drain-read-buffer dont-drain-read-buffer))))))
+    (connect-tcp-socket socket/stream host port)
+    socket/stream))
 
 (defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) stream)
   "DEPRECATED, exists for backwards compatibility. Use tcp-connect."

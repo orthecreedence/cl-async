@@ -106,6 +106,8 @@
            #:set-socket-timeouts
            #:enable-socket
            #:disable-socket
+           #:init-tcp-socket
+           #:connect-tcp-socket
            #:tcp-connect
            #:tcp-send
            #:tcp-server
