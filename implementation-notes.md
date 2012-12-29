@@ -34,18 +34,13 @@ too much work into making them pretty and useful. They will most likely stay
 as-is (and undocumented).
 
 <a id="http-server"></a>
-HTTP server
------------
-The [http-server](/cl-async/http#http-server) is a simple way to get a quick HTTP interface
-for your app. However, as someone who does a lot of ops as well as dev, I must
-warn you that **I would not trust this to be public-facing**. This is not
-because I am a terrible programmer, au contraire baby, but because I don't think
-libevent's HTTP implementation takes into account a lot of things that other
-HTTP servers have been battle tested with.
-
-In other words, put [HAProxy](http://haproxy.1wt.eu/) or [NginX](http://nginx.org/)
-(or similar) in front of it. Let someone else bear the brunt of dealing with the
-security flaws of the open web so you can focus on building a solid application.
+HTTP
+----
+The HTTP implementation in libevent that cl-async wraps is now deprecated (in
+cl-async) and will no longer be updated. There is a [post detailing this
+decision](/cl-async/2012/12/29/deprecating-http). The functions/classes wrapped
+will be available for the known future, but should really only be used for
+quick prototyping.
 
 <a id="internals"></a>
 Internals

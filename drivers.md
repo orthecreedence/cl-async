@@ -5,12 +5,12 @@ layout: default
 
 Drivers built on cl-async
 =========================
-A number of drivers are planned to be built on top of cl-async:
+A number of drivers/servers are planned to be built on top of cl-async:
 
-- [Drakma](https://github.com/orthecreedence/drakma-async)
-(async port, essentially replaces [http-client](/cl-async/http#http-client))
+- [drakma-async](https://github.com/orthecreedence/drakma-async)
 - [beanstalkd](https://github.com/orthecreedence/beanstalk-async)
 - MongoDB
+- Hunchentoot
 - Amazon S3/Cloudfront
 - SMTP
 - Redis
