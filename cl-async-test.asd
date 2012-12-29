@@ -7,15 +7,15 @@
   :components
   ((:module test
     :serial t
-	:components ((:file "util")
-	             (:file "base")
-		         (:file "timer")
-		         (:file "dns")
-		         (:file "tcp")
-		         (:file "tcp-stream")
-				 ;; NOTE: deprecating HTTP
-				 ;(:file "http")
-		         (:file "signal")
-		         (:file "future")
-	             (:file "run")))))
+    :components ((:file "util")
+                 (:file "base")
+                 (:file "timer")
+                 (:file "dns")
+                 (:file "tcp")
+                 (:file "tcp-stream")
+                 ;; NOTE: deprecating HTTP
+                 ;(:file "http")
+                 (:file "signal")
+                 (:file "future")
+                 (:file "run")))))
 
