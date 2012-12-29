@@ -19,8 +19,8 @@ and feels slapped together. It feels like an afterthought and I don't really
 trust it. Maybe I'm being paranoid and it's really stable and wonderful, but I
 tend to go with my gut. The more I think about features I'd want to build on top
 of the HTTP server, the more I realize that I'll just be reinventing the wheel
-and the fact that it processes a few headers doesn't really justify its
-existence since this can be done trivially in lisp.
+(and the more I realize that the HTTP server is really just a glorified header
+processor that prohibits streaming of chunked content).
 - The HTTP client feels the same way...not as much thought was put into it as
 the rest of the libevent library, and its feature set is small.
 - There is now a [drakma-async](https://github.com/orthecreedence/drakma-async)
