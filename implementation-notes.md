@@ -36,11 +36,11 @@ as-is (and undocumented).
 <a id="http-server"></a>
 HTTP
 ----
-The HTTP implementation in libevent that cl-async wraps is now deprecated (in
-cl-async) and will no longer be updated. There is a [post detailing this
-decision](/cl-async/2012/12/29/deprecating-http). The functions/classes wrapped
-will be available for the known future, but should really only be used for
-quick prototyping.
+Libevent has some limited/simple support for HTTP client/server implementations
+that cl-async wraps. However, the HTTP portion of cl-async is now deprecated
+for [a variety of reasons](/cl-async/2012/12/29/deprecating-http). The
+functions/classes wrapped will be available for the known future, but should
+really only be used for quick prototyping.
 
 <a id="internals"></a>
 Internals
