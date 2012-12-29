@@ -61,7 +61,6 @@ The `close-cb` function passed in will be called when the SSL socket is closed.
 
 {% highlight cl %}
 ;; example
-;; init a socket, send nil data (so it just connects)
 (let* ((socket (tcp-connect "www.google.com" 443
                             (lambda (sock data)
                               (declare (ignore sock))
