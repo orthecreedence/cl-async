@@ -145,8 +145,8 @@ This function is a deprecated version of [tcp-connect](#tcp-connect). Use
 This function is much like [tcp-connect](#tcp-sonnect) but with a few
 exceptions:
 
- 1. It only initializes a [socket](#socket) object, it doesn't connect it
- 2. It doesn't accept host/port arguments
+ 1. It only *initializes* a [socket](#socket) object, it doesn't connect it.
+ 2. It doesn't accept host/port arguments.
  3. It accepts a `:fd` keyword argument, which allows wrapping the socket being
  initialized around an existing file descriptor.
 
