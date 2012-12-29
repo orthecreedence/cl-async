@@ -5,7 +5,7 @@ layout: documentation
 
 TCP stream
 ==========
-A TCP stream wraps a [tcp-socket](/cl-async/tcp#socket), which is returned by
+A TCP stream wraps a [socket](/cl-async/tcp#socket), which is returned by
 [tcp-connect](/cl-async/tcp#tcp-connect):
 
 {% highlight cl %}
