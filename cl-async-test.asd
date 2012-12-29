@@ -13,7 +13,8 @@
 		         (:file "dns")
 		         (:file "tcp")
 		         (:file "tcp-stream")
-		         (:file "http")
+				 ;; NOTE: deprecating HTTP
+				 ;(:file "http")
 		         (:file "signal")
 		         (:file "future")
 	             (:file "run")))))

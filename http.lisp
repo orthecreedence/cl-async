@@ -1,3 +1,14 @@
+;;; DEPRECATED
+;;;
+;;; cl-async's HTTP implementation is now deprecated.
+;;;
+;;; Feel free to use these functions in your app for simple stuff, but bugs and
+;;; feature requests will most likely be ignored.
+;;;
+;;; For a client, drakma-async (https://github.com/orthecreedence/drakma-async)
+;;; replaces http-client, and an async port of hunchentoot is currently being
+;;; explored.
+
 (in-package :cl-async)
 
 (define-condition http-info (event-info) ()

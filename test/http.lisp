@@ -1,3 +1,7 @@
+;;; DEPRECATED. these tests should work with the current version of cl-async's
+;;; HTTP implementation, but will no longer be updated. Use drakma-async to
+;;; replace http-client.
+
 (in-package :cl-async-test)
 (in-suite cl-async-test)
 
