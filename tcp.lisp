@@ -30,6 +30,14 @@
   (:report (lambda (c s) (format s "Closed TCP socket being operated on: ~a." (tcp-socket c))))
   (:documentation "Thrown when a closed socket is being operated on."))
 
+(define-condition tcp-server-bind-error (tcp-error)
+  ((addr :accessor tcp-server-bind-error-addr :initarg :addr :initform nil)
+   (port :accessor tcp-server-bind-error-port :initarg :port :initform nil))
+  (:report (lambda (c s) (format s "Error binding TCP server (~a:~a)"
+                                 (tcp-server-bind-error-addr c)
+                                 (tcp-server-bind-error-port c))))
+  (:documentation "Thrown when a server fails to bind (generally, the port is already in use)."))
+
 (defclass socket ()
   ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
    (data :accessor socket-data :initarg data :initform nil)
@@ -489,14 +497,17 @@
                                                   sockaddr
                                                   sockaddr-size))
            (server-class (make-instance 'tcp-server :c listener :stream stream)))
+      (when (or (and (not (cffi:pointerp listener))
+                     (zerop listener))
+                (cffi:null-pointer-p listener))
+        (free-pointer-data data-pointer)
+        (error (make-instance 'tcp-server-bind-error :addr bind-address :port port)))
       (add-event-loop-exit-callback (lambda ()
                                       (close-tcp-server server-class)
                                       (free-pointer-data data-pointer)))
-      (when (and (not (cffi:pointerp listener)) (zerop listener))
-        (error "Couldn't create listener: ~a~%" listener))
       (attach-data-to-pointer data-pointer server-class)
       ;; setup an accept error cb
-      ;(le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
+      (le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
       (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
       ;; return the listener, which can be closed by the app if needed
       server-class)))
