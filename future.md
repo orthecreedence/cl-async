@@ -26,7 +26,7 @@ are constantly dealing with values that are not yet realized.
   - [multiple-future-bind](#multiple-future-bind) _macro_
   - [wait-for](#wait-for) _macro_
 - [Error handling](#error-handling)
-  - [future-handler-case](#future-handler-case)
+  - [future-handler-case](#future-handler-case) _macro_
 
 
 <a id="intro"></a>
