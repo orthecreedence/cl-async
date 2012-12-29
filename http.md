@@ -3,6 +3,20 @@ title: HTTP | Documentation
 layout: documentation
 ---
 
+### DEPRECATED
+cl-async's HTTP implementation is now deprecated. The libevent HTTP server is
+not, in my opinion, something I would use for a production server, and the
+[http-client](#http-client) function has now been replaced with
+[drakma-async](https://github.com/orthecreedence/drakma-async), an async
+HTTP client API compatible with the excellent [drakma](http://weitz.de/drakma/)
+library.
+
+Note that the HTTP functions detailed here will exist for backwards
+compatibility and for simpler use tasks for the forseeable future, but will not
+be receiving any bugfixes or feature updates.
+
+An async port of hunchentoot is in the works.
+
 HTTP
 ====
 This section detials sending and receiving data over HTTP, and also the events
