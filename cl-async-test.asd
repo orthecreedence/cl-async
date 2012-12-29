@@ -6,14 +6,15 @@
   :depends-on (#:cffi #:cl-async #:eos #:bordeaux-threads #:usocket)
   :components
   ((:module test
+    :serial t
 	:components ((:file "util")
-	             (:file "base" :depends-on ("util"))
-	             (:file "run")
-		         (:file "timer" :depends-on ("base"))
-		         (:file "dns" :depends-on ("base"))
-		         (:file "tcp" :depends-on ("base"))
-		         (:file "tcp-stream" :depends-on ("tcp"))
-		         (:file "http" :depends-on ("base"))
-		         (:file "signal" :depends-on ("base"))
-		         (:file "future" :depends-on ("base"))))))
+	             (:file "base")
+		         (:file "timer")
+		         (:file "dns")
+		         (:file "tcp")
+		         (:file "tcp-stream")
+		         (:file "http")
+		         (:file "signal")
+		         (:file "future")
+	             (:file "run")))))
 
