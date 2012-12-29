@@ -15,17 +15,18 @@ There are a few reasons for this, which I will, of course, go into now:
 
 - I never trusted the libevent HTTP server implementation. Unlike the libevent
 socket API (bufferevents), it offers very little customization and moldability
-and feels slapped together. It feels like an afterthought and I don't really
-trust it. Maybe I'm being paranoid and it's really stable and wonderful, but I
-tend to go with my gut. The more I think about features I'd want to build on top
-of the HTTP server, the more I realize that I'll just be reinventing the wheel
-(and the more I realize that the HTTP server is really just a glorified header
-processor that prohibits streaming of chunked content).
+and feels like a slapped together afterthought. Maybe I'm being paranoid and
+it's really stable and wonderful, but I tend to go with my gut. The more I think
+about features I'd want to build on top of the HTTP server, the more I realize
+that I'll just be reinventing the wheel (and the more I realize that the HTTP
+server is really just a glorified header processor that prohibits streaming of
+chunked content).
 - The HTTP client feels the same way...not as much thought was put into it as
 the rest of the libevent library, and its feature set is small.
 - There is now a [drakma-async](https://github.com/orthecreedence/drakma-async)
-library...an async port of the [drakma](http://weitz.de/drakma/) that everyone
-loves. This makes the HTTP client in cl-async completely and utterly redundant.
+library...an async port of the [drakma](http://weitz.de/drakma/) library that
+everyone loves. This makes the HTTP client in cl-async completely and utterly
+redundant.
 - There are a few bugs/issues in the libevent HTTP implementation that would
 require a great deal of workarounds in C land to solve, and I just don't care
 enough to get it done.
