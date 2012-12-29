@@ -21,7 +21,6 @@
    doesn't cancel an event loop that test-timeout wasn't called inside of."
   (let ((event-base cl-async-util::*event-base*)
         (base-id cl-async-util::*event-base-id*))
-    (as::enable-threading-support)
     (let ((cancel nil))
       ;; if the event loop exits naturally, cancel the break
       (as:add-event-loop-exit-callback
