@@ -133,7 +133,7 @@
           (as:delay
             (lambda ()
               (let* ((conn (usocket:socket-connect "127.0.0.1" 31311))
-                     (sock (as:tcp-connect nil 1
+                     (sock (as:init-tcp-socket
                              (lambda (sock data)
                                (setf response (babel:octets-to-string data))
                                (as:close-socket sock)
@@ -144,4 +144,4 @@
                 (as:write-socket-data sock "omg")))
             :time .2)))
     (is (string= response "omg lol"))))
-                           
+
