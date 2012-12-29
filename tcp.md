@@ -196,7 +196,7 @@ to close the server via [close-tcp-server](#close-tcp-server).
 
 If binding to an address/port fails, `tcp-server` will throw a [tcp-server-bind-error](#tcp-server-bind-error)
 exception. Generally this only happens if the port is already in use or the
-port is "privileged".
+port is "privileged."
 
 {% highlight cl %}
 ;; example
