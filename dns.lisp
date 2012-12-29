@@ -13,7 +13,9 @@
                    (dns-windows (cffi:foreign-symbol-pointer "evdns_base_config_windows_nameservers")))
                (if dns-windows
                    ;; we're on windows, so load entries from registry
-                   (cffi:foreign-funcall-pointer dns-windows () :pointer dns-base :int)
+                   (progn
+                     (le:evdns-base-search-clear dns-base)
+                     (cffi:foreign-funcall-pointer dns-windows () :pointer dns-base :int))
                    ;; on *nix, so load from resolv.conf (if available)
                    (when (probe-file #P"/etc/resolv.conf")
                      (le:evdns-base-resolv-conf-parse
