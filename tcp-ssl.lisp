@@ -132,8 +132,10 @@
                               (cffi:callback ssl-event-cb)
                               data-pointer))
 
+      ;; NOTE: disabling socket timeouts for now
       ;; match up the socket timeouts
-      (set-socket-timeouts ssl-socket 1 nil)
+      (set-socket-timeouts socket nil nil)
+      (set-socket-timeouts ssl-socket nil nil)
       
       ;; make sure the new socket is enabled
       (le:bufferevent-enable ssl-bev (logior le:+ev-read+ le:+ev-write+))
