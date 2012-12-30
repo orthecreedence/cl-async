@@ -353,15 +353,11 @@
             (handler-case (close-socket socket)
               (socket-closed () nil))))))))
 
-(defun init-incoming-socket (listener fd callbacks server)
+(defun init-incoming-socket (bev callbacks server)
   "Called by the tcp-accept-cb when an incoming connection is detected. Sets up
    a socket between the client and the server along with any callbacks the
    server has attached to it. Returns the cl-async socket object created."
   (let* ((per-conn-data-pointer (create-data-pointer))
-         (event-base (le:evconnlistener-get-base listener))
-         (bev (le:bufferevent-socket-new event-base
-                                         fd
-                                         +bev-opt-close-on-free+))
          (stream-data-p (tcp-server-stream server))
          (socket (make-instance 'socket :c bev :direction 'in :drain-read-buffer (not stream-data-p)))
          (stream (when stream-data-p (make-instance 'async-io-stream :socket socket)))
@@ -397,8 +393,10 @@
    pointers and so forth."
   (declare (ignore socklen addr))
   (let* ((server (deref-data-from-pointer data-pointer))
-         (callbacks (get-callbacks data-pointer)))
-    (init-incoming-socket listener fd callbacks server)))
+         (callbacks (get-callbacks data-pointer))
+         (event-base (le:evconnlistener-get-base listener))
+         (bev (le:bufferevent-socket-new event-base fd +bev-opt-close-on-free+)))
+    (init-incoming-socket bev callbacks server)))
 
 (cffi:defcallback tcp-accept-err-cb :void ((listener :pointer) (data-pointer :pointer))
   "Called when an error occurs accepting a connection."

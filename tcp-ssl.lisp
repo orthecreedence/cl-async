@@ -100,8 +100,13 @@
          (callbacks (get-callbacks data-pointer))
          (server (getf pointer-data :server))
          (server-ctx (getf pointer-data :ctx))
-         (socket (init-incoming-socket listener fd callbacks server)))
-    (wrap-in-ssl socket :ssl-context server-ctx :server t)))
+         (event-base (le:evconnlistener-get-base listener))
+         (client-ctx (cl+ssl::ssl-new server-ctx))
+         (bev (le-ssl:bufferevent-openssl-socket-new
+                event-base fd client-ctx 
+                (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-accepting)
+                +bev-opt-close-on-free+)))
+    (init-incoming-socket bev callbacks server)))
 
 (defun wrap-in-ssl (socket/stream
                      &key (ssl-context cl+ssl::*ssl-global-context*) server close-cb
