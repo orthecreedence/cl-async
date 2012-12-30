@@ -325,13 +325,19 @@
                   (setf event (make-instance 'tcp-timeout :socket socket :code -1 :msg "Socket timed out")))
 
                  ;; connection reset by peer
-                 ((eq errcode 104)
+                 ((or (eq errcode 104)
+                      (< 0 (logand events le:+bev-event-eof+)))
                   (setf event (make-instance 'tcp-eof :socket socket)))
 
                  ;; since we don't know what the error was, just spawn a general
                  ;; error.
-                 (t
-                  (setf event (make-instance 'tcp-error :socket socket :code errcode :msg errstr)))))))
+                 ((< 0 errcode)
+                  (setf event (make-instance 'tcp-error :socket socket :code errcode :msg errstr)))
+                 ;; libevent signaled an error, but nothing actually happened
+                 ;; (that we know of anyway). ignore...
+                 ;(t
+                 ; (setf event (make-instance 'tcp-error :socket socket :code events :msg (format nil "Unkonwn error (~a): ~a" events errcode))))
+                 ))))
           ;; peer closed connection.
           ((< 0 (logand events le:+bev-event-eof+))
            (setf event (make-instance 'tcp-eof :socket socket)))
