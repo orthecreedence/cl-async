@@ -111,13 +111,24 @@
                 +bev-opt-close-on-free+)))
     (init-incoming-socket bev callbacks server)))
 
+(defun init-ssl-client-context (global-ctx)
+  "Initialize an SSL client context."
+  (let ((client-ctx (cl+ssl::ssl-new global-ctx)))
+    (cl+ssl::ssl-ctx-ctrl client-ctx
+                          cl+ssl::+SSL_CTRL_MODE+ 
+                          cl+ssl::+SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER+
+                          0)
+    (cl+ssl::ssl-set-connect-state client-ctx)
+    (when (zerop (cl+ssl::ssl-set-cipher-list client-ctx "ALL"))
+      (error 'cl+ssl::ssl-error-initialize :reason "Can't set SSL cipher list"))
+    ;; make sure we init PROPERLY
+    (when (cffi:null-pointer-p client-ctx)
+      (error "Problem initializing SSL context."))
+    client-ctx))
+    
 (defun init-tcp-ssl-socket (ssl-ctx read-cb event-cb &key data stream (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Initialize an async SSL socket, but do not connect it."
   (check-event-loop-running)
-
-  ;; make sure we have a context
-  (unless (cffi:pointerp ssl-ctx)
-    (setf ssl-ctx cl+ssl::*ssl-global-context*))
 
   (let* ((data-pointer (create-data-pointer))
          (fd (or fd -1))
@@ -155,21 +166,6 @@
         tcp-stream
         socket)))
 
-(defun init-ssl-client-context (global-ctx)
-  "Initialize an SSL client context."
-  (let ((client-ctx (cl+ssl::ssl-new global-ctx)))
-    (cl+ssl::ssl-ctx-ctrl client-ctx
-                          cl+ssl::+SSL_CTRL_MODE+ 
-                          cl+ssl::+SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER+
-                          0)
-    (cl+ssl::ssl-set-connect-state client-ctx)
-    (when (zerop (cl+ssl::ssl-set-cipher-list client-ctx "ALL"))
-      (error 'cl+ssl::ssl-error-initialize :reason "Can't set SSL cipher list"))
-    ;; make sure we init PROPERLY
-    (when (cffi:null-pointer-p client-ctx)
-      (error "Problem initializing SSL context."))
-    client-ctx))
-    
 (defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) ssl-ctx)
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
