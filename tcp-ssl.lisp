@@ -4,8 +4,10 @@
   (:export #:ssl-socket
            #:socket-underlying
            #:tcp-ssl-error
-           #:wrap-in-ssl
-           #:tcp-ssl-server)
+           ;#:wrap-in-ssl
+           #:tcp-ssl-connect
+           ;#:tcp-ssl-server ; TODO: enable once tests are written
+           )
   (:import-from :cl-async
                 #:socket-drain-read-buffer
                 #:write-to-evbuffer
@@ -153,34 +155,52 @@
         tcp-stream
         socket)))
 
+(defun init-ssl-client-context (global-ctx)
+  "Initialize an SSL client context."
+  (let ((client-ctx (cl+ssl::ssl-new global-ctx)))
+    (cl+ssl::ssl-ctx-ctrl client-ctx
+                          cl+ssl::+SSL_CTRL_MODE+ 
+                          cl+ssl::+SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER+
+                          0)
+    (cl+ssl::ssl-set-connect-state client-ctx)
+    (when (zerop (cl+ssl::ssl-set-cipher-list client-ctx "ALL"))
+      (error 'cl+ssl::ssl-error-initialize :reason "Can't set SSL cipher list"))
+    ;; make sure we init PROPERLY
+    (when (cffi:null-pointer-p client-ctx)
+      (error "Problem initializing SSL context."))
+    client-ctx))
+    
 (defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) ssl-ctx)
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
-  (cl+ssl:ensure-initialized :method 'cl+ssl::ssl-v23-client-method)  ; make sure SSL is ready to go
-  (let ((socket/stream (apply #'init-tcp-ssl-socket
-                              (append (list ssl-ctx read-cb event-cb
-                                            :data data
-                                            :stream stream
-                                            :connect-cb connect-cb
-                                            :write-cb write-cb
-                                            :read-timeout read-timeout
-                                            :write-timeout write-timeout)
-                                      (when dont-drain-read-buffer-supplied-p
-                                        (list :dont-drain-read-buffer dont-drain-read-buffer))))))
-    (connect-tcp-socket socket/stream host port)
-    socket/stream))
+  ;; make sure SSL is ready to go
+  (cl+ssl:ensure-initialized :method 'cl+ssl::ssl-v23-client-method)
+  (let* ((ssl-ctx (or ssl-ctx cl+ssl::*ssl-global-context*))
+         (client-ctx (init-ssl-client-context ssl-ctx)))
+    (let* ((socket/stream (apply #'init-tcp-ssl-socket
+                                 (append (list client-ctx read-cb event-cb
+                                               :data data
+                                               :stream stream
+                                               :connect-cb connect-cb
+                                               :write-cb write-cb
+                                               :read-timeout read-timeout
+                                               :write-timeout write-timeout)
+                                         (when dont-drain-read-buffer-supplied-p
+                                           (list :dont-drain-read-buffer dont-drain-read-buffer))))))
+      (connect-tcp-socket socket/stream host port)
+      socket/stream)))
 
+;; TODO: Figure out why read/write timeouts are borked when wrapping an existing
+;; bufferevent. Until then, this function should be treated with caution (ie,
+;; not exposed in the API)
 (defun wrap-in-ssl (socket/stream
-                     &key (ssl-context cl+ssl::*ssl-global-context*) server close-cb
+                     &key (ssl-context cl+ssl::*ssl-global-context*) close-cb
                      certificate key password)
   "Wraps a cl-async socket/stream in the SSL protocol using libevent's SSL
    capabilities. Does some trickery when swapping out the event function for the
    new socket, but the original event-cb will still be called."
   ;; make sure SSL is ready to go
-  (cl+ssl:ensure-initialized
-    :method (if server
-                'cl+ssl::ssl-v23-server-method
-                'cl+ssl::ssl-v23-client-method))
+  (cl+ssl:ensure-initialized :method 'cl+ssl::ssl-v23-client-method)
 
   (let* ((global-ctx ssl-context)
          (passed-in-stream-p (subtypep (type-of socket/stream) 'async-stream))
@@ -190,28 +210,11 @@
                      socket/stream))
          (bufferevent-orig (socket-c socket))
          ;; create an SSL oontext
-         (ssl-ctx (cl+ssl::ssl-new global-ctx)))
-    (cl+ssl::ssl-ctx-ctrl ssl-ctx
-                          cl+ssl::+SSL_CTRL_MODE+ 
-                          cl+ssl::+SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER+
-                          0)
-    (if server
-        (cl+ssl::ssl-set-accept-state ssl-ctx)
-        (cl+ssl::ssl-set-connect-state ssl-ctx))
-    (when (zerop (cl+ssl::ssl-set-cipher-list ssl-ctx "ALL"))
-      (error 'cl+ssl::ssl-error-initialize :reason "Can't set SSL cipher list"))
-    (cl+ssl::with-pem-password (password)
-      (cl+ssl::install-key-and-cert ssl-ctx key certificate))
-    ;; make sure we init PROPERLY
-    (when (cffi:null-pointer-p ssl-ctx)
-      (error "Problem initializing SSL context."))
-
+         (ssl-ctx (init-ssl-client-context global-ctx)))
     ;; create our SSL socket/stream and make sure it grabs any callbacks/hooks
     ;; it needs to operate properly from the original bufferevent that
     ;; tcp-connect created.
-    (let* ((state (if server
-                      (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-accepting)
-                      (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting)))
+    (let* ((state (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting))
            (ssl-bev (le-ssl:bufferevent-openssl-filter-new
                       *event-base*
                       bufferevent-orig  ; pass in the original bev
