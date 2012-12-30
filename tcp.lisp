@@ -49,7 +49,8 @@
 (defclass tcp-server ()
   ((c :accessor tcp-server-c :initarg :c :initform (cffi:null-pointer))
    (closed :accessor tcp-server-closed :initarg :closed :initform nil)
-   (stream :accessor tcp-server-stream :initarg :stream :initform nil))
+   (stream :accessor tcp-server-stream :initarg :stream :initform nil)
+   (data-pointer :accessor tcp-server-data-pointer :initarg :data-pointer :initform nil))
   (:documentation "Wraps around a libevent connection listener."))
 
 (defun get-last-tcp-err ()
@@ -346,18 +347,16 @@
             (handler-case (close-socket socket)
               (socket-closed () nil))))))))
 
-(cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (data-pointer :pointer))
-  "Called when a connection is accepted. Creates a bufferevent for the socket
-   and sets up the callbacks onto that socket."
-  (declare (ignore socklen addr))
+(defun init-incoming-socket (listener fd callbacks server)
+  "Called by the tcp-accept-cb when an incoming connection is detected. Sets up
+   a socket between the client and the server along with any callbacks the
+   server has attached to it. Returns the cl-async socket object created."
   (let* ((per-conn-data-pointer (create-data-pointer))
          (event-base (le:evconnlistener-get-base listener))
          (bev (le:bufferevent-socket-new event-base
                                          fd
                                          +bev-opt-close-on-free+))
-         (callbacks (get-callbacks data-pointer))
-         (server-class (deref-data-from-pointer data-pointer))
-         (stream-data-p (tcp-server-stream server-class))
+         (stream-data-p (tcp-server-stream server))
          (socket (make-instance 'socket :c bev :direction 'in :drain-read-buffer (not stream-data-p)))
          (stream (when stream-data-p (make-instance 'async-io-stream :socket socket)))
          (event-cb (getf callbacks :event-cb))
@@ -383,7 +382,17 @@
                             (cffi:callback tcp-event-cb)
                             per-conn-data-pointer)
       (set-socket-timeouts bev -1 -1 :socket-is-bufferevent t)
-      (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+)))))
+      (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
+      socket)))
+
+(cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (data-pointer :pointer))
+  "Called by a listener when an incoming connection is detected. Thin wrapper
+   around init-incoming-socket, which does all the setting up of callbacks and
+   pointers and so forth."
+  (declare (ignore socklen addr))
+  (let* ((server (deref-data-from-pointer data-pointer))
+         (callbacks (get-callbacks data-pointer)))
+    (init-incoming-socket listener fd callbacks server)))
 
 (cffi:defcallback tcp-accept-err-cb :void ((listener :pointer) (data-pointer :pointer))
   "Called when an error occurs accepting a connection."
@@ -496,7 +505,11 @@
                                                   backlog
                                                   sockaddr
                                                   sockaddr-size))
-           (server-class (make-instance 'tcp-server :c listener :stream stream)))
+           (server-class (make-instance 'tcp-server
+                                        :c listener
+                                        :stream stream
+                                        :data-pointer data-pointer)))
+      ;; check that our listener instantiated properly
       (when (or (and (not (cffi:pointerp listener))
                      (zerop listener))
                 (cffi:null-pointer-p listener))
