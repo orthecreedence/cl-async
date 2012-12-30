@@ -3,7 +3,9 @@
   (:nicknames :as-ssl)
   (:export #:ssl-socket
            #:tcp-ssl-error
-           #:wrap-in-ssl))
+           #:wrap-in-ssl)
+  (:import-from :cl-async
+                :write-to-evbuffer))
 (in-package :cl-async-ssl)
 
 (define-condition tcp-ssl-error (tcp-error) ()
@@ -65,6 +67,67 @@
         (cffi:foreign-funcall-pointer
           (cffi:callback as::tcp-event-cb) ()
           :pointer bev :short events :pointer data-pointer)))))
+
+(defun init-tcp-ssl-socket (ssl-ctx read-cb event-cb &key data stream (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+  "Initialize an async SSL socket, but do not connect it."
+  (check-event-loop-running)
+
+  ;; make sure we have a context
+  (unless (cffi:pointerp ssl-ctx)
+    (setf ssl-ctx cl+ssl::*ssl-global-context*))
+
+  (let* ((data-pointer (create-data-pointer))
+         (fd (or fd -1))
+         (bev (le-ssl:bufferevent-openssl-socket-new *event-base* fd ssl-ctx (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting) +bev-opt-close-on-free+))
+
+         ;; assume dont-drain-read-buffer if unspecified and requesting a stream
+         (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
+                                     t
+                                     dont-drain-read-buffer))
+         (socket (make-instance 'ssl-socket :c bev
+                                            :direction 'out
+                                            :ctx ssl-ctx
+                                            :drain-read-buffer (not dont-drain-read-buffer)))
+         (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
+
+    (le:bufferevent-setcb bev
+                          (cffi:callback tcp-read-cb)
+                          (cffi:callback tcp-write-cb)
+                          (cffi:callback tcp-event-cb)
+                          data-pointer)
+    (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
+    (save-callbacks data-pointer (list :read-cb read-cb
+                                       :event-cb event-cb
+                                       :write-cb write-cb
+                                       :connect-cb connect-cb))
+    (when data
+      (write-to-evbuffer (le:bufferevent-get-output bev) data))
+    (set-socket-timeouts bev read-timeout write-timeout :socket-is-bufferevent t)
+
+    ;; allow the data pointer/socket class to be referenced directly by the bev
+    (attach-data-to-pointer bev (list :data-pointer data-pointer
+                                      :socket socket
+                                      :stream tcp-stream))
+    (if stream
+        tcp-stream
+        socket)))
+
+(defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) ssl-ctx)
+  "Open a TCP connection asynchronously. Optionally send data out once connected
+   via the :data keyword (can be a string or byte array)."
+  (cl+ssl:ensure-initialized :method 'cl+ssl::ssl-v23-client-method)  ; make sure SSL is ready to go
+  (let ((socket/stream (apply #'init-tcp-ssl-socket
+                              (append (list ssl-ctx read-cb event-cb
+                                            :data data
+                                            :stream stream
+                                            :connect-cb connect-cb
+                                            :write-cb write-cb
+                                            :read-timeout read-timeout
+                                            :write-timeout write-timeout)
+                                      (when dont-drain-read-buffer-supplied-p
+                                        (list :dont-drain-read-buffer dont-drain-read-buffer))))))
+    (connect-tcp-socket socket/stream host port)
+    socket/stream))
 
 (defun wrap-in-ssl (socket/stream &key certificate key password (method 'cl+ssl::ssl-v23-client-method) close-cb)
   "Wraps a cl-async socket/stream in the SSL protocol using libevent's SSL
