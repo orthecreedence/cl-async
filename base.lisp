@@ -45,6 +45,15 @@
     (when logger-cb
       (funcall logger-cb severity msg))))
 
+(cffi:defcallback event-debug-cb :void ((severity :int) (msg :string))
+  (let ((sev-str (cond
+                   ((= severity le:+event-log-debug+) "debug")
+                   ((= severity le:+event-log-msg+) "msg")
+                   ((= severity le:+event-log-warn+) "warn")
+                   ((= severity le:+event-log-err+) "err"))))
+    (format t "EVDBG(~a): ~a~%" sev-str msg)
+    (force-output)))
+
 (defun enable-debug-mode ()
   "Enable debug mode. As far as I can tell, this is undoable, so you may have to
    restart your CL implementation after calling if you want to disable it.
@@ -54,7 +63,9 @@
    figure out debug omde a bit more."
   (if *event-base*
       (error "Debug mode must be enabled *before* an event loop has started.")
-      (le:event-enable-debug-mode)))
+      (progn
+        (le:event-enable-debug-mode)
+        (le:event-set-log-callback (cffi:callback event-debug-cb)))))
 
 (defun enable-threading-support ()
   "Enable threading support in libevent. This attempts to guess which threading
