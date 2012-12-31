@@ -15,8 +15,7 @@ loaded and run via:
 
 This will run all the tests on the core cl-async library.
 
-SSL
----
+### SSL
 Tests also exist for [cl-async's SSL implementation](/cl-async/tcp-ssl) and can
 be loaded/run simply by telling `run-tests` to do so:
 
