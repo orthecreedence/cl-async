@@ -175,7 +175,8 @@ expansion of the server's abilities. It has no public accessors.
 <a id="tcp-server"></a>
 ### tcp-server
 {% highlight cl %}
-(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1) stream))
+(defun tcp-server (bind-address port read-cb event-cb
+                   &key connect-cb (backlog -1) stream))
   => tcp-server
 {% endhighlight %}
 
