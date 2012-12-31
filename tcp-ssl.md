@@ -114,11 +114,11 @@ connection in your `write-cb`.
 <a id="init-tcp-ssl-socket"></a>
 ### init-tcp-ssl-socket
 {% highlight cl %}
-(defun init-tcp-ssl-socket (ssl-ctx read-cb event-cb
-                           &key data stream (fd -1)
-                                connect-cb write-cb
-                                (read-timeout -1) (write-timeout -1)
-                                (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun init-tcp-ssl-socket (read-cb event-cb
+                            &key data stream ssl-ctx (fd -1)
+                                 connect-cb write-cb
+                                 (read-timeout -1) (write-timeout -1)
+                                 (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   => socket/stream
 {% endhighlight %}
 
@@ -136,8 +136,19 @@ Once initialized, an unconnected socket can be connected using
 [connect-tcp-socket](/cl-async/tcp#connect-tcp-socket).
 
 Note that `init-tcp-ssl-socket` is almost the exact same as [init-tcp-socket](/cl-async/tcp#init-tcp-socket)
-but it takes an `ssl-ctx` (SSL context) object which is used to create the SSL
-connection. The socket returned by `init-tcp-ssl-socket` can be passed to
+but it takes an `:ssl-ctx` argument which is a generic SSL context used to
+create the client context. If `:ssl-ctx` is not supplied,
+`cl+ssl::ssl-global-context` is used to create the client context. This is
+generally fine, however you can run into problems using the global context when
+connecting the SSL socket to an SSL server that already exists in the same
+process. In this case, you can do this:
+
+{% highlight cl %}
+(init-tcp-ssl-socket ...
+                     :ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-client-method)))
+{% endhighlight %}
+
+The socket returned by `init-tcp-ssl-socket` can be passed to
 [connect-tcp-socket](/cl-async/tcp#connect-tcp-socket) if you want to directly
 connect it.
 
