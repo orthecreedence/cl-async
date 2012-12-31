@@ -17,5 +17,5 @@ It's now possible to write clients and servers that use SSL with the same
 simplicity as writing normal clients/servers.
 
 __Please note__ that the SSL implementation is rather new, and although it's
-passing [its tests](/cl-async/tcp-ssl#tests), I expect a few more bugs will pop
-up until it has a while to stabilize.
+passing its [tests](/cl-async/tests), I expect a few more bugs will pop up until
+it has a while to stabilize.
