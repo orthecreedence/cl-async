@@ -52,7 +52,7 @@ global/generic context created by `cl+ssl` when initializing.
 generic/global SSL context object which is used to create the *client* context
 used to initialize the socket. If a context is not specified, the global context
 in the `cl+ssl` package will be used: `cl+ssl::*ssl-global-context*`. See the
-[notes on using the global context](#init-tcp-ssl-socket-context-note) if you
+[note on using the global context](#init-tcp-ssl-socket-context-note) if you
 run into problems.
 
 `tcp-ssl-connect` returns an [ssl-socket](#ssl-socket) object, which is an
