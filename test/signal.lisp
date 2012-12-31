@@ -18,4 +18,4 @@
         (as:delay (lambda () (as:free-signal-handler as:+sigint+))
                   :time 1))
     (setf end (get-internal-real-time))
-    (is (<= 0.99 (/ (- end start) internal-time-units-per-second) 1.01))))
+    (is (<= 0.98 (/ (- end start) internal-time-units-per-second) 1.02))))
