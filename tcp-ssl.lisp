@@ -203,8 +203,7 @@
 ;; bufferevent. Until then, this function should be treated with caution (ie,
 ;; not exposed in the API)
 (defun wrap-in-ssl (socket/stream
-                    &key (ssl-context cl+ssl::*ssl-global-context*) close-cb
-                         certificate key password)
+                    &key (ssl-context cl+ssl::*ssl-global-context*) close-cb)
   "Wraps a cl-async socket/stream in the SSL protocol using libevent's SSL
    capabilities. Does some trickery when swapping out the event function for the
    new socket, but the original event-cb will still be called."
