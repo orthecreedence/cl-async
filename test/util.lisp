@@ -51,7 +51,9 @@
   
 ;; define the test suite
 (def-suite cl-async-test :description "cl-async test suite")
-(in-suite cl-async-test)
+(def-suite cl-async-test-core :in cl-async-test
+                              :description "cl-async test suite")
+(in-suite cl-async-test-core)
 
 (test data-pointers
   "Make sure data pointers are #'eql"

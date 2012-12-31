@@ -1,5 +1,5 @@
 (in-package :cl-async-test)
-(in-suite cl-async-test)
+(in-suite cl-async-test-core)
 
 (test delay-simple
   "Test a simple delay"

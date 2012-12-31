@@ -6,8 +6,7 @@
            #:tcp-ssl-error
            ;#:wrap-in-ssl
            #:tcp-ssl-connect
-           ;#:tcp-ssl-server ; TODO: enable once tests are written
-           )
+           #:tcp-ssl-server)
   (:import-from :cl-async
                 #:socket-drain-read-buffer
                 #:write-to-evbuffer
@@ -87,7 +86,10 @@
                 ;; make sure to close the socket after an error
                 (close-socket socket)
                 (when event-cb
-                  (run-event-cb event-cb (make-instance 'tcp-ssl-error :code errcode :msg str)))))))
+                  (let ((str (if (= errcode 336351298)
+                                 (format nil "~a (This can happen if a client uses a global context in the same process as a server. Try `:ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-client-method))` in yout tcp-ssl-connect call." str)
+                                 str)))
+                    (run-event-cb event-cb (make-instance 'tcp-ssl-error :code errcode :msg str))))))))
         ;; call directly into the tcp-event-cb function (if we haven't already
         ;; dealt with the error)
         (unless ssl-error
@@ -144,10 +146,15 @@
                                             :drain-read-buffer (not dont-drain-read-buffer)))
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
 
+    ;; error check
+    (when (cffi:null-pointer-p bev)
+      (cl+ssl::ssl-free ssl-ctx)
+      (error (format nil "Error creating SSL filter around socket: ~a~%" socket)))
+
     (le:bufferevent-setcb bev
                           (cffi:callback tcp-read-cb)
                           (cffi:callback tcp-write-cb)
-                          (cffi:callback tcp-event-cb)
+                          (cffi:callback ssl-event-cb)
                           data-pointer)
     (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
     (save-callbacks data-pointer (list :read-cb read-cb
@@ -166,11 +173,14 @@
         tcp-stream
         socket)))
 
-(defun tcp-ssl-connect (host port read-cb event-cb &key data stream ssl-ctx connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun tcp-ssl-connect (host port read-cb event-cb
+                        &key data stream ssl-ctx
+                             connect-cb write-cb
+                             (read-timeout -1) (write-timeout -1)
+                             (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
   ;; make sure SSL is ready to go
-  (cl+ssl:ensure-initialized :method 'cl+ssl::ssl-v23-client-method)
   (let* ((ssl-ctx (or ssl-ctx cl+ssl::*ssl-global-context*))
          (client-ctx (init-ssl-client-context ssl-ctx)))
     (let* ((socket/stream (apply #'init-tcp-ssl-socket
@@ -190,8 +200,8 @@
 ;; bufferevent. Until then, this function should be treated with caution (ie,
 ;; not exposed in the API)
 (defun wrap-in-ssl (socket/stream
-                     &key (ssl-context cl+ssl::*ssl-global-context*) close-cb
-                     certificate key password)
+                    &key (ssl-context cl+ssl::*ssl-global-context*) close-cb
+                         certificate key password)
   "Wraps a cl-async socket/stream in the SSL protocol using libevent's SSL
    capabilities. Does some trickery when swapping out the event function for the
    new socket, but the original event-cb will still be called."
@@ -269,7 +279,7 @@
 
 (defun tcp-ssl-server (bind-address port read-cb event-cb
                        &key connect-cb (backlog -1) stream
-                       certificate key password)
+                            certificate key password)
   "Start a TCP listener, and wrap incoming connections in an SSL handler.
    Returns a tcp-server object, which can be closed with close-tcp-server.
 
@@ -300,7 +310,7 @@
         (when certificate
           (let ((res (cffi:foreign-funcall "SSL_CTX_use_certificate_chain_file"
                                            :pointer ssl-ctx
-                                           :string certificate
+                                           :string (namestring certificate)
                                            :int)))
             (unless (= res 1)
               (error (format nil "Error initializing certificate: ~a."
@@ -310,7 +320,7 @@
         (when key
           (let ((res (cffi:foreign-funcall "SSL_CTX_use_PrivateKey_file"
                                            :pointer ssl-ctx
-                                           :string key
+                                           :string (namestring key)
                                            :int cl+ssl::+ssl-filetype-pem+
                                            :int)))
             (unless (= res 1)

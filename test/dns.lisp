@@ -1,5 +1,5 @@
 (in-package :cl-async-test)
-(in-suite cl-async-test)
+(in-suite cl-async-test-core)
 
 (test dns-simple
   "Test a simple DNS request"

@@ -1,5 +1,5 @@
 (in-package :cl-async-test)
-(in-suite cl-async-test)
+(in-suite cl-async-test-core)
 
 ;;; signals are a bitch because
 ;;;  a) lisp has no native way of sending signals
