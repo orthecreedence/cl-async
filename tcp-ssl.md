@@ -158,8 +158,7 @@ using the global context when connecting the SSL socket to an SSL server that
 already exists in the same process. In this case, you can do this:
 
 {% highlight cl %}
-(init-tcp-ssl-socket ...
-                     :ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-client-method)))
+(init-tcp-ssl-socket ... :ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-client-method)))
 {% endhighlight %}
 
 
