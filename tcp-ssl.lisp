@@ -129,13 +129,17 @@
       (error "Problem initializing SSL context."))
     client-ctx))
     
-(defun init-tcp-ssl-socket (ssl-ctx read-cb event-cb &key data stream (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun init-tcp-ssl-socket (read-cb event-cb &key data stream ssl-ctx (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Initialize an async SSL socket, but do not connect it."
   (check-event-loop-running)
 
+  ;; make sure SSL is ready to go
+  (cl+ssl:ensure-initialized :method 'cl+ssl::ssl-v23-client-method)
   (let* ((data-pointer (create-data-pointer))
+         (ssl-ctx (or ssl-ctx cl+ssl::*ssl-global-context*))
+         (client-ctx (init-ssl-client-context ssl-ctx))
          (fd (or fd -1))
-         (bev (le-ssl:bufferevent-openssl-socket-new *event-base* fd ssl-ctx (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting) +bev-opt-close-on-free+))
+         (bev (le-ssl:bufferevent-openssl-socket-new *event-base* fd client-ctx (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting) +bev-opt-close-on-free+))
 
          ;; assume dont-drain-read-buffer if unspecified and requesting a stream
          (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
@@ -143,13 +147,13 @@
                                      dont-drain-read-buffer))
          (socket (make-instance 'ssl-socket :c bev
                                             :direction 'out
-                                            :ctx ssl-ctx
+                                            :ctx client-ctx
                                             :drain-read-buffer (not dont-drain-read-buffer)))
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
 
     ;; error check
     (when (cffi:null-pointer-p bev)
-      (cl+ssl::ssl-free ssl-ctx)
+      (cl+ssl::ssl-free client-ctx)
       (error (format nil "Error creating SSL filter around socket: ~a~%" socket)))
 
     (le:bufferevent-setcb bev
@@ -181,21 +185,19 @@
                              (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
-  ;; make sure SSL is ready to go
-  (let* ((ssl-ctx (or ssl-ctx cl+ssl::*ssl-global-context*))
-         (client-ctx (init-ssl-client-context ssl-ctx)))
-    (let* ((socket/stream (apply #'init-tcp-ssl-socket
-                                 (append (list client-ctx read-cb event-cb
-                                               :data data
-                                               :stream stream
-                                               :connect-cb connect-cb
-                                               :write-cb write-cb
-                                               :read-timeout read-timeout
-                                               :write-timeout write-timeout)
-                                         (when dont-drain-read-buffer-supplied-p
-                                           (list :dont-drain-read-buffer dont-drain-read-buffer))))))
-      (connect-tcp-socket socket/stream host port)
-      socket/stream)))
+  (let* ((socket/stream (apply #'init-tcp-ssl-socket
+                               (append (list read-cb event-cb
+                                             :ssl-ctx ssl-ctx 
+                                             :data data
+                                             :stream stream
+                                             :connect-cb connect-cb
+                                             :write-cb write-cb
+                                             :read-timeout read-timeout
+                                             :write-timeout write-timeout)
+                                       (when dont-drain-read-buffer-supplied-p
+                                         (list :dont-drain-read-buffer dont-drain-read-buffer))))))
+    (connect-tcp-socket socket/stream host port)
+    socket/stream))
 
 ;; TODO: Figure out why read/write timeouts are borked when wrapping an existing
 ;; bufferevent. Until then, this function should be treated with caution (ie,
