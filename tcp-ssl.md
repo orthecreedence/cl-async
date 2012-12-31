@@ -48,6 +48,13 @@ except `tcp-ssl-connect` takes an (optional) SSL context object in the keyword
 `:ssl-ctx` parameter. This tells it to use the given context instead of the
 global/generic context created by `cl+ssl` when initializing.
 
+`tcp-ssl-connect` takes an (optional) `:ssl-ctx` argument which is a
+generic/global SSL context object which is used to create the *client* context
+used to initialize the socket. If a context is not specified, the global context
+in the `cl+ssl` package will be used: `cl+ssl::*ssl-global-context*`. See the
+[notes on using the global context](#init-tcp-ssl-socket-context-note) if you
+run into problems.
+
 `tcp-ssl-connect` returns an [ssl-socket](#ssl-socket) object, which is an
 extension of the [socket](/cl-async/tcp#socket) class, and can be used with all
 the same functions/methods.
@@ -136,21 +143,24 @@ Once initialized, an unconnected socket can be connected using
 [connect-tcp-socket](/cl-async/tcp#connect-tcp-socket).
 
 Note that `init-tcp-ssl-socket` is almost the exact same as [init-tcp-socket](/cl-async/tcp#init-tcp-socket)
-but it takes an `:ssl-ctx` argument which is a generic SSL context used to
-create the client context. If `:ssl-ctx` is not supplied,
-`cl+ssl::ssl-global-context` is used to create the client context. This is
-generally fine, however you can run into problems using the global context when
-connecting the SSL socket to an SSL server that already exists in the same
-process. In this case, you can do this:
+but it takes an `:ssl-ctx` argument which is a global SSL context used to
+create the client context.
+
+The socket returned by `init-tcp-ssl-socket` can be passed to
+[connect-tcp-socket](/cl-async/tcp#connect-tcp-socket) if you want to directly
+connect it.
+
+<a id="init-tcp-ssl-socket-context-note"></a>
+##### Context note
+If `:ssl-ctx` is not supplied, `cl+ssl::ssl-global-context` is used to create
+the client context. This is generally fine, however you can run into problems
+using the global context when connecting the SSL socket to an SSL server that
+already exists in the same process. In this case, you can do this:
 
 {% highlight cl %}
 (init-tcp-ssl-socket ...
                      :ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-client-method)))
 {% endhighlight %}
-
-The socket returned by `init-tcp-ssl-socket` can be passed to
-[connect-tcp-socket](/cl-async/tcp#connect-tcp-socket) if you want to directly
-connect it.
 
 
 {% comment %}
