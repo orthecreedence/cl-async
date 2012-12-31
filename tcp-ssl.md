@@ -18,6 +18,8 @@ the [latest versions of the libevent2 bindings](https://github.com/orthecreedenc
 - [ssl-socket](#ssl-socket) _class_
 - [tcp-ssl-connect](#tcp-ssl-connect) _function_
 - [init-tcp-ssl-socket](#init-tcp-ssl-socket) _function_
+- [tcp-ssl-server](#tcp-ssl-server-class) _class_
+- [tcp-ssl-server](#tcp-ssl-server) _function_
 - [tcp-ssl-error](#tcp-ssl-error) _condition_
 
 <a id="ssl-socket"></a>
@@ -216,7 +218,6 @@ The `close-cb` function passed in will be called when the SSL socket is closed.
 {% endhighlight %}
 {% endcomment %}
 
-{% comment %}
 <a id="tcp-ssl-server-class"></a>
 ### tcp-ssl-server (class)
 _extends [tcp-server](/cl-async/tcp#tcp-server-class)_
@@ -248,8 +249,8 @@ you want to use, you can just dump it in the same file (much like how [NginX
 handles SSL](http://nginx.org/en/docs/http/configuring_https_servers.html#chains).
 
 Like [tcp-server](/cl-async/tcp#tcp-server), `tcp-ssl-server` can be closed
-gracefully by calling [close-tcp-server](/cl-async/tcp#close-tcp-server) on the
-[tcp-ssl-server](/cl-async/tcp#tcp-server-class) object it returns.
+gracefully by calling the [close-tcp-server](/cl-async/tcp#close-tcp-server)
+method on the [tcp-ssl-server](/cl-async/tcp#tcp-server-class) object it returns.
 
 {% highlight cl %}
 ;; example
@@ -290,7 +291,6 @@ socket is not drained and is only done so by [reading from the stream](/cl-async
 
 Called when a client connects (but not necessarily when it has sent data). If
 present, is *always* called before the [read-cb](#tcp-ssl-server-read-cb).
-{% endcomment %}
 
 <a id="tcp-ssl-error"></a>
 ### tcp-ssl-error
