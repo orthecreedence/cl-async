@@ -16,7 +16,7 @@ by default. `cl-async-ssl` depends on the `cl-libevent2-ssl` package, present in
 the [latest versions of the libevent2 bindings](https://github.com/orthecreedence/cl-libevent2).
 
 - [ssl-socket](#ssl-socket) _class_
-- [wrap-in-ssl](#wrap-in-ssl) _function_
+- [tcp-ssl-connect](#tcp-ssl-connect) _function_
 - [tcp-ssl-error](#tcp-ssl-error) _condition_
 
 <a id="ssl-socket"></a>
@@ -29,6 +29,41 @@ accessors, except for the ones it inherits from `socket`.
 
 It can be passed to any cl-async function that takes a `socket` argument.
 
+<a id="tcp-ssl-connect"></a>
+### tcp-ssl-connect
+{% highlight cl %}
+(defun tcp-ssl-connect (host port read-cb event-cb
+                        &key data stream ssl-ctx
+                             connect-cb write-cb
+                             (read-timeout -1) (write-timeout -1)
+                             (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p)))
+  => ssl-socket/stream
+{% endhighlight %}
+
+Much like [tcp-connect](/cl-async/tcp#tcp-connect), `tcp-connect-ssl` opens and
+connects an async socket, but wrapped in the SSL protocol. In fact just about
+every argument is the same for `tcp-connect` as it is for `tcp-connect-ssl`,
+except `tcp-ssl-connect` takes an (optional) SSL context object in the keyword
+`:ssl-ctx` parameter. This tells it to use the given context instead of the
+global/generic context created by `cl+ssl` when initializing.
+
+`tcp-ssl-connect` returns an [ssl-socket](#ssl-socket) object, which is an
+extension of the [socket](/cl-async/tcp#socket) class, and can be used with all
+the same functions/methods.
+
+{% highlight cl %}
+;; simple SSL socket example
+(tcp-ssl-connect "www.google.com" 443
+                 (lambda (socket data)
+                   (declare (ignore socket))
+                   (format t "GOT: ~a~%" (babel:octets-to-string data)))
+                 (lambda (ev)
+                   (format t "EV: ~a~%" ev))
+                 :read-timeout 3
+                 :data (format nil "GET /~c~c" #\return #\newline))
+{% endhighlight %}
+
+{% comment %}
 <a id="wrap-in-ssl"></a>
 ### wrap-in-ssl
 {% highlight cl %}
@@ -73,6 +108,7 @@ The `close-cb` function passed in will be called when the SSL socket is closed.
   ;; send out the request on the SSL socket
   (write-socket-data socket-ssl (format nil "GET /~c~c" #\return #\newline)))
 {% endhighlight %}
+{% endcomment %}
 
 <a id="wrap-in-ssl-close-cb"></a>
 ##### close-cb definition
