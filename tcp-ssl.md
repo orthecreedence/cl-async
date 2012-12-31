@@ -152,7 +152,7 @@ connect it.
 
 <a id="init-tcp-ssl-socket-context-note"></a>
 ##### Context note
-If `:ssl-ctx` is not supplied, `cl+ssl::ssl-global-context` is used to create
+If `:ssl-ctx` is not supplied, `cl+ssl::*ssl-global-context*` is used to create
 the client context. This is generally fine, however you can run into problems
 using the global context when connecting the SSL socket to an SSL server that
 already exists in the same process. In this case, you can do this:
