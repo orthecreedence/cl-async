@@ -166,7 +166,7 @@
         tcp-stream
         socket)))
 
-(defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) ssl-ctx)
+(defun tcp-ssl-connect (host port read-cb event-cb &key data stream ssl-ctx connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
   ;; make sure SSL is ready to go
