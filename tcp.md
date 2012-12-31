@@ -15,7 +15,7 @@ while using the TCP system.
 - [connect-tcp-socket](#connect-tcp-socket) _function_
 - [tcp-server](#tcp-server-class) _class_
 - [tcp-server](#tcp-server) _function_
-- [close-tcp-server](#close-tcp-server)
+- [close-tcp-server](#close-tcp-server) _method_
 - [socket](#socket) _class_
   - [socket-c](#socket-c) _accessor_
   - [socket-data](#socket-data) _accessor_
@@ -24,7 +24,7 @@ while using the TCP system.
 - [enable-socket](#enable-socket) _function_
 - [disable-socket](#disable-socket) _function_
 - [socket-closed-p](#socket-closed-p) _function_
-- [close-socket](#close-socket) _function_
+- [close-socket](#close-socket) _method_
 - [tcp-info](#tcp-info) _condition_
   - [tcp-socket](#tcp-socket) _accessor_
 - [tcp-error](#tcp-error) _condition_
