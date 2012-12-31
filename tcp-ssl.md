@@ -250,7 +250,7 @@ handles SSL](http://nginx.org/en/docs/http/configuring_https_servers.html#chains
 
 Like [tcp-server](/cl-async/tcp#tcp-server), `tcp-ssl-server` can be closed
 gracefully by calling the [close-tcp-server](/cl-async/tcp#close-tcp-server)
-method on the [tcp-ssl-server](/cl-async/tcp#tcp-server-class) object it returns.
+method on the [tcp-ssl-server](/cl-async/tcp-ssl#tcp-ssl-server-class) object it returns.
 
 {% highlight cl %}
 ;; example
