@@ -5,6 +5,7 @@
            #:socket-underlying
            #:tcp-ssl-error
            ;#:wrap-in-ssl
+           #:init-tcp-ssl-socket
            #:tcp-ssl-connect
            #:tcp-ssl-server)
   (:import-from :cl-async
