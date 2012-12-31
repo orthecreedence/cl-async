@@ -18,7 +18,6 @@ the [latest versions of the libevent2 bindings](https://github.com/orthecreedenc
 - [ssl-socket](#ssl-socket) _class_
 - [tcp-ssl-connect](#tcp-ssl-connect) _function_
 - [init-tcp-ssl-socket](#init-tcp-ssl-socket) _function_
-- [tcp-ssl-server](#tcp-ssl-server) _function_
 - [tcp-ssl-error](#tcp-ssl-error) _condition_
 
 <a id="ssl-socket"></a>
