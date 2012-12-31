@@ -2,6 +2,7 @@
   (:use :cl :cl-async :cl-async-util)
   (:nicknames :as-ssl)
   (:export #:ssl-socket
+           #:tcp-ssl-server
            #:socket-underlying
            #:tcp-ssl-error
            ;#:wrap-in-ssl
@@ -31,31 +32,46 @@
 (cffi:defcfun ("SSL_shutdown" ssl-shutdown) :int
   (ssl :pointer))
 
+(defun free-ssl (ssl-ctx)
+  "Wraps freeing an SSL context."
+  (cl+ssl::ssl-ctx-free ssl-ctx))
+
 (defclass ssl-socket (socket)
   ((ssl-ctx :accessor socket-ssl-ctx :initarg :ctx :initform nil)
    (underlying :accessor socket-underlying :initarg :underlying :initform nil
-     :documentation "Stores the original socket that was wrapped in SSL.")
-   (close-cb :accessor socket-close-cb :initarg :close-cb :initform nil))
+     :documentation "Stores the original socket that was wrapped in SSL."))
   (:documentation "Wraps a libevent SSL socket."))
 
+(defclass tcp-ssl-server (tcp-server)
+  ((ssl-ctx :accessor tcp-server-ssl-ctx :initarg :ssl-ctx :initform nil))
+  (:documentation "Wraps around a libevent SSL servre/listener"))
+
 (defmethod close-socket ((socket ssl-socket))
-  "Closes and frees an SSL socket."
-  ;; close the SSL context and call the close callback
-  (let ((ctx (socket-ssl-ctx socket))
-        (close-cb (socket-close-cb socket)))
+  ;; close the SSL context
+  (let ((ctx (socket-ssl-ctx socket)))
     (when (and (cffi:pointerp ctx)
                (not (cffi:null-pointer-p ctx)))
       ;; according to http://www.wangafu.net/~nickm/libevent-book/Ref6a_advanced_bufferevents.html,
       ;; this is the most performant way to close SSL connections (must be done
       ;; before freeing the context/bev).
       (ssl-set-shutdown ctx +ssl-received-shutdown+)
-      (ssl-shutdown ctx))
-    (when close-cb
-      (funcall close-cb)))
+      (ssl-shutdown ctx)
+      ;; don't need to free the context here since libevent will take care of it
+      (setf (socket-ssl-ctx socket) nil)))
   ;; this will free the bufferevent/any SSL resources and close the connection.
   ;; the underlying bufferevent will be freed by libevent automatically when the
   ;; SSL bufferevent is freed, so no need to clean this up manually.
   (call-next-method))
+
+(defmethod close-tcp-server ((tcp-server tcp-ssl-server))
+  ;; shut down the listener before freeing the SSL handles
+  (call-next-method)
+  ;; free the SSL ctx (if it exists)
+  (let ((ctx (tcp-server-ssl-ctx tcp-server)))
+    (when (and (cffi:pointerp ctx)
+               (not (cffi:null-pointer-p ctx)))
+      (free-ssl ctx)
+      (setf (tcp-server-ssl-ctx tcp-server) nil))))
 
 (defun last-ssl-error ()
   "Returns the last error string (nil if none) and the last error code that
@@ -203,7 +219,7 @@
 ;; bufferevent. Until then, this function should be treated with caution (ie,
 ;; not exposed in the API)
 (defun wrap-in-ssl (socket/stream
-                    &key (ssl-context cl+ssl::*ssl-global-context*) close-cb)
+                    &key (ssl-context cl+ssl::*ssl-global-context*))
   "Wraps a cl-async socket/stream in the SSL protocol using libevent's SSL
    capabilities. Does some trickery when swapping out the event function for the
    new socket, but the original event-cb will still be called."
@@ -234,7 +250,6 @@
            (ssl-socket (make-instance 'ssl-socket
                                       :ctx ssl-ctx
                                       :c ssl-bev
-                                      :close-cb close-cb
                                       :underlying socket
                                       :drain-read-buffer (socket-drain-read-buffer socket)))
            (ssl-tcp-stream (when passed-in-stream-p
@@ -299,11 +314,13 @@
                              :backlog backlog
                              :stream stream))
          (data-pointer (tcp-server-data-pointer server)))
-    ;; overwrite the accept callback
+    ;; overwrite the accept callback from tcp-accept-cb -> tcp-ssl-accept-cb
     (le:evconnlistener-set-cb (tcp-server-c server)
                               (cffi:callback tcp-ssl-accept-cb)
                               data-pointer)
-    (let ((ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-server-method))))
+    ;; create a server context
+    (let* ((ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-server-method)))
+           (ssl-server (change-class server 'tcp-ssl-server :ssl-ctx ssl-ctx)))
       ;; make sure if there is a cert password, it's used
       (cl+ssl::with-pem-password (password)
         (cl+ssl::ssl-ctx-set-default-passwd-cb ssl-ctx (cffi:callback cl+ssl::pem-password-callback))
@@ -332,5 +349,6 @@
       ;; adjust the data-pointer's data a bit
       (attach-data-to-pointer data-pointer
                               (list :server server
-                                    :ctx ssl-ctx)))))
+                                    :ctx ssl-ctx))
+      ssl-server)))
 

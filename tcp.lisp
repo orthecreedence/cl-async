@@ -102,8 +102,11 @@
     (free-pointer-data bev-data-pointer)
     (free-pointer-data bev :preserve-pointer t)))
 
-(defun close-tcp-server (tcp-server)
-  "Closes a TCP server. If already closed, does nothing."
+(defgeneric close-tcp-server (socket)
+  (:documentation
+    "Closes a TCP server. If already closed, does nothing."))
+
+(defmethod close-tcp-server ((tcp-server tcp-server))
   (unless (tcp-server-closed tcp-server)
     (le:evconnlistener-free (tcp-server-c tcp-server))
     (setf (tcp-server-closed tcp-server) t)))
