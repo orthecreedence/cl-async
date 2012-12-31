@@ -105,7 +105,7 @@ It wraps the [socket](#socket) object.
 <a id="tcp-connect-connect-cb"></a>
 ##### connect-cb definition
 {% highlight cl %}
-(lambda (socket ...))
+(lambda (socket) ...)
 {% endhighlight %}
 
 The `connect-cb` will be fired when the connection from `tcp-connect` has been
