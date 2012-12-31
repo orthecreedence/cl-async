@@ -246,7 +246,7 @@ It takes `:certificate`, `:key`, and `:password` keyword arguments which are
 used for loading a certificate and a (possibly passworded) private key. The
 certificate file can be a chain file, so if you have a Certificate Authority
 you want to use, you can just dump it in the same file (much like how [NginX
-handles SSL](http://nginx.org/en/docs/http/configuring_https_servers.html#chains).
+handles SSL](http://nginx.org/en/docs/http/configuring_https_servers.html#chains)).
 
 Like [tcp-server](/cl-async/tcp#tcp-server), `tcp-ssl-server` can be closed
 gracefully by calling the [close-tcp-server](/cl-async/tcp#close-tcp-server)
