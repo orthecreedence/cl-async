@@ -26,11 +26,14 @@
       (as:add-event-loop-exit-callback
         (lambda () (setf cancel t)))
       ;; spawn the thread to kill the event loop
-      (bt:make-thread (lambda ()
-                        (sleep seconds)
-                        (when (and (eql cl-async-util::*event-base-id* base-id)
-                                   (not cancel))
-                          (le:event-base-loopexit event-base (cffi:null-pointer))))))))
+      (handler-case
+        (bt:make-thread (lambda ()
+                         (sleep seconds)
+                         (when (and (eql cl-async-util::*event-base-id* base-id)
+                                    (not cancel))
+                           (le:event-base-loopexit event-base (cffi:null-pointer)))))
+        (bt::bordeaux-mp-condition ()
+          nil)))))
 
 (defun concat (&rest args)
   "Shortens string concatenation because I'm lazy and really who the hell wants
