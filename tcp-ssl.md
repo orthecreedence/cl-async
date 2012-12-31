@@ -63,6 +63,53 @@ the same functions/methods.
                  :data (format nil "GET /~c~c" #\return #\newline))
 {% endhighlight %}
 
+<a id="tcp-ssl-connect-read-cb"></a>
+##### read-cb definition (default)
+
+{% highlight cl %}
+(lambda (socket byte-array) ...)
+{% endhighlight %}
+
+<a id="tcp-ssl-connect-read-cb-stream"></a>
+##### read-cb definition (when tcp-ssl-connect's :stream is t)
+
+{% highlight cl %}
+(lambda (socket stream) ...)
+{% endhighlight %}
+
+Note that in this case, `stream` replaces the data byte array's position. Also,
+when calling `:stream t` in `tcp-ssl-connect`, the read buffer for the socket is
+not drained and is only done so by [reading from the stream](/cl-async/tcp-stream).
+
+`stream` is always the same object returned from `tcp-ssl-connect` with
+`:stream t`.  It wraps the [ssl-socket](#ssl-socket) object.
+
+<a id="tcp-ssl-connect-connect-cb"></a>
+##### connect-cb definition
+{% highlight cl %}
+(lambda (socket ...))
+{% endhighlight %}
+
+The `connect-cb` will be fired when the connection from `tcp-ssl-connect` has been
+established. Since sending data over the socket is somewhat transparent (either
+via `:data` or [write-socket-data](#write-socket-data)), you don't really have
+to know when a socket is ready to be written to. In some instances though, it
+may be useful to know when the connection has been established, which is why
+`:connect-cb` is exposed.
+
+<a id="tcp-ssl-connect-write-cb"></a>
+##### write-cb definition
+
+{% highlight cl %}
+(lambda (socket) ...)
+{% endhighlight %}
+
+The `write-cb` will be called after data written to the socket's buffer is
+flushed out to the socket. If you want to send a command to a server and
+immediately disconnect once you know the data was sent, you could close the
+connection in your `write-cb`.
+
+
 {% comment %}
 <a id="wrap-in-ssl"></a>
 ### wrap-in-ssl
@@ -108,7 +155,6 @@ The `close-cb` function passed in will be called when the SSL socket is closed.
   ;; send out the request on the SSL socket
   (write-socket-data socket-ssl (format nil "GET /~c~c" #\return #\newline)))
 {% endhighlight %}
-{% endcomment %}
 
 <a id="wrap-in-ssl-close-cb"></a>
 ##### close-cb definition
@@ -116,6 +162,7 @@ The `close-cb` function passed in will be called when the SSL socket is closed.
 {% highlight cl %}
 (lambda () ...)
 {% endhighlight %}
+{% endcomment %}
 
 <a id="tcp-ssl-error"></a>
 ### tcp-ssl-error

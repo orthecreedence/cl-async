@@ -100,7 +100,7 @@ when calling `:stream t` in `tcp-connect`, the read buffer for the socket is not
 drained and is only done so by [reading from the stream](/cl-async/tcp-stream).
 
 `stream` is always the same object returned from `tcp-connect` with `:stream t`.
-It wraps the `socket` object.
+It wraps the [socket](#socket) object.
 
 <a id="tcp-connect-connect-cb"></a>
 ##### connect-cb definition
