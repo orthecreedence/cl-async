@@ -1,7 +1,7 @@
 (asdf:defsystem cl-async-test
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
-  :version "0.1"
+  :version "0.2"
   :description "TESTS FOR Asynchronous operations for Common Lisp."
   :depends-on (#:cffi #:cl-async #:eos #:bordeaux-threads #:usocket)
   :components
