@@ -87,7 +87,7 @@ not drained and is only done so by [reading from the stream](/cl-async/tcp-strea
 <a id="tcp-ssl-connect-connect-cb"></a>
 ##### connect-cb definition
 {% highlight cl %}
-(lambda (socket ...))
+(lambda (socket) ...)
 {% endhighlight %}
 
 The `connect-cb` will be fired when the connection from `tcp-ssl-connect` has been
