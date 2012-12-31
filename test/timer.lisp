@@ -14,7 +14,7 @@
                   (end :blank))
         (as:delay (lambda () (setf end (get-internal-real-time)))
                   :time 2))
-    (is (<= 1.99 (/ (- end start) internal-time-units-per-second) 2.01))))
+    (is (<= 1.98 (/ (- end start) internal-time-units-per-second) 2.02))))
 
 (test delay-multi
   "Test multiple timers"
