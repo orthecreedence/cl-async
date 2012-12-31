@@ -136,8 +136,8 @@ Once initialized, an unconnected socket can be connected using
 [connect-tcp-socket](/cl-async/tcp#connect-tcp-socket).
 
 Note that `init-tcp-ssl-socket` is almost the exact same as [init-tcp-socket](/cl-async/tcp#init-tcp-socket)
-but it takes an `ssl-ctx` (SSL context) object which is uses to create an SSL
-connection with. The socket returned by `init-tcp-ssl-socket` can be passed to
+but it takes an `ssl-ctx` (SSL context) object which is used to create the SSL
+connection. The socket returned by `init-tcp-ssl-socket` can be passed to
 [connect-tcp-socket](/cl-async/tcp#connect-tcp-socket) if you want to directly
 connect it.
 
