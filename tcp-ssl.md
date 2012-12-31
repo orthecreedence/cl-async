@@ -133,7 +133,7 @@ exceptions:
 
 In other words, `init-tcp-ssl-socket` is `tcp-ssl-connect`'s lower-level brother.
 Once initialized, an unconnected socket can be connected using
-[connect-tcp-socket](#connect-tcp-socket).
+[connect-tcp-socket](/cl-async/tcp#connect-tcp-socket).
 
 Note that `init-tcp-ssl-socket` is almost the exact same as [init-tcp-socket](/cl-async/tcp#init-tcp-socket)
 but it takes an `ssl-ctx` (SSL context) object which is uses to create an SSL
