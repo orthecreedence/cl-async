@@ -16,6 +16,7 @@ by default. `cl-async-ssl` depends on the `cl-libevent2-ssl` package, present in
 the [latest versions of the libevent2 bindings](https://github.com/orthecreedence/cl-libevent2).
 
 - [ssl-socket](#ssl-socket) _class_
+- [init-tcp-ssl-socket](#init-tcp-ssl-socket) _function_
 - [tcp-ssl-connect](#tcp-ssl-connect) _function_
 - [tcp-ssl-error](#tcp-ssl-error) _condition_
 
@@ -108,6 +109,37 @@ The `write-cb` will be called after data written to the socket's buffer is
 flushed out to the socket. If you want to send a command to a server and
 immediately disconnect once you know the data was sent, you could close the
 connection in your `write-cb`.
+
+
+<a id="init-tcp-ssl-socket"></a>
+### init-tcp-ssl-socket
+{% highlight cl %}
+(defun init-tcp-ssl-socket (ssl-ctx read-cb event-cb
+                           &key data stream (fd -1)
+                                connect-cb write-cb
+                                (read-timeout -1) (write-timeout -1)
+                                (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+  => socket/stream
+{% endhighlight %}
+
+This function is much like [tcp-ssl-connect](#tcp-ssl-connect) but with a few
+exceptions:
+
+ 1. It only *initializes* an [ssl-socket](#ssl-socket) object, it doesn't connect
+ it.
+ 2. It doesn't accept host/port arguments.
+ 3. It accepts a `:fd` keyword argument, which allows wrapping the socket being
+ initialized around an existing file descriptor.
+
+In other words, `init-tcp-ssl-socket` is `tcp-ssl-connect`'s lower-level brother.
+Once initialized, an unconnected socket can be connected using
+[connect-tcp-socket](#connect-tcp-socket).
+
+Note that `init-tcp-ssl-socket` is almost the exact same as [init-tcp-socket](/cl-async/tcp#init-tcp-socket)
+but it takes an `ssl-ctx` (SSL context) object which is uses to create an SSL
+connection with. The socket returned by `init-tcp-ssl-socket` can be passed to
+[connect-tcp-socket](/cl-async/tcp#connect-tcp-socket) if you want to directly
+connect it.
 
 
 {% comment %}

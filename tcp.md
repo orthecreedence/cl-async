@@ -143,7 +143,7 @@ This function is a deprecated version of [tcp-connect](#tcp-connect). Use
   => socket/stream
 {% endhighlight %}
 
-This function is much like [tcp-connect](#tcp-sonnect) but with a few
+This function is much like [tcp-connect](#tcp-connect) but with a few
 exceptions:
 
  1. It only *initializes* a [socket](#socket) object, it doesn't connect it.
