@@ -217,12 +217,22 @@ The `close-cb` function passed in will be called when the SSL socket is closed.
 {% endhighlight %}
 {% endcomment %}
 
+{% comment %}
+<a id="tcp-ssl-server-class"></a>
+### tcp-ssl-server (class)
+_extends [tcp-server](/cl-async/tcp#tcp-server-class)_
+
+This is an opaque class which is returned by the function [tcp-ssl-server](#tcp-server)
+to allow [closing the server](/cl-async/tcp#close-tcp-server) and allowing for
+future expansion of the server's abilities. It has no public accessors.
+
 <a id="tcp-ssl-server"></a>
 ### tcp-ssl-server
 {% highlight cl %}
 (defun tcp-ssl-server (bind-address port read-cb event-cb
                        &key connect-cb (backlog -1) stream
                             certificate key password)
+  => tcp-ssl-server
 {% endhighlight %}
 
 This function works by calling [tcp-server](/cl-async/tcp#tcp-server) to bind to
@@ -237,6 +247,10 @@ used for loading a certificate and a (possibly passworded) private key. The
 certificate file can be a chain file, so if you have a Certificate Authority
 you want to use, you can just dump it in the same file (much like how [NginX
 handles SSL](http://nginx.org/en/docs/http/configuring_https_servers.html#chains).
+
+Like [tcp-server](/cl-async/tcp#tcp-server), `tcp-ssl-server` can be closed
+gracefully by calling [close-tcp-server](/cl-async/tcp#close-tcp-server) on the
+[tcp-ssl-server](/cl-async/tcp#tcp-server-class) object it returns.
 
 {% highlight cl %}
 ;; example
@@ -277,7 +291,7 @@ socket is not drained and is only done so by [reading from the stream](/cl-async
 
 Called when a client connects (but not necessarily when it has sent data). If
 present, is *always* called before the [read-cb](#tcp-ssl-server-read-cb).
-
+{% endcomment %}
 
 <a id="tcp-ssl-error"></a>
 ### tcp-ssl-error
