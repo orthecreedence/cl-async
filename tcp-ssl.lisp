@@ -172,6 +172,10 @@
       (cl+ssl::ssl-free client-ctx)
       (error (format nil "Error creating SSL filter around socket: ~a~%" socket)))
 
+    ;; be sure to mark the socket as nonblocking if we passed one in
+    (unless (equal fd -1)
+      (le:evutil-make-socket-nonblocking fd))
+
     (le:bufferevent-setcb bev
                           (cffi:callback tcp-read-cb)
                           (cffi:callback tcp-write-cb)
