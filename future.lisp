@@ -188,13 +188,17 @@
          (finished-vals (gensym "finished-vals"))
          (finished-cb (gensym "finished-cb"))
          (args (gensym "args")))
-    `(let* ((,finished-future (make-future))
+    `(let* ((,finished-future (make-future :preserve-callbacks t))
             (,finished-vals nil)
             (,finished-cb
-              (let ((c 0))
-                (lambda ()
-                  (incf c)
-                  (when (<= ,num-bindings c)
+              ;; the hash table makes sure that *all* futures have fires at
+              ;; least once. used to be a simple counter, but that doesn't
+              ;; account for a future firiing multiple times before its alet
+              ;; brethren get a chance to finish.
+              (let ((track-future-fired (make-hash-table :test #'eq :size ,num-bindings)))
+                (lambda (future)
+                  (setf (gethash future track-future-fired) t)
+                  (when (<= ,num-bindings (hash-table-count track-future-fired))
                     (let ((vars (loop for bind in ',bind-vars collect (getf ,finished-vals bind))))
                       (apply #'finish (append (list ,finished-future) vars))))))))
        ;; for each binding, attach a callback to the future it generates that
@@ -211,7 +215,7 @@
               (attach (apply #'values future-gen)
                 (lambda (&rest ,args)
                   (setf (getf ,finished-vals ',bind) (car ,args))
-                  (funcall ,finished-cb)))))
+                  (funcall ,finished-cb (car future-gen))))))
        ;; return our future which gets fired when all bindings have completed.
        ;; gets events forwarded to it from the binding futures.
        (attach ,finished-future
