@@ -10,7 +10,7 @@
 (asdf:defsystem cl-async
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
-  :version "0.3.0"
+  :version "0.3.1"
   :description "Asynchronous operations for Common Lisp."
   :depends-on (#:cffi #:cl-libevent2 #:cl-async-util #:babel #:cl-ppcre #:trivial-gray-streams #:puri)
   :components
