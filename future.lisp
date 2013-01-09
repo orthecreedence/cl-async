@@ -188,7 +188,7 @@
          (finished-vals (gensym "finished-vals"))
          (finished-cb (gensym "finished-cb"))
          (args (gensym "args")))
-    `(let* ((,finished-future (make-future :preserve-callbacks t))
+    `(let* ((,finished-future (make-future))
             (,finished-vals nil)
             (,finished-cb
               ;; the hash table makes sure that *all* futures have fires at
