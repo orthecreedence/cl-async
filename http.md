@@ -15,7 +15,7 @@ Note that the HTTP functions detailed here will exist for backwards
 compatibility and for simpler use tasks for the forseeable future, but will not
 be receiving any bugfixes or feature updates.
 
-An async port of hunchentoot is in the works.
+An [async web server](https://github.com/orthecreedence/wookie) is in the works.
 
 HTTP
 ====
