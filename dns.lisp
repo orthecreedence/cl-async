@@ -1,7 +1,7 @@
 (in-package :cl-async)
 
 (define-condition dns-error (event-error) ()
-  (:report (lambda (c s) (format s "Connection DNS error: ~a, ~a" (event-errcode c) (event-errmsg c))))
+  (:report (lambda (c s) (format s "DNS error: ~a, ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
 
 (defun get-dns-base ()
@@ -64,7 +64,8 @@
 
             ;; success, pull out address
             (let ((family (le-a:addrinfo-ai-family addrinfo))
-                  (addr nil))
+                  (addr nil)
+                  (err nil))
 
               ;(dotimes (i (cffi:foreign-type-size *addrinfo*))
               ;  (format t "byte ~a: ~a~%" i (cffi:mem-aref addrinfo :unsigned-char i)))
@@ -74,24 +75,30 @@
 
               (cffi:with-foreign-object (buf :unsigned-char 128)
                 ;; note here, we use the OS-dependent addrinfo-ai-addr macro
-                ;; defined un util.lisp
+                ;; defined in util.lisp
                 (let* ((ai-addr (addrinfo-ai-addr addrinfo)))
-                  (unless (cffi:null-pointer-p ai-addr)
-                    (cond
-                      ((eq family +af-inet+)
-                       (let ((sin-addr (cffi:foreign-slot-pointer ai-addr (le::cffi-type le::sockaddr-in) 'le::sin-addr)))
-                         ;(dotimes (i +sockaddr-size+)
-                           ;(format t "byte ~a: ~a~%" i (cffi:mem-aref ai-addr :unsigned-char i)))
-                         (setf addr (le:evutil-inet-ntop family sin-addr buf 128))))
-                      ((eq family +af-inet6+)
-                       (let ((sin6-addr (cffi:foreign-slot-pointer ai-addr (le::cffi-type le::sockaddr-in-6) 'le::sin-6-addr-0)))
-                         (setf addr (le:evutil-inet-ntop family sin6-addr buf 128))))))))
-              (if addr
+                  (if (cffi:null-pointer-p ai-addr)
+                      (setf err "the addrinfo->ai_addr object was null (stinks of a memory alignment issue)")
+                      (cond
+                        ((eq family +af-inet+)
+                         (let ((sin-addr (cffi:foreign-slot-pointer ai-addr (le::cffi-type le::sockaddr-in) 'le::sin-addr)))
+                           ;(dotimes (i +sockaddr-size+)
+                             ;(format t "byte ~a: ~a~%" i (cffi:mem-aref ai-addr :unsigned-char i)))
+                           (setf addr (le:evutil-inet-ntop family sin-addr buf 128))))
+                        ((eq family +af-inet6+)
+                         (let ((sin6-addr (cffi:foreign-slot-pointer ai-addr (le::cffi-type le::sockaddr-in-6) 'le::sin-6-addr-0)))
+                           (setf addr (le:evutil-inet-ntop family sin6-addr buf 128))))
+                        (t
+                          (setf err (format nil "unsupported DNS family: ~a" family)))))))
+              (if (and addr (not err))
                   ;; got an address, call resolve-cb
                   (funcall resolve-cb addr family)
                   ;; hmm, didn't get an address. either cam back as ipv6 or 
                   ;; there was some horrible, horrible error.
-                  (run-event-cb event-cb (make-instance 'dns-error :code -1 :msg (format nil "Error pulling out address from family: ~a" family))))
+                  (run-event-cb event-cb
+                                (make-instance 'dns-error
+                                               :code -1
+                                               :msg err)))
 
               ;; clean up
               (unless (cffi:null-pointer-p addrinfo)
