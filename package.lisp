@@ -39,6 +39,9 @@
            ;; timer functions
            #:delay
 
+           ;; fd functions
+           #:fd-add
+
            ;; signal numbers
            #:+sighup+
            #:+sigint+
