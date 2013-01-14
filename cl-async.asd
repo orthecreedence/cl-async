@@ -16,6 +16,7 @@
   :components
   ((:file "package")
    (:file "base" :depends-on ("package"))
+   (:file "fd" :depends-on ("base"))
    (:file "timer" :depends-on ("base"))
    (:file "dns" :depends-on ("base"))
    (:file "tcp" :depends-on ("dns"))

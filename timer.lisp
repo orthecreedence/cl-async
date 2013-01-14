@@ -30,11 +30,8 @@
     (if (numberp time)
         ;; time is not bogus, make a timeval struct and add the event to the
         ;; loop for delayed processing.
-        (multiple-value-bind (time-sec time-usec) (split-usec-time time)
-          (make-foreign-type (time-c (le::cffi-type le::timeval))
-                             (('le::tv-sec time-sec)
-                              ('le::tv-usec time-usec))
-            (le:event-add ev time-c)))
+        (with-struct-timeval time-c time
+          (le:event-add ev time-c))
         ;; there was no time specified (or it wasn't a number), so fire up the
         ;; event to be processed with no delay
         (le:event-active ev 0 0))))

@@ -47,6 +47,7 @@
            #:clear-pointer-data
            #:free-pointer-data
 
+           #:with-struct-timeval
            #:split-usec-time
 
            #:append-array
@@ -233,6 +234,14 @@
       (unless preserve-pointer
         (when (cffi:pointerp pointer)
           (cffi:foreign-free pointer))))))
+
+(defmacro with-struct-timeval (var seconds &rest body)
+  "Convert seconds to a valid struct timeval C data type."
+  `(multiple-value-bind (time-sec time-usec) (split-usec-time ,seconds)
+     (make-foreign-type (,var (le::cffi-type le::timeval))
+                        (('le::tv-sec time-sec)
+                         ('le::tv-usec time-usec))
+       ,@body)))
 
 (defun split-usec-time (time-s)
   "Given a second value, ie 3.67, return the number of seconds as the first
