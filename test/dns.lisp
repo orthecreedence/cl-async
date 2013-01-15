@@ -49,7 +49,7 @@
     (is (cl-async-util::ipv4-address-p ipv4))))
 
 (test dns-lookup-ipv6
-  "Test IPV6 family: can fail in linux, for some reason (Slack, at least)"
+  "Test IPV6 family: can fail in *nix"
   (multiple-value-bind (ipv6)
       (handler-case
         (async-let ((ipv6 nil))
