@@ -290,6 +290,33 @@
   (or (ipv4-address-p addr)
       (ipv6-address-p addr)))
 
+(defparameter *addrinfo*
+  #+(or :windows :bsd :freebsd :darwin) (le::cffi-type le::evutil-addrinfo)
+  #-(or :windows :bsd :freebsd :darwin) (le::cffi-type le::addrinfo)
+  "Determines the correct type of addrinfo for the current platform.")
+
+;; define some abstracted accessors.
+(defmacro addrinfo-ai-addr (pt)
+  "A wrapper around addrinfo's ai-addr accessor (there is one for windows that
+   uses evutil_addrinfo, and one for linux that uses addrinfo)."
+  #+(or :windows :bsd :freebsd :darwin) `(le-a:evutil-addrinfo-ai-addr ,pt)
+  #-(or :windows :bsd :freebsd :darwin) `(le-a:addrinfo-ai-addr ,pt))
+
+(defmacro sockaddr-in-sin-family (obj)
+  "Wrapper around getting/setting sockaddr_in->sin_family"
+  #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-family ,obj)
+  #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-family ,obj))
+
+(defmacro sockaddr-in-sin-port (obj)
+  "Wrapper around getting/setting sockaddr_in->sin_port"
+  #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-port ,obj)
+  #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-port ,obj))
+
+(defmacro sockaddr-in-sin-addr (obj)
+  "Wrapper around getting/setting sockaddr_in->sin_addr"
+  #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-addr ,obj)
+  #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-addr ,obj))
+
 (defun ip-str-to-sockaddr (address port)
   "Convert a string IP address and port into a sockaddr-in struct. Must be freed
    by the app!"
@@ -299,9 +326,9 @@
      (let ((sockaddr (cffi:foreign-alloc (le::cffi-type le::sockaddr-in))))
        ;; fill it full of holes.
        (cffi:foreign-funcall "memset" :pointer sockaddr :unsigned-char 0 :unsigned-char +sockaddr-size+)
-       (setf (le-a:sockaddr-in-sin-family sockaddr) +af-inet+
-             (le-a:sockaddr-in-sin-port sockaddr) (cffi:foreign-funcall "htons" :int port :unsigned-short)
-             (le-a:sockaddr-in-sin-addr sockaddr) (if address
+       (setf (sockaddr-in-sin-family sockaddr) +af-inet+
+             (sockaddr-in-sin-port sockaddr) (cffi:foreign-funcall "htons" :int port :unsigned-short)
+             (sockaddr-in-sin-addr sockaddr) (if address
                                                       (cffi:foreign-funcall "inet_addr" :string address :unsigned-long)
                                                       (cffi:foreign-funcall "htonl" :unsigned-long 0 :unsigned-long)))
        (values sockaddr +sockaddr-size+)))
@@ -325,19 +352,4 @@
      (unwind-protect
        (progn ,@body)
        (cffi:foreign-free ,bind))))
-
-(defparameter *addrinfo*
-  #+(or :windows :bsd :freebsd :darwin)
-    (le::cffi-type le::evutil-addrinfo)
-  #-(or :windows :bsd :freebsd :darwin)
-    (le::cffi-type le::addrinfo)
-  "Determines the correct type of addrinfo for the current platform.")
-
-(defmacro addrinfo-ai-addr (pt)
-  "A wrapper around addrinfo's ai-addr accessor (there is one for windows that
-   uses evutil_addrinfo, and one for linux that uses addrinfo)."
-  #+(or :windows :bsd :freebsd :darwin)
-    `(le-a:evutil-addrinfo-ai-addr ,pt)
-  #-(or :windows :bsd :freebsd :darwin)
-    `(le-a:addrinfo-ai-addr ,pt))
 
