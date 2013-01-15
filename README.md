@@ -47,7 +47,6 @@ There is a fairly complete suite of tests in the `cl-async-test` package:
 
 ```common-lisp
 (ql:quickload :cl-async-test)
-
 (cl-async-test:run-tests)
 ```
 

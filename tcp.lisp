@@ -372,6 +372,9 @@
                                         :socket socket
                                         :stream stream))
 
+      ;; make sure socket is non-blocking
+      (le:evutil-make-socket-nonblocking (le:bufferevent-getfd bev))
+      
       ;; track the connection. will be decf'ed when close-socket is called
       (incf *incoming-connection-count*)
 
