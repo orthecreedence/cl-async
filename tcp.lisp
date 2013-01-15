@@ -526,6 +526,7 @@
                 (cffi:null-pointer-p listener))
         (free-pointer-data data-pointer)
         (error (make-instance 'tcp-server-bind-error :addr bind-address :port port)))
+      ;; make sure the server is closed/freed on exit
       (add-event-loop-exit-callback (lambda ()
                                       (close-tcp-server server-class)
                                       (free-pointer-data data-pointer)))
