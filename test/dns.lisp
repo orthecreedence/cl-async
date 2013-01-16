@@ -16,7 +16,7 @@
         "127.0.0.1")))
 
 (test dns-multi
-  "Test multiple DNS requeests"
+  "Test multiple DNS requests"
   (multiple-value-bind (dns1 dns2)
       (async-let ((addr1 nil)
                   (addr2 nil))
@@ -49,7 +49,7 @@
     (is (cl-async-util::ipv4-address-p ipv4))))
 
 (test dns-lookup-ipv6
-  "Test IPV6 family: can fail in *nix"
+  "Test IPV6 family (can fail in *nix)"
   (multiple-value-bind (ipv6)
       (handler-case
         (async-let ((ipv6 nil))
@@ -61,7 +61,7 @@
             (lambda (ev)
               (error ev))
             :family as:+af-inet6+))
-        (t (e) (as:event-errmsg e)))
+        (t (e) (format nil "(~a) ~a" (as:event-errcode e) (as:event-errmsg e))))
     (is (cl-async-util::ipv6-address-p ipv6))))
 
 (test dns-fail

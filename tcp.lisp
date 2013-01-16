@@ -476,7 +476,7 @@
         ;; get a DNS base and do an async lookup
         (let ((dns-base (get-dns-base)))
           (attach-data-to-pointer data-pointer dns-base)
-          (le:bufferevent-socket-connect-hostname bev dns-base le:+af-unspec+ host port))))
+          (le:bufferevent-socket-connect-hostname bev dns-base *default-lookup-type* host port))))
   socket/stream)
 
 (defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))

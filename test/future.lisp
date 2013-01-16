@@ -75,9 +75,10 @@
                   (y (future-gen (+ 2 x))))
             (setf val-x x
                   val-y y)))
-      (is (<= .39 (/ (- (get-internal-real-time) time-start) internal-time-units-per-second) .41))
-      (is (= val-x 5))
-      (is (= val-y 7)))))
+      (let ((alet*-run-time (/ (- (get-internal-real-time) time-start) internal-time-units-per-second)))
+        (is (<= .38 alet*-run-time .42))
+        (is (= val-x 5))
+        (is (= val-y 7))))))
 
 (test future-multiple-future-bind
   "Test multiple-future-bind macro"

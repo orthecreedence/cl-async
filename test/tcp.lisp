@@ -15,32 +15,25 @@
 
         (as:tcp-server nil 31388
           (lambda (sock data)
-            (format t "got client data~%")
             (incf server-reqs)
             (setf server-data (concat server-data (babel:octets-to-string data)))
             (as:write-socket-data sock "thxlol "))
-          (lambda (ev)
-            (format t "server ev: ~a~%" ev))
+          nil
           :connect-cb (lambda (sock)
                         (declare (ignore sock))
-                        (format t "got connection.~%")
                         (incf connect-num)))
 
         (dolist (addr '("127.0.0.1" "localhost"))
           ;; split request "hai " up between tcp-connect and write-socket-data
-          (format t "starting client: ~a~%" addr)
           (let ((sock (as:tcp-connect addr 31388
                         (lambda (sock data)
-                          (format t "got server reply~%")
                           (incf client-replies)
                           (unless (as:socket-closed-p sock)
                             (as:close-socket sock))
                           (setf client-data (concat client-data (babel:octets-to-string data))))
                         (lambda (ev)
-                          (format t "client ev: ~a~%" ev)
                           (error ev))
                         :data "ha")))
-            (format t "writing client data~%")
             (as:write-socket-data sock "i ")))
 
         (as:delay (lambda () (as:exit-event-loop))

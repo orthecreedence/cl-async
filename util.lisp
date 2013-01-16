@@ -8,6 +8,7 @@
            #:+af-inet6+
            #:+af-unspec+
            #:+af-unix+
+           #:*default-lookup-type*
 
            #:+sockaddr-size+
            #:+sockaddr6-size+
@@ -79,6 +80,12 @@
 (defconstant +af-inet6+ le:+af-inet-6+)
 (defconstant +af-unspec+ le:+af-unspec+)
 (defconstant +af-unix+ le:+af-unix+)
+
+(defvar *default-lookup-type*
+  (progn
+    #+(or :bsd :freebsd :darwin) +af-inet+
+    #-(or :bsd :freebsd :darwin) +af-unspec+)
+  "Holds the best default lookup type for a given platform.")
 
 ;; define some cached values to save CFFI calls. believe it or not, this does
 ;; make a performance difference
@@ -335,7 +342,7 @@
      (let ((sockaddr (cffi:foreign-alloc (le::cffi-type le::sockaddr-in))))
        ;; fill it full of holes.
        (cffi:foreign-funcall "memset" :pointer sockaddr :unsigned-char 0 :unsigned-char +sockaddr-size+)
-       (setf (sockaddr-in-sin-family sockaddr) +af-inet+
+       (setf (sockaddr-in-sin-family sockaddr) *default-lookup-type*
              (sockaddr-in-sin-port sockaddr) (cffi:foreign-funcall "htons" :int port :unsigned-short)
              (sockaddr-in-sin-addr sockaddr) (if address
                                                       (cffi:foreign-funcall "inet_addr" :string address :unsigned-long)

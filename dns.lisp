@@ -118,7 +118,7 @@
   (free-pointer-data :dns-callbacks :preserve-pointer t)
   (le:evdns-set-log-fn (cffi:null-pointer)))
 
-(defun dns-lookup (host resolve-cb event-cb &key (family +af-unspec+))
+(defun dns-lookup (host resolve-cb event-cb &key (family *default-lookup-type*))
   "Asynchronously lookup a DNS address. Note that if an IP address is passed,
    the lookup happens synchronously. If a lookup is synchronous (and instant)
    this returns T, otherwise nil (lookup happening in background). Either way
