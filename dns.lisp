@@ -4,6 +4,37 @@
   (:report (lambda (c s) (format s "DNS error: ~a, ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
 
+(defvar *windows-local-hosts* nil
+  "Holds all hosts entries from the Windows hosts file.")
+
+(defparameter *scanner-parse-hosts-entries*
+  (cl-ppcre:create-scanner "[ \\s\\t\\r\\n]+" :case-insensitive-mode t)
+  "A regex for matching hosts entries in a windows hosts file.")
+
+(let ((str ""))
+  (cl-ppcre:split *scanner-parse-hosts-entries* str))
+
+(defun populate-windows-local-hosts (&key force)
+  "Grab and store all entries from the windows hosts file. If we already have
+   the data, skip (unless :force t is passed)."
+  (when (or (null *windows-local-hosts*) force)
+    (setf *windows-local-hosts* (make-hash-table :test #'equal))
+    ;; TODO find a way to get windows dir from %WINDOWS% instead of using a
+    ;; hardcoded path. Mayb there's a way to read ENV vars?
+    (let ((hostsfile "c:/windows/system32/drivers/etc/hosts"))
+      (when (probe-file hostsfile)
+        (with-open-file (s hostsfile :direction :input)
+          (loop for line = (read-line s nil :eof)
+                until (eq line :eof) do
+            (unless (member (aref line 0)
+                            '(#\# #\return #\newline #\space #\tab))
+              (let* ((entries (cl-ppcre:split *scanner-parse-hosts-entries* line))
+                     (ip (car entries)))
+                (when ip
+                  (dolist (host (cdr entries))
+                    (setf (gethash host *windows-local-hosts*) ip))))))))))
+  *windows-local-hosts*)
+
 (defun get-dns-base ()
   "Grabs the current DNS base (or instantiates if it doesn't exist) and also
    tracks how many open DNS base queries there are."
@@ -14,6 +45,7 @@
                (if dns-windows
                    ;; we're on windows, so load entries from registry
                    (progn
+                     (populate-windows-local-hosts)
                      (le:evdns-base-search-clear dns-base)
                      (cffi:foreign-funcall-pointer dns-windows () :pointer dns-base :int))
                    ;; on *nix, so load from resolv.conf (if available)
@@ -126,15 +158,25 @@
    async)."
   (check-event-loop-running)
   (assert (member family (list +af-inet+ +af-inet6+ +af-unspec+)))
-  (let ((data-pointer (create-data-pointer))
-        (dns-base (get-dns-base)))
-    (make-foreign-type (hints *addrinfo* :initial #x0 :type-size +addrinfo-size+)
-                       (('le::ai-family family)  ;; only want ipv4 for now
-                        ('le::ai-flags le:+evutil-ai-canonname+)
-                        ('le::ai-socktype le:+sock-stream+)
-                        ('le::ai-protocol le:+ipproto-tcp+))
-      (save-callbacks data-pointer (list :resolve-cb resolve-cb :event-cb event-cb))
-      (attach-data-to-pointer data-pointer dns-base)
-      (let ((dns-req (le:evdns-getaddrinfo dns-base host (cffi:null-pointer) hints (cffi:callback dns-cb) data-pointer)))
-        (cffi:null-pointer-p dns-req)))))
+  (let ((local-entry (when (hash-table-p *windows-local-hosts*)
+                       (gethash host *windows-local-hosts*))))
+    (if (and local-entry
+             (cond ((= family +af-inet+) (ipv4-address-p local-entry))
+                   ((= family +af-inet6+) (ipv6-address-p local-entry))
+                   (t t)))
+        ;; AHHHHHAHAHAHA!!!!!!!!!! windows local host: fire callback directly
+        (funcall resolve-cb local-entry family)
+
+        ;; do a real lookup
+        (let ((data-pointer (create-data-pointer))
+              (dns-base (get-dns-base)))
+          (make-foreign-type (hints *addrinfo* :initial #x0 :type-size +addrinfo-size+)
+                             (('le::ai-family family)  ;; only want ipv4 for now
+                              ('le::ai-flags le:+evutil-ai-canonname+)
+                              ('le::ai-socktype le:+sock-stream+)
+                              ('le::ai-protocol le:+ipproto-tcp+))
+            (save-callbacks data-pointer (list :resolve-cb resolve-cb :event-cb event-cb))
+            (attach-data-to-pointer data-pointer dns-base)
+            (let ((dns-req (le:evdns-getaddrinfo dns-base host (cffi:null-pointer) hints (cffi:callback dns-cb) data-pointer)))
+              (cffi:null-pointer-p dns-req)))))))
 
