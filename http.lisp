@@ -81,6 +81,10 @@
    (closed :accessor http-server-closed :initarg :closed :initform nil))
   (:documentation "Wraps around a libevent HTTP listener."))
 
+;; NOTE: vestigial and unused by cl-async anymore.
+(defparameter *outgoing-http-count* 0)
+(defparameter *incoming-http-count* 0)
+
 (defun free-http-server (http-server)
   "Frees an HTTP server (once)."
   (let ((evhttp (http-server-c http-server)))
