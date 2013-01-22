@@ -25,7 +25,7 @@
    this to work."
   (check-event-loop-running)
   (let* ((data-pointer (create-data-pointer))
-         (ev (le:event-new *event-base*
+         (ev (le:event-new (event-base-c *event-base*)
                            fd
                            ;; listen to read/timeout events, and keep listening
                            (logior

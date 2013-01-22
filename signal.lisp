@@ -39,7 +39,7 @@
 
 (defun free-signal-handler (signo)
   "Clear a signal handler and unbind it."
-  (when (find signo *signal-handlers*)
+  (when (find signo (event-base-signal-handlers *event-base*))
     (let* ((signo-sym (signal-sym signo))
            (data-pointer (deref-data-from-pointer signo-sym))
            (sig-data (deref-data-from-pointer data-pointer))
@@ -49,13 +49,13 @@
       (cffi:foreign-funcall "signal" :int signo :pointer original-lisp-signal-handler :pointer)
       (free-pointer-data signo-sym)
       (free-pointer-data data-pointer))
-    (setf *signal-handlers* (remove signo *signal-handlers*))))
+    (setf (event-base-signal-handlers *event-base*) (remove signo (event-base-signal-handlers *event-base*)))))
 
 (defun clear-signal-handlers ()
   "Clear all bound signal handlers. Great for cleaning up when exiting an app."
-  (dolist (signo (copy-list *signal-handlers*))
+  (dolist (signo (copy-list (event-base-signal-handlers *event-base*)))
     (free-signal-handler signo))
-  (setf *signal-handlers* nil))
+  (setf (event-base-signal-handlers *event-base*) nil))
 
 (cffi:defcallback lisp-signal-cb :void ((signo :int))
   "Generic callback for lisp signal handling."
@@ -90,7 +90,7 @@
   ;; lose the original lisp signal handler when we overwrite it.
   (free-signal-handler signo)
   (let* ((data-pointer (create-data-pointer))
-         (ev (le:event-new *event-base* signo (logior le:+ev-signal+ le:+ev-persist+) (cffi:callback signal-cb) data-pointer))
+         (ev (le:event-new (event-base-c *event-base*) signo (logior le:+ev-signal+ le:+ev-persist+) (cffi:callback signal-cb) data-pointer))
          (lisp-signal-handler (set-lisp-signal-handler signo (lambda () (le:event-active ev))))
          (signo-sym (signal-sym signo)))
     (le:event-add ev (cffi:null-pointer))
@@ -99,6 +99,6 @@
     ;; make sure we can find the event/original handler from just the signo
     (attach-data-to-pointer signo-sym data-pointer)
     ;; add this signal to the list of active signals
-    (push signo *signal-handlers*)
+    (push signo (event-base-signal-handlers *event-base*))
     (add-event-loop-exit-callback (lambda () (free-signal-handler signo)))))
 

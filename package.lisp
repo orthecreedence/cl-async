@@ -1,5 +1,5 @@
 (defpackage :cl-async-future
-  (:use :cl :cl-async-util)
+  (:use :cl :cl-async-base :cl-async-util)
   (:nicknames :asf)
   (:export #:future
            #:make-future
@@ -15,21 +15,20 @@
            #:future-handler-case))
 
 (defpackage :cl-async
-  (:use :cl :cl-async-util :trivial-gray-streams)
+  (:use :cl :cl-async-base :cl-async-util :trivial-gray-streams)
   (:nicknames :as)
   (:export #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
            #:+af-unix+
 
-           #:*catch-application-errors*
-           #:*default-event-handler*
            ;; common conditions/accessors
            #:event-info
            #:event-error
            #:event-errcode
            #:event-errmsg
            ;; common functions
+           #:check-event-loop-running
            #:stats
            #:dump-event-loop-status
            #:add-event-loop-exit-callback

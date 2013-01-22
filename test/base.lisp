@@ -49,7 +49,7 @@
   "Test that functions assigned to be called when event loop exits are run"
   (multiple-value-bind (yes-ran)
       (async-let ((yes-ran nil))
-        (add-event-loop-exit-callback
+        (cl-async::add-event-loop-exit-callback
           (lambda ()
             (setf yes-ran :omglolwtf)))
         (as:delay (lambda () nil) :time .2))

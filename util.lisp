@@ -3,7 +3,7 @@
 ;;; only.
 
 (defpackage :cl-async-util
-  (:use :cl)
+  (:use :cl :cl-async-base)
   (:export #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
@@ -15,23 +15,6 @@
            #:+addrinfo-size+
            #:+timeval-size+
            #:+bev-opt-close-on-free+
-
-           #:*event-base*
-           #:*event-base-id*
-           #:*fn-registry*
-           #:*data-registry*
-           #:*event-loop-end-functions*
-           #:*dns-base*
-           #:*dns-ref-count*
-
-           #:*buffer-size*
-           #:*socket-buffer-c*
-           #:*socket-buffer-lisp*
-
-           #:*incoming-connection-count*
-           #:*outgoing-connection-count*
-           #:*incoming-http-count*
-           #:*outgoing-http-count*
 
            #:catch-app-errors
            #:run-event-cb
@@ -53,10 +36,6 @@
 
            #:append-array
 
-           #:add-event-loop-exit-callback
-           #:process-event-loop-exit-callbacks
-           #:check-event-loop-running
-
            #:*ipv4-scanner*
            #:*ipv6-scanner*
 
@@ -68,13 +47,6 @@
            #:*addrinfo*
            #:addrinfo-ai-addr))
 (in-package :cl-async-util)
-
-;; kind of a hack, need to define this so the `catch-app-errors` macro will
-;; compile. annoying that i have to do this, but w/e it works.
-(defpackage :cl-async
-  (:use :cl)
-  (:export #:*catch-application-errors*
-           #:*default-event-handler*))
 
 (defconstant +af-inet+ le:+af-inet+)
 (defconstant +af-inet6+ le:+af-inet-6+)
@@ -95,41 +67,6 @@
 (defconstant +timeval-size+ (cffi:foreign-type-size (le::cffi-type le::timeval)))
 (defconstant +bev-opt-close-on-free+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+))
 
-(defvar *event-base* nil
-  "THE event base (libevent) used to process all async operations.")
-(defvar *event-base-id* 0
-  "The numeric identifier assigned to each new event base.")
-(defvar *fn-registry* nil
-  "Function registry, allows the CFFI callbacks to run anonymous functions.")
-(defvar *data-registry* nil
-  "Data registry, gives CFFI callbacks access to anonymous data.")
-(defvar *event-loop-end-functions* nil
-  "Functions to call when the event loop closes")
-
-(defvar *dns-base* nil
-  "Holds the evdns-base object used for DNS lookups. One per event loop should
-   suffice.")
-
-(defvar *dns-ref-count* 0
-  "Counts how many open DNS queries there are, and allows freeing the DNS base
-   once there are no more references.")
-
-(defparameter *buffer-size* 16384
-  "The amount of data we'll pull from the evbuffers when doing reading/writing.")
-(defvar *socket-buffer-c* nil
-  "A pointer to the buffer in C land that reads from sockets.")
-(defvar *socket-buffer-lisp* nil
-  "An array in lisp land that holds data copied from a socket.")
-
-(defvar *incoming-connection-count* 0
-  "Number of incoming TCP connections.")
-(defvar *outgoing-connection-count* 0
-  "Number of outgoing TCP connections.")
-(defvar *incoming-http-count* 0
-  "Number of incoming HTTP connections.")
-(defvar *outgoing-http-count* 0
-  "Number of outgoing HTTP connections.")
-
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
    otherwise just runs the body with no error/event handling.
@@ -140,10 +77,10 @@
     ;; define a binding for tracking already-fired errors. run-event-cb will
     ;; use this binding
     `(let ((_evcb-err nil))
-       (if cl-async:*catch-application-errors*
+       (if (event-base-catch-app-errors *event-base*)
            (let ((,evcb (if (functionp ,event-cb)
                             ,event-cb
-                            cl-async:*default-event-handler*)))
+                            (event-base-default-event-handler *event-base*))))
              (handler-case
                (progn ,@body)
                (t (err)
@@ -196,38 +133,38 @@
 
 (defun save-callbacks (pointer callbacks)
   "Save a set of callbacks, keyed by the given pointer."
-  (unless *fn-registry*
-    (setf *fn-registry* (make-hash-table :test #'eql)))
+  (unless (event-base-function-registry *event-base*)
+    (setf (event-base-function-registry *event-base*) (make-hash-table :test #'eql)))
   (let ((callbacks (if (listp callbacks)
                        callbacks
                        (list callbacks))))
-    (setf (gethash (make-pointer-eql-able pointer) *fn-registry*) callbacks)))
+    (setf (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)) callbacks)))
 
 (defun get-callbacks (pointer)
   "Get all callbacks for the given pointer."
-  (when *fn-registry*
-    (gethash (make-pointer-eql-able pointer) *fn-registry*)))
+  (when (event-base-function-registry *event-base*)
+    (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*))))
 
 (defun clear-callbacks (pointer)
   "Clear out all callbacks for the given pointer."
-  (when *fn-registry*
-    (remhash (make-pointer-eql-able pointer) *fn-registry*)))
+  (when (event-base-function-registry *event-base*)
+    (remhash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*))))
 
 (defun attach-data-to-pointer (pointer data)
   "Attach a lisp object to a foreign pointer."
-  (unless *data-registry*
-    (setf *data-registry* (make-hash-table :test #'eql)))
-  (setf (gethash (make-pointer-eql-able pointer) *data-registry*) data))
+  (unless (event-base-data-registry *event-base*)
+    (setf (event-base-data-registry *event-base*) (make-hash-table :test #'eql)))
+  (setf (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)) data))
 
 (defun deref-data-from-pointer (pointer)
   "Grab data attached to a CFFI pointer."
-  (when (and pointer *data-registry*)
-    (gethash (make-pointer-eql-able pointer) *data-registry*)))
+  (when (and pointer (event-base-data-registry *event-base*))
+    (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*))))
 
 (defun clear-pointer-data (pointer)
   "Clear the data attached to a CFFI pointer."
-  (when (and pointer *data-registry*)
-    (remhash (make-pointer-eql-able pointer) *data-registry*)))
+  (when (and pointer (event-base-data-registry *event-base*))
+    (remhash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*))))
 
 (defun free-pointer-data (pointer &key preserve-pointer)
   "Clears out all data attached to a foreign pointer, and frees the pointer
@@ -267,20 +204,6 @@
       (replace arr arr2 :start1 arr1-length)
       arr)))
       
-(defun add-event-loop-exit-callback (fn)
-  "Add a function to be run when the event loop exits."
-  (push fn *event-loop-end-functions*))
-
-(defun process-event-loop-exit-callbacks ()
-  "run and clear out all event loop exit functions."
-  (dolist (fn *event-loop-end-functions*)
-    (funcall fn))
-  (setf *event-loop-end-functions* nil))
-
-(defun check-event-loop-running ()
-  (unless *event-base*
-    (error "Event loop not running. Start with function start-event-loop.")))
-
 (defparameter *ipv4-scanner*
   (cl-ppcre:create-scanner
     "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{2}|[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{2}|[0-9])$"

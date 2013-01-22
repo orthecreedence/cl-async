@@ -95,8 +95,8 @@
          (bev-data-pointer (getf bev-data :data-pointer)))
     (le:bufferevent-disable bev (logior le:+ev-read+ le:+ev-write+))
     (if (eq (socket-direction socket) 'in)
-        (decf *incoming-connection-count*)
-        (decf *outgoing-connection-count*))
+        (decf (event-base-num-connections-in *event-base*))
+        (decf (event-base-num-connections-out *event-base*)))
     (le:bufferevent-free bev)
     (setf (socket-closed socket) t)
     (free-pointer-data bev-data-pointer)
@@ -376,7 +376,7 @@
       (le:evutil-make-socket-nonblocking (le:bufferevent-getfd bev))
       
       ;; track the connection. will be decf'ed when close-socket is called
-      (incf *incoming-connection-count*)
+      (incf (event-base-num-connections-in *event-base*))
 
       ;; if we have a connect-cb, call it
       (when connect-cb
@@ -422,7 +422,7 @@
 
   (let* ((data-pointer (create-data-pointer))
          (fd (or fd -1))
-         (bev (le:bufferevent-socket-new *event-base* fd +bev-opt-close-on-free+))
+         (bev (le:bufferevent-socket-new (event-base-c *event-base*) fd +bev-opt-close-on-free+))
          ;; assume dont-drain-read-buffer if unspecified and requesting a stream
          (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
                                      t
@@ -466,7 +466,7 @@
          (bev (socket-c socket))
          (data-pointer (getf (deref-data-from-pointer bev) :data-pointer)))
     ;; track the connection
-    (incf *outgoing-connection-count*)
+    (incf (event-base-num-connections-out *event-base*))
     ;; only connect if we didn't get an existing fd passed in
     (if (ip-address-p host)
         ;; got an IP so just connect directly
@@ -512,7 +512,7 @@
   (check-event-loop-running)
   (with-ip-to-sockaddr ((sockaddr sockaddr-size) bind-address port)
     (let* ((data-pointer (create-data-pointer))
-           (listener (le:evconnlistener-new-bind *event-base*
+           (listener (le:evconnlistener-new-bind (event-base-c *event-base*)
                                                   (cffi:callback tcp-accept-cb)
                                                   data-pointer
                                                   (logior le:+lev-opt-reuseable+ le:+lev-opt-close-on-free+)

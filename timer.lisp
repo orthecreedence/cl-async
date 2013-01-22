@@ -24,7 +24,7 @@
   ;; instead of a timer event. should save some processing time
   (check-event-loop-running)
   (let* ((data-pointer (create-data-pointer))
-         (ev (le:event-new *event-base* -1 0 (cffi:callback timer-cb) data-pointer)))
+         (ev (le:event-new (event-base-c *event-base*) -1 0 (cffi:callback timer-cb) data-pointer)))
     (save-callbacks data-pointer (list :callback callback :event-cb event-cb))
     (attach-data-to-pointer data-pointer ev)
     (if (numberp time)

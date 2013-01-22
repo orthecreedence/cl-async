@@ -322,7 +322,7 @@
          (dns-base (if (ip-address-p host)
                        (cffi:null-pointer)
                        (get-dns-base)))
-         (connection (le:evhttp-connection-base-new *event-base*
+         (connection (le:evhttp-connection-base-new (event-base-c *event-base*)
                                                     dns-base
                                                     host
                                                     port))
@@ -354,7 +354,7 @@
    around the HTTP server that allows the app to close it via close-http-server."
   (check-event-loop-running)
   (let* ((data-pointer (create-data-pointer))
-         (http-base (le:evhttp-new *event-base*))
+         (http-base (le:evhttp-new (event-base-c *event-base*)))
          (server-class (make-instance 'http-server :c http-base)))
     (when (eq http-base 0)
       (error "Error creating HTTP listener"))

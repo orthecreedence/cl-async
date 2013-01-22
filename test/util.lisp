@@ -1,5 +1,5 @@
 (defpackage :cl-async-test
-  (:use :cl :eos :cl-async-util :cl-async-future)
+  (:use :cl :eos :cl-async-base :cl-async-util :cl-async-future)
   (:export #:run-tests))
 (in-package :cl-async-test)
 
@@ -19,8 +19,8 @@
   "Make sure a test times out after the given num seconds. An event loop can't
    do this itself without skewing results. Uses event base IDs to make sure it
    doesn't cancel an event loop that test-timeout wasn't called inside of."
-  (let ((event-base cl-async-util::*event-base*)
-        (base-id cl-async-util::*event-base-id*))
+  (let ((event-base (event-base-c *event-base*))
+        (base-id (event-base-id *event-base*)))
     (let ((cancel nil))
       ;; if the event loop exits naturally, cancel the break
       (as:add-event-loop-exit-callback
@@ -29,7 +29,8 @@
       (handler-case
         (bt:make-thread (lambda ()
                          (sleep seconds)
-                         (when (and (eql cl-async-util::*event-base-id* base-id)
+                         (when (and *event-base*
+                                    (eql (event-base-id *event-base*) base-id)
                                     (not cancel))
                            (le:event-base-loopexit event-base (cffi:null-pointer)))))
         (bt::bordeaux-mp-condition ()
@@ -123,23 +124,29 @@
 
 (test pointer-callbacks
   "Test that pointer callbacks are assigned and also cleared correctly"
-  (let ((fn (lambda (x) (1+ x)))
-        (fn-size (if *fn-registry* (hash-table-count *fn-registry*) 0))
-        (data-pointer (create-data-pointer)))
+  (let* ((*event-base* (make-instance 'event-base))
+         (fn (lambda (x) (1+ x)))
+         (fn-size (if (event-base-function-registry *event-base*)
+                      (hash-table-count (event-base-function-registry *event-base*))
+                      0))
+         (data-pointer (create-data-pointer)))
     (save-callbacks data-pointer (list :test fn))
     (is (= (funcall (getf (get-callbacks data-pointer) :test) 6) 7))
     (free-pointer-data data-pointer)
     (is (null (get-callbacks data-pointer)))
-    (is (= fn-size (hash-table-count *fn-registry*)))))
+    (is (= fn-size (hash-table-count (event-base-function-registry *event-base*))))))
 
 (test pointer-data
   "Test that pointer data is assigned and also cleared correctly"
-  (let ((my-data (make-hash-table :size 5))
-        (data-size (if *data-registry* (hash-table-count *data-registry*) 0))
-        (data-pointer (create-data-pointer)))
+  (let* ((*event-base* (make-instance 'event-base))
+         (my-data (make-hash-table :size 5))
+         (data-size (if (event-base-data-registry *event-base*)
+                        (hash-table-count (event-base-data-registry *event-base*))
+                        0))
+         (data-pointer (create-data-pointer)))
     (attach-data-to-pointer data-pointer my-data)
     (is (equal my-data (deref-data-from-pointer data-pointer)))
     (free-pointer-data data-pointer)
     (is (null (deref-data-from-pointer data-pointer)))
-    (is (= data-size (hash-table-count *data-registry*)))))
+    (is (= data-size (hash-table-count (event-base-data-registry *event-base*))))))
 

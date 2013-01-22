@@ -38,9 +38,9 @@
 (defun get-dns-base ()
   "Grabs the current DNS base (or instantiates if it doesn't exist) and also
    tracks how many open DNS base queries there are."
-  (prog1 (if *dns-base*
-             *dns-base*
-             (let ((dns-base (le:evdns-base-new *event-base* 1))
+  (prog1 (if (event-base-dns-base *event-base*)
+             (event-base-dns-base *event-base*)
+             (let ((dns-base (le:evdns-base-new (event-base-c *event-base*) 1))
                    (dns-windows (cffi:foreign-symbol-pointer "evdns_base_config_windows_nameservers")))
                (if dns-windows
                    ;; we're on windows, so load entries from registry
@@ -54,9 +54,9 @@
                        dns-base
                        le:+dns-options-all+
                        "/etc/resolv.conf")))
-               (setf *dns-ref-count* 0
-                     *dns-base* dns-base)))
-    (incf *dns-ref-count*)))
+               (setf (event-base-dns-ref-count *event-base*) 0
+                     (event-base-dns-base *event-base*) dns-base)))
+    (incf (event-base-dns-ref-count *event-base*))))
 
 (defun free-dns-base (dns-base)
   "Free a dns base."
@@ -68,11 +68,11 @@
 (defun release-dns-base ()
   "Decrements the DNS base reference counter. If there are no more references,
    frees the DNS base."
-  (decf *dns-ref-count*)
-  (when (<= *dns-ref-count* 0)
-    (free-dns-base *dns-base*)
-    (setf *dns-ref-count* 0)
-    (setf *dns-base* nil)))
+  (decf (event-base-dns-ref-count *event-base*))
+  (when (<= (event-base-dns-ref-count *event-base*) 0)
+    (free-dns-base (event-base-dns-base *event-base*))
+    (setf (event-base-dns-ref-count *event-base*) 0)
+    (setf (event-base-dns-base *event-base*) nil)))
 
 (cffi:defcallback dns-log-cb :void ((is-warning :int) (msg :string))
   "Callback for DNS logging."

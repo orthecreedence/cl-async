@@ -1,5 +1,5 @@
 (defpackage :cl-async-ssl
-  (:use :cl :cl-async :cl-async-util)
+  (:use :cl :cl-async-base :cl-async :cl-async-util)
   (:nicknames :as-ssl)
   (:export #:ssl-socket
            #:tcp-ssl-server
@@ -155,7 +155,7 @@
          (ssl-ctx (or ssl-ctx cl+ssl::*ssl-global-context*))
          (client-ctx (init-ssl-client-context ssl-ctx))
          (fd (or fd -1))
-         (bev (le-ssl:bufferevent-openssl-socket-new *event-base* fd client-ctx (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting) +bev-opt-close-on-free+))
+         (bev (le-ssl:bufferevent-openssl-socket-new (event-base-c *event-base*) fd client-ctx (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting) +bev-opt-close-on-free+))
 
          ;; assume dont-drain-read-buffer if unspecified and requesting a stream
          (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
@@ -244,7 +244,7 @@
     ;; tcp-connect created.
     (let* ((state (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting))
            (ssl-bev (le-ssl:bufferevent-openssl-filter-new
-                      *event-base*
+                      (event-base-c *event-base*)
                       bufferevent-orig  ; pass in the original bev
                       ssl-ctx
                       state
