@@ -33,6 +33,58 @@ server, it immediately echos that data back to the connecting client. This goes
 on ad infinitum until the server recieves a SIGINT signal, then it forcibly
 exits the event loop.
 
+<a id="dns-lookups"></a>
+### Simple multi-dns lookup example
+Let's make a bunch of DNS queries in parallel and return the result once they're
+finished.
+
+{% highlight cl %}
+(defpackage :dns-multi
+  (:use :cl :cl-async-future))
+(in-package :dns-multi)
+
+(defun get-all-dns (host-list)
+  "Lookup IP addresses for all the hosts in the given list. Returns a future
+   that's finished with the entries once they all finish (lookup happens in
+   parallel)."
+  (let* ((future (make-future))
+         (result nil)
+         (finished-count 0)
+         (finish-fn (lambda (addr fam)
+                      (push (list :address addr :family fam) result)
+                      (incf finished-count)
+                      (when (<= (length host-list) finished-count)
+                        (finish future result)))))
+    (dolist (host host-list)
+      (as:dns-lookup host
+        finish-fn
+        (lambda (ev)
+          (signal-error future ev)
+          (incf finished-count)
+          (when (<= (length host-list) finished-count)
+            (finish future result)))))
+    future))
+
+(defun do-lookup ()
+  (alet ((result (get-all-dns '("www.google.com"
+                                "musio.com"
+                                "thievesco.com"
+                                "yahoo.com"
+                                "msg.com"
+                                "cnn.com"))))
+    (format t "Result: ~s~%" result)))
+
+(as:start-event-loop #'do-lookup :catch-app-errors t)
+{% endhighlight %}
+
+So we create a [cl-async future](/cl-async/future), run all of our DNS queries
+in parallel (making sure to count them as finished when they succeed/fail), and
+once they have all finished, we finish the returned future with the end result.
+
+The app can then bind to the result (using any of the [future macros](/cl-async/future#nicer-syntax))
+and display the result. Notice how quickly it returns because the lookups are
+happening all at the same time.
+
 <a id="future-example"></a>
 ### Using futures (a simple driver example)
 For this example, make sure the `cl-async-future` package is loaded (and `:use`
