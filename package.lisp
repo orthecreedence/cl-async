@@ -28,7 +28,6 @@
            #:event-errcode
            #:event-errmsg
            ;; common functions
-           #:check-event-loop-running
            #:stats
            #:dump-event-loop-status
            #:add-event-loop-exit-callback
