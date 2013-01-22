@@ -10,6 +10,7 @@
            #:tcp-ssl-connect
            #:tcp-ssl-server)
   (:import-from :cl-async
+                #:check-event-loop-running
                 #:socket-drain-read-buffer
                 #:write-to-evbuffer
                 #:tcp-read-cb
