@@ -87,11 +87,14 @@ happening all at the same time.
 
 <a id="future-example"></a>
 ### Using futures (a simple driver example)
-For this example, make sure the `cl-async-future` package is loaded (and `:use`
-it). We're going to create a simple client for an imaginary HTTP server that
-returns information on a user.
+We're going to create a simple client for an imaginary HTTP server that returns
+information on a user.
 
 {% highlight cl %}
+(defpackage :driver-test
+  (:use :cl :cl-async-future))
+(in-package :driver-test)
+
 (define-condition server-error (error)
   ((status :initarg :code :accessor server-error-status :initform nil)))
 
