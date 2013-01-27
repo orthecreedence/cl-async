@@ -78,9 +78,13 @@
     ;; use this binding
     `(let ((_evcb-err nil))
        (if (event-base-catch-app-errors *event-base*)
-           (let ((,evcb (if (functionp ,event-cb)
-                            ,event-cb
-                            (event-base-default-event-handler *event-base*))))
+           (let* ((,evcb (if (symbolp ,event-cb)
+                             (handler-case (symbol-function ,event-cb)
+                               (undefined-function () nil))
+                             ,event-cb))
+                  (,evcb (if (functionp ,evcb)
+                             ,evcb
+                             (event-base-default-event-handler *event-base*))))
              (handler-case
                (progn ,@body)
                (t (err)
