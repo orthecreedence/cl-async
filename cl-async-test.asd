@@ -18,5 +18,6 @@
                  ;(:file "http")
                  (:file "signal")
                  (:file "future")
+				 (:file "benchmarks")
                  (:file "run")))))
 
