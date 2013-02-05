@@ -36,10 +36,10 @@ Quick links:
 
 ### Quicklisp
 This library is now fully in quicklisp, along with its sister bindings,
-[cl-libevent2](/orthecreedence/cl-libevent2). If you want to keep up with the
+[cl-libevent2](https://github.com/orthecreedence/cl-libevent2). If you want to keep up with the
 most recent changes (recommended, as many bugfixes happen on master), download
 from git, otherwise feel free to use the quicklisp release. Also, if using
-quicklisp, be familiar with the [closed issues list](/orthecreedence/cl-async/issues?state=closed).
+quicklisp, be familiar with the [closed issues list](https://github.com/orthecreedence/cl-async/issues?state=closed).
 An issue you're having may have already been fixed =].
 
 ### Tests
