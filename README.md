@@ -10,7 +10,7 @@ programming in lisp natural, and to also provide a number of
 
 *This library's current status is BETA.* You will generally have a better
 experience by using the git version of this library and the git version of
-[the libevent2 bindings](/orthecreedence/cl-libevent2).
+[the libevent2 bindings](https://github.com/orthecreedence/cl-libevent2).
 
 ### [Documentation](http://orthecreedence.github.com/cl-async/documentation)
 Please see the [cl-async website](http://orthecreedence.github.com/cl-async) for
