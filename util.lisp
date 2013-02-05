@@ -266,7 +266,10 @@
   (cond
     ((or (null address)
          (ipv4-address-p address))
-     (let ((sockaddr (cffi:foreign-alloc (le::cffi-type le::sockaddr-in))))
+     (let ((sockaddr (cffi:foreign-alloc (le::cffi-type le::sockaddr-in)))
+           (address (if (string= address "0.0.0.0")
+                        nil
+                        address)))
        ;; fill it full of holes.
        (cffi:foreign-funcall "memset" :pointer sockaddr :unsigned-char 0 :unsigned-char +sockaddr-size+)
        (setf (sockaddr-in-sin-family sockaddr) +af-inet+
