@@ -97,6 +97,8 @@
                          (as:write-socket-data sock-remote data))
                        #'proxy-event-handler
                        :connect-cb (lambda (sock-local)
+                                     (when *debug*
+                                       (format t "- New local connection~%"))
                                      ;; on local connect, establish the remote connection
                                      (setf sock-remote (as:tcp-connect remote-host remote-port
                                                                        #'proxy-remote-response
