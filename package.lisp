@@ -1,19 +1,3 @@
-(defpackage :cl-async-future
-  (:use :cl :cl-async-base :cl-async-util)
-  (:nicknames :asf)
-  (:export #:future
-           #:make-future
-           #:attach-errback
-           #:signal-error
-           #:futurep
-           #:finish
-           #:attach
-           #:alet
-           #:alet*
-           #:multiple-future-bind
-           #:wait-for
-           #:future-handler-case))
-
 (defpackage :cl-async
   (:use :cl :cl-async-base :cl-async-util :trivial-gray-streams)
   (:nicknames :as)
