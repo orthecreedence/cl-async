@@ -8,6 +8,9 @@ The main goal is to provide an experience that makes general asynchronous
 programming in lisp natural, and to also provide a number of
 [drivers](http://orthecreedence.github.com/cl-async/drivers) on top of cl-async.
 
+If downloading cl-async via git, please also download [cl-async-future](https://github.com/orthecreedence/cl-async-future)
+into your local-projects/ folder or ASDF path.
+
 *This library's current status is BETA.* You will generally have a better
 experience by using the git version of this library and the git version of
 [the libevent2 bindings](https://github.com/orthecreedence/cl-libevent2).
