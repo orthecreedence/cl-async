@@ -12,6 +12,13 @@ programming in lisp natural, and to also provide a number of
 experience by using the git version of this library and the git version of
 [the libevent2 bindings](https://github.com/orthecreedence/cl-libevent2).
 
+__NOTE:__ In the latest Quicklisp release, CFFI was upped from 0.10.x to 0.11.0.
+This version generates a bunch of type/deprecation warnings with the Quicklisp
+version of cl-libevent2. If you get warnings about `(:STRUCT LE::TIMEVAL)` then
+grab the latest git version of [cl-libevent2](https://github.com/orthecreedence/cl-libevent2),
+which should fix these issues. You may also have to clear your ASDF cache after
+doing this.
+
 ### [Documentation](http://orthecreedence.github.com/cl-async/documentation)
 Please see the [cl-async website](http://orthecreedence.github.com/cl-async) for
 full documentation, examples, etc.
