@@ -1,0 +1,18 @@
+pre { white-space: pre; background-color: #f8f8f8; border: 1px solid #ccc; font-size: 13px; line-height: 19px; overflow: auto; padding: 6px 10px; border-radius: 3px; }
+pre code {white-space: pre; margin: 0; padding: 0; background: none; border: none; overflow-x: auto; font-size: 13px;}
+code {margin: 0 2px; padding: 0 5px; white-space: nowrap; font-family: Consolas, "Liberation Mono", Courier, monospace; background: #f8f8f8; border: 1px solid #eaeaea; border-radius: 3px;}
+
+pre .function.known {color: #a93;}
+pre .function.known.special {color: #2a3;}
+pre .keyword {color: #7aa;}
+pre .keyword.known {color: #4bb;}
+pre .symbol {color: #75a;}
+pre .lambda-list {color: #966;}
+pre .number {color: #800;}
+pre .variable.known {color: #c3c;}
+pre .variable.global {color: #939;}
+pre .variable.constant {color: #229;}
+pre .nil {color: #f00;}
+
+pre .comment, pre .comment *, pre .comment .string {color: #aaa !important;}
+pre .string, pre .string * {color: #088 !important;}
