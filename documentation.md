@@ -43,7 +43,7 @@ The event loop returns immediately after printing `Exiting event loop.` because
 we did not give it any events to process before returning control back. So in
 the next example, let's give it an event to process:
 
-{% highlight cl %}
+{% highlight %}
 (as:start-event-loop
   (lambda ()
     (as:delay
