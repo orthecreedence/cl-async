@@ -19,6 +19,8 @@ are constantly dealing with values that are not yet realized.
   - [signal-error](#signal-error) _function_
   - [futurep](#futurep) _function_
   - [finish](#finish) _function_
+  - [future-finished-p](#future-finished-p) _method_
+  - [lookup-forwarded-future](#lookup-forwarded-future) _function_
   - [attach](#attach) _macro_
 - [Nicer syntax](#nicer-syntax)
   - [alet](#alet) _macro_
@@ -257,6 +259,30 @@ future passed in is returned.
     (lambda (x y z)
       (format t "result: ~a~%" (* x y z)))))
 {% endhighlight %}
+
+<a id="future-finished-p"></a>
+### future-finished-p
+{% highlight cl %}
+(defmethod future-finished-p (future))
+  => T/NIL
+{% endhighlight %}
+
+This method returns T or NIL depending on whether the given future has been
+finished.
+
+<a id="lookup-forwarded-future"></a>
+### lookup-forwarded-future
+{% highlight cl %}
+(defun lookup-forwarded-future (future)
+  => future
+{% endhighlight %}
+
+This function takes a future, follows the chain of forwarding, and returns the
+last future that the given one forwards to. If no forwarding is set up, then it
+returns the future that was passed in.
+
+The purpose of this function is to allow an app to look at, given a future, what
+is the *actual* future that will be operated on.
 
 <a id="attach"></a>
 ### attach
