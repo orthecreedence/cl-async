@@ -273,7 +273,7 @@ finished.
 <a id="lookup-forwarded-future"></a>
 ### lookup-forwarded-future
 {% highlight cl %}
-(defun lookup-forwarded-future (future)
+(defun lookup-forwarded-future (future))
   => future
 {% endhighlight %}
 
