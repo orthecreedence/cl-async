@@ -5,28 +5,27 @@ layout: default
 
 Drivers built on cl-async
 =========================
-A number of drivers/servers are planned to be built on top of cl-async:
 
-- [drakma-async](https://github.com/orthecreedence/drakma-async)
-- [beanstalkd](https://github.com/orthecreedence/beanstalk-async)
-- MongoDB
-- Hunchentoot
+- [drakma-async](https://github.com/orthecreedence/drakma-async)  
+- [beanstalkd](https://github.com/orthecreedence/beanstalk-async)  
+- [MongoDB](https://github.com/archimag/mongo-cl-driver)
+  mongo-cl-driver allows different connection backends to MongoDB, one of them
+  being a cl-async interface.
+- [Wookie](https://github.com/orthecreedence/wookie)  
+  Originally started as a Hunchentoot port, Wookie is now its own async HTTP
+  web server.
+- [green-threads](https://github.com/deliciousrobots/green-threads)  
+  This excellent project builds green threads on top of cl-cont, which can
+  eliminate CPS-style in async programming by building on top of cl-async's
+  futures implementation.
+
+The list grows! Thanks to everyone who has contributed projects/time/ideas.
+
+Planned
+=======
 - Amazon S3/Cloudfront
 - SMTP
 - Redis
-
-Note that these are libraries I use every day, so am in a good position to test
-them in a production environment. Also, even though cl-async includes a simple
-HTTP client, [Drakma](http://weitz.de/drakma/) is a lot more badass and has a
-ton more features. Porting it to be asynchronous would be very valuable, and
-also would make porting other drivers that work over HTTP to cl-async easier.
-
-The biggest problem with asynchronous IO in lisp is that there are lots of
-libraries that provide it, but no drivers built on top of the libraries. Nobody
-wants to sit around all day programming database drivers. I think if I get
-enough traction behind cl-async by providing drivers for enough services, it
-could stand to be the first viable asynchronous programming library for Common
-Lisp users.
-
-So all I need is critical mass. WHO'S WITH ME?!?!
+- Postgres
+- RethinkDB
 
