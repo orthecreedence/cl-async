@@ -82,9 +82,9 @@ It's important to note the limitations of this method. The main one is error and
 condition handling. What looks like a normal stack is actually being transformed
 into CPS, so catching and handling errors becomes suddenly more difficult. On
 top of this, the [future-handler-case](/cl-async/future#future-handler-case)
-macro won't do much when using green-threads' `wait-on` good because it doesn't
-know to look for it. It might make sense to make `wait-on` a macro that expands
-to an `attach` call so that errors can be handled more effectively.
+macro won't do much when using green-threads' `wait-on` because it doesn't know
+to look for it. It might make sense to make `wait-on` a macro that expands to an
+`attach` call so that errors can be handled more effectively.
 
 Hopefully you now have a better understanding of how [green-threads](https://github.com/deliciousrobots/green-threads)
 is a way to transform ugly CPS-style code into normal stack-based code. It's not
