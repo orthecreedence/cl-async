@@ -11,7 +11,7 @@ abilities of cl-async:
 
 - API Documentation
   - [Base system](/cl-async/base)
-  - [Timers](/cl-async/timers)
+  - [Events](/cl-async/events)
   - [Signal handling](/cl-async/signal-handling)
   - [DNS](/cl-async/dns)
   - [TCP](/cl-async/tcp)
