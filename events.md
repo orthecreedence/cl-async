@@ -1,13 +1,14 @@
 ---
-title: Timers | Documentation
+title: Events | Documentation
 layout: documentation
 ---
 
 <a id="timers"></a>
-Timers/delayed functions
-========================
-This section deals with setting up functions to run later (either on the next
-event loop pass or at a specific time in the future).
+Events
+======
+This section goes over basic events in cl-async and how to use them for various
+purposes, such as triggering a function after a specific amount of time, or
+watching an OS file descriptor for changes.
 
 - [event](#event) _class_
   - [event-c](#event-c) _accessor_
