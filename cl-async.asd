@@ -25,8 +25,7 @@
   :components
   ((:file "package")
    (:file "event-loop" :depends-on ("package"))
-   (:file "fd" :depends-on ("package"))
-   (:file "timer" :depends-on ("package"))
+   (:file "event" :depends-on ("package"))
    (:file "dns" :depends-on ("package"))
    (:file "tcp" :depends-on ("dns"))
    (:file "tcp-stream" :depends-on ("tcp"))

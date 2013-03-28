@@ -9,7 +9,7 @@
     :serial t
     :components ((:file "util")
                  (:file "base")
-                 (:file "timer")
+                 (:file "event")
                  (:file "dns")
                  (:file "tcp")
                  (:file "tcp-stream")
