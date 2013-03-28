@@ -18,10 +18,15 @@
            #:start-event-loop
            #:exit-event-loop
 
-           ;; timer functions
+           ;; event functions
+           #:event
+           #:event-c
+           #:event-freed-p
+           #:free-event
+           #:remove-event
+           #:add-event
            #:delay
-
-           ;; fd functions
+           #:watch-fd
            #:fd-add
 
            ;; signal numbers

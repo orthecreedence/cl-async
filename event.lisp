@@ -8,7 +8,7 @@
 (defclass event ()
   ((c :accessor event-c :initarg :c :initform (cffi:null-pointer))
    (free-callback :accessor event-free-callback :initarg :free-callback :initform nil)
-   (freed :accessor event-freed :initform nil))
+   (freed :accessor event-freed :reader event-freed-p :initform nil))
   (:documentation "Wraps a C libevent event object."))
 
 (defun free-event (event)
