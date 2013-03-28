@@ -19,6 +19,7 @@
            #:exit-event-loop
 
            ;; event functions
+           #:event-freed
            #:event
            #:event-c
            #:event-freed-p

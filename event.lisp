@@ -11,11 +11,15 @@
    (freed :accessor event-freed :reader event-freed-p :initform nil))
   (:documentation "Wraps a C libevent event object."))
 
+(defun check-event-unfreed (event)
+  "Checks that an event being operated on is not freed."
+  (when (event-freed event)
+    (error 'event-freed :event event)))
+
 (defun free-event (event)
   "Free a cl-async event object and any resources it uses. It *is* safe to free
    a pending/active event."
-  (when (event-freed event)
-    (error 'event-freed :event event))
+  (check-event-unfreed event)
   ;; run the free-callback (if any)
   (let ((free-cb (event-free-callback event)))
     (when free-cb (funcall free-cb event)))
@@ -26,6 +30,7 @@
 (defun remove-event (event)
   "Remove a pending event from the event loop. Returns t on success, nil on
    failure."
+  (check-event-unfreed event)
   (let ((ret (le:event-del (event-c event))))
     (when (eq ret 0)
       t)))
@@ -36,6 +41,7 @@
    it's removed or freed. If :activate is true and the event has no timeout,
    the event will be activated directly without being added to the event loop,
    and its callback(s) will be fired."
+  (check-event-unfreed event)
   (let ((ev (event-c event)))
     (cond ((numberp timeout)
            (with-struct-timeval time-c timeout
