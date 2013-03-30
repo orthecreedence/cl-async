@@ -129,10 +129,9 @@
   "Abstraction to make a CFFI pointer #'eql to itself. Does its best to be the
    most performant for the current implementation."
   (declare (optimize speed (debug 0)))
-  (when pointer
-    (if (cffi:pointerp pointer)
-        (cffi:pointer-address pointer)
-        pointer)))
+  (if (and pointer (cffi:pointerp pointer))
+      (cffi:pointer-address pointer)
+      pointer))
 
 (defun* (create-data-pointer -> cffi:foreign-pointer) ()
   "Creates a pointer in C land that can be used to attach data/callbacks to.
