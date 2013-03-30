@@ -95,7 +95,7 @@
             (run-event-cb event-cb (make-instance 'dns-error :code errcode :msg (le:evutil-gai-strerror errcode)))
 
             ;; success, pull out address
-            (let ((family (le-a:addrinfo-ai-family addrinfo))
+            (let ((family (cffi:foreign-slot-value addrinfo *addrinfo* 'le::ai-family))
                   (addr nil)
                   (err nil))
 
@@ -162,8 +162,7 @@
                        (gethash host *windows-local-hosts*))))
     (if (and local-entry
              (cond ((= family +af-inet+) (ipv4-address-p local-entry))
-                   ((= family +af-inet6+) (ipv6-address-p local-entry))
-                   (t t)))
+                   ((= family +af-inet6+) (ipv6-address-p local-entry))))
         ;; AHHHHHAHAHAHA!!!!!!!!!! windows local host: fire callback directly
         (funcall resolve-cb local-entry family)
 
