@@ -1,5 +1,38 @@
 (in-package :cl-async-test)
 
+;; profiling shortcuts
+'(
+  as::start-event-loop
+  as::write-to-evbuffer
+  as::drain-evbuffer
+  as::socket-drain-read-buffer
+  as::init-incoming-socket                 ; optimize
+  as::set-socket-timeouts                  ; optimize/cons
+  as::check-socket-open
+  cl-async-util::attach-data-to-pointer    ; optimize/cons
+  cl-async-util::deref-data-from-pointer   ; optimize
+  cl-async-util::free-pointer-data         ; optimize
+  cl-async-util::clear-callbacks           ; optimize
+  cl-async-util::clear-pointer-data        ; optimize
+  cl-async-util::get-callbacks             ; optimize
+  cl-async-util::save-callbacks            ; optimize
+  cl-async-util::split-usec-time
+  cl-async-util::create-data-pointer
+  cl-async-util::make-pointer-eql-able
+  cl-async-util::append-array
+  le::evbuffer-drain
+  le::bufferevent-get-output
+  le::bufferevent-socket-new
+  le::bufferevent-socket-connect
+  le::bufferevent-socket-connect-hostname
+  le::bufferevent-setcb
+  le::bufferevent-set-timeouts
+  le::bufferevent-enable
+  le::bufferevent-socket-get-dns-error
+  le::bufferevent-getfd
+  le:evutil-make-socket-nonblocking
+)
+
 (defparameter *http-response*
   (babel:string-to-octets
     (with-output-to-string (s)
@@ -21,12 +54,14 @@
                    (let* ((stats (as:stats))
                           (incoming (getf stats :incoming-tcp-connections))
                           (outgoing (getf stats :outgoing-tcp-connections))
+                          (fn-count (getf stats :fn-registry-count))
+                          (data-count (getf stats :data-registry-count))
                           (now (get-internal-real-time))
                           (sec (/ (- now last-time) internal-time-units-per-second))
                           (rate (/ (- finished-requests last-finished) sec)))
                      (setf last-finished finished-requests
                            last-time now)
-                     (format t "incoming: ~a~%outgoing: ~a~%finished: ~a / ~a~%rate: ~f req/s~%~%" incoming outgoing finished-requests num-requests rate)
+                     (format t "fn/data: ~a/~a~%incoming: ~a~%outgoing: ~a~%finished: ~a / ~a~%rate: ~f req/s~%~%" fn-count data-count incoming outgoing finished-requests num-requests rate)
                      ;(room)
                      (format t "---------------~%~%"))
                    (unless (as::tcp-server-closed server)
