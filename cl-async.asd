@@ -12,7 +12,7 @@
   :license "MIT"
   :version "0.4.1"
   :description "Internal utilities for cl-async."
-  :depends-on (#:cffi #:cl-libevent2 #:cl-ppcre #:cl-async-base)
+  :depends-on (#:cffi #:cl-libevent2 #:cl-ppcre #:defstar #:cl-async-base)
   :components
   ((:file "util")))
 
@@ -21,7 +21,7 @@
   :license "MIT"
   :version "0.4.1"
   :description "Asynchronous operations for Common Lisp."
-  :depends-on (#:cffi #:trivial-features #:cl-libevent2 #:cl-async-base #:cl-async-util #:cl-async-future #:babel #:cl-ppcre #:trivial-gray-streams #:puri)
+  :depends-on (#:cffi #:trivial-features #:defstar #:cl-libevent2 #:cl-async-base #:cl-async-util #:cl-async-future #:babel #:cl-ppcre #:trivial-gray-streams #:puri)
   :components
   ((:file "package")
    (:file "event-loop" :depends-on ("package"))

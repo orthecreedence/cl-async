@@ -3,7 +3,7 @@
 ;;; only.
 
 (defpackage :cl-async-util
-  (:use :cl :cl-async-base)
+  (:use :cl :cl-async-base :defstar)
   (:export #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
@@ -59,11 +59,16 @@
     #-(or :bsd :freebsd :darwin) +af-unspec+)
   "Holds the best default lookup type for a given platform.")
 
+(defparameter *addrinfo*
+  #+(or :windows :bsd :freebsd :darwin) (le::cffi-type le::evutil-addrinfo)
+  #-(or :windows :bsd :freebsd :darwin) (le::cffi-type le::addrinfo)
+  "Determines the correct type of addrinfo for the current platform.")
+
 ;; define some cached values to save CFFI calls. believe it or not, this does
 ;; make a performance difference
 (defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
 (defconstant +sockaddr6-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in-6)))
-(defconstant +addrinfo-size+ (cffi:foreign-type-size (le::cffi-type le::addrinfo)))
+(defconstant +addrinfo-size+ (cffi:foreign-type-size *addrinfo*))
 (defconstant +timeval-size+ (cffi:foreign-type-size (le::cffi-type le::timeval)))
 (defconstant +bev-opt-close-on-free+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+))
 
@@ -119,60 +124,71 @@
          `(setf (cffi:foreign-slot-value ,var ,type ,(car binding)) ,(cadr binding)))
      ,@body))
 
-(defun make-pointer-eql-able (pointer)
+(declaim (inline make-pointer-eql-able))
+(defun* (make-pointer-eql-able -> integer) ((pointer cffi:foreign-pointer))
   "Abstraction to make a CFFI pointer #'eql to itself. Does its best to be the
    most performant for the current implementation."
+  (declare (optimize speed (debug 0)))
   (when pointer
-    #+(or ccl)
-      pointer
-    #-(or ccl)
-      (if (cffi:pointerp pointer)
-          (cffi:pointer-address pointer)
-          pointer)))
+    (if (cffi:pointerp pointer)
+        (cffi:pointer-address pointer)
+        pointer)))
 
-(defun create-data-pointer ()
+(defun* (create-data-pointer -> cffi:foreign-pointer) ()
   "Creates a pointer in C land that can be used to attach data/callbacks to.
    Note that this must be freed via clear-pointer-data."
+  (declare (optimize speed (debug 0)))
   (cffi:foreign-alloc :char :count 1))
 
-(defun save-callbacks (pointer callbacks)
+(defun* save-callbacks ((pointer cffi:foreign-pointer) (callbacks list))
   "Save a set of callbacks, keyed by the given pointer."
+  (declare (optimize speed (debug 0)))
   (unless (event-base-function-registry *event-base*)
-    (setf (event-base-function-registry *event-base*) (make-hash-table :test #'eql)))
+    (setf (event-base-function-registry *event-base*) (make-hash-table :test #'eq)))
   (let ((callbacks (if (listp callbacks)
                        callbacks
                        (list callbacks))))
-    (setf (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)) callbacks)))
+    (setf (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)) callbacks)
+    nil))
 
-(defun get-callbacks (pointer)
+(defun* (get-callbacks -> list) ((pointer cffi:foreign-pointer))
   "Get all callbacks for the given pointer."
+  (declare (optimize speed (debug 0)))
   (when (event-base-function-registry *event-base*)
     (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*))))
 
-(defun clear-callbacks (pointer)
+(defun* clear-callbacks ((pointer cffi:foreign-pointer))
   "Clear out all callbacks for the given pointer."
+  (declare (optimize speed (debug 0)))
   (when (event-base-function-registry *event-base*)
-    (remhash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*))))
+    (remhash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)))
+  nil)
 
-(defun attach-data-to-pointer (pointer data)
+(defun* attach-data-to-pointer ((pointer cffi:foreign-pointer) data)
   "Attach a lisp object to a foreign pointer."
+  (declare (optimize speed (debug 0)))
   (unless (event-base-data-registry *event-base*)
-    (setf (event-base-data-registry *event-base*) (make-hash-table :test #'eql)))
-  (setf (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)) data))
+    (setf (event-base-data-registry *event-base*) (make-hash-table :test #'eq)))
+  (setf (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)) data)
+  nil)
 
-(defun deref-data-from-pointer (pointer)
+(defun* deref-data-from-pointer ((pointer cffi:foreign-pointer))
   "Grab data attached to a CFFI pointer."
+  (declare (optimize speed (debug 0)))
   (when (and pointer (event-base-data-registry *event-base*))
     (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*))))
 
-(defun clear-pointer-data (pointer)
+(defun* clear-pointer-data ((pointer cffi:foreign-pointer))
   "Clear the data attached to a CFFI pointer."
+  (declare (optimize speed (debug 0)))
   (when (and pointer (event-base-data-registry *event-base*))
-    (remhash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*))))
+    (remhash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)))
+  nil)
 
-(defun free-pointer-data (pointer &key preserve-pointer)
+(defun* free-pointer-data ((pointer cffi:foreign-pointer) &key ((preserve-pointer boolean) nil))
   "Clears out all data attached to a foreign pointer, and frees the pointer
    (unless :preserve-pointer is t)."
+  (declare (optimize speed (debug 0)))
   (when pointer
     (unwind-protect
       (progn
@@ -180,7 +196,8 @@
         (clear-pointer-data pointer))
       (unless preserve-pointer
         (when (cffi:pointerp pointer)
-          (cffi:foreign-free pointer))))))
+          (cffi:foreign-free pointer)))))
+  nil)
 
 (defmacro with-struct-timeval (var seconds &rest body)
   "Convert seconds to a valid struct timeval C data type."
@@ -190,16 +207,18 @@
                          ('le::tv-usec time-usec))
        ,@body)))
 
-(defun split-usec-time (time-s)
+(defun* (split-usec-time -> (values integer integer)) ((time-s real))
   "Given a second value, ie 3.67, return the number of seconds as the first
    value and the number of usecs for the second value."
+  (declare (optimize speed (debug 0)))
   (if (numberp time-s)
       (multiple-value-bind (time-sec time-frac) (floor time-s)
         (values time-sec (floor (* 1000000 time-frac))))
       nil))
 
-(defun append-array (arr1 arr2)
+(defun* (append-array -> vector) ((arr1 vector) (arr2 vector))
   "Create an array, made up of arr1 followed by arr2."
+  (declare (optimize speed (debug 0)))
   (let ((arr1-length (length arr1))
         (arr2-length (length arr2)))
     (let ((arr (make-array (+ arr1-length arr2-length)
@@ -233,11 +252,6 @@
   (or (ipv4-address-p addr)
       (ipv6-address-p addr)))
 
-(defparameter *addrinfo*
-  #+(or :windows :bsd :freebsd :darwin) (le::cffi-type le::evutil-addrinfo)
-  #-(or :windows :bsd :freebsd :darwin) (le::cffi-type le::addrinfo)
-  "Determines the correct type of addrinfo for the current platform.")
-
 ;; define some abstracted accessors.
 (defmacro addrinfo-ai-addr (pt)
   "A wrapper around addrinfo's ai-addr accessor (there is one for windows that
@@ -260,9 +274,10 @@
   #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-addr ,obj)
   #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-addr ,obj))
 
-(defun ip-str-to-sockaddr (address port)
+(defun* (ip-str-to-sockaddr -> (values cffi:foreign-pointer integer)) ((address (or boolean string)) (port integer))
   "Convert a string IP address and port into a sockaddr-in struct. Must be freed
    by the app!"
+  (declare (optimize speed (debug 0)))
   (cond
     ((or (null address)
          (ipv4-address-p address))

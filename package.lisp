@@ -1,5 +1,5 @@
 (defpackage :cl-async
-  (:use :cl :cl-async-base :cl-async-util :trivial-gray-streams)
+  (:use :cl :cl-async-base :cl-async-util :trivial-gray-streams :defstar)
   (:nicknames :as)
   (:export #:+af-inet+
            #:+af-inet6+

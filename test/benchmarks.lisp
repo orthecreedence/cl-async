@@ -1,37 +1,39 @@
 (in-package :cl-async-test)
 
 ;; profiling shortcuts
-'(
-  as::start-event-loop
-  as::write-to-evbuffer
-  as::drain-evbuffer
-  as::socket-drain-read-buffer
-  as::init-incoming-socket                 ; optimize
-  as::set-socket-timeouts                  ; optimize/cons
-  as::check-socket-open
-  cl-async-util::attach-data-to-pointer    ; optimize/cons
-  cl-async-util::deref-data-from-pointer   ; optimize
-  cl-async-util::free-pointer-data         ; optimize
-  cl-async-util::clear-callbacks           ; optimize
-  cl-async-util::clear-pointer-data        ; optimize
-  cl-async-util::get-callbacks             ; optimize
-  cl-async-util::save-callbacks            ; optimize
-  cl-async-util::split-usec-time
-  cl-async-util::create-data-pointer
-  cl-async-util::make-pointer-eql-able
-  cl-async-util::append-array
-  le::evbuffer-drain
-  le::bufferevent-get-output
-  le::bufferevent-socket-new
-  le::bufferevent-socket-connect
-  le::bufferevent-socket-connect-hostname
-  le::bufferevent-setcb
-  le::bufferevent-set-timeouts
-  le::bufferevent-enable
-  le::bufferevent-socket-get-dns-error
-  le::bufferevent-getfd
-  le:evutil-make-socket-nonblocking
-)
+#+sbcl
+(defun setup-profile ()
+  (sb-profile:reset)
+  (sb-profile:profile
+    as::start-event-loop
+    as::write-to-evbuffer
+    as::drain-evbuffer
+    as::socket-drain-read-buffer
+    as::init-incoming-socket                 ; optimize
+    as::set-socket-timeouts                  ; optimize/cons
+    as::check-socket-open
+    cl-async-util::attach-data-to-pointer    ; optimize/cons
+    cl-async-util::deref-data-from-pointer   ; optimize
+    cl-async-util::free-pointer-data         ; optimize
+    cl-async-util::clear-callbacks           ; optimize
+    cl-async-util::clear-pointer-data        ; optimize
+    cl-async-util::get-callbacks             ; optimize
+    cl-async-util::save-callbacks            ; optimize
+    cl-async-util::split-usec-time
+    cl-async-util::create-data-pointer
+    cl-async-util::make-pointer-eql-able
+    cl-async-util::append-array
+    le::evbuffer-drain
+    le::bufferevent-get-output
+    le::bufferevent-socket-new
+    le::bufferevent-socket-connect
+    le::bufferevent-socket-connect-hostname
+    le::bufferevent-setcb
+    le::bufferevent-set-timeouts
+    le::bufferevent-enable
+    le::bufferevent-socket-get-dns-error
+    le::bufferevent-getfd
+    le:evutil-make-socket-nonblocking))
 
 (defparameter *http-response*
   (babel:string-to-octets
@@ -109,3 +111,24 @@
                      :time delay))))
         (do-client client-id)))))
 
+(defun benchmark-data-pointers (&key (num-pointers 10000))
+  (as:start-event-loop
+    (lambda ()
+      (let ((pointers (make-array num-pointers))
+            (sink1 nil)
+            (sink2 nil))
+        (dotimes (i num-pointers)
+          (setf (aref pointers i) (cl-async-util::create-data-pointer))
+          (let ((pt (aref pointers i))
+                (obj (random 9999999))
+                (cb (list :read (lambda () (format t "omg!~%")) :write (lambda () (format t "lol~%")))))
+            (cl-async-util::attach-data-to-pointer pt obj)
+            (cl-async-util::save-callbacks pt cb)))
+        (time
+          (dotimes (i 999999)
+            (let* ((idx (random num-pointers))
+                   (pt (aref pointers idx)))
+              (setf sink1 (deref-data-from-pointer pt)
+                    sink2 (get-callbacks pt)))))
+        (loop for pointer across pointers do
+          (cl-async-util::free-pointer-data pointer))))))
