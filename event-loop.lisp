@@ -58,7 +58,7 @@
   (setf (event-base-exit-functions *event-base*) nil))
 
 (defun check-event-loop-running ()
-  (unless (event-base-c *event-base*)
+  (unless (and *event-base* (event-base-c *event-base*))
     (error "Event loop not running. Start with function start-event-loop.")))
 
 (defun stats ()
