@@ -1,6 +1,8 @@
 (defpackage :cl-async-test
   (:use :cl :eos :cl-async-base :cl-async-util :cl-async-future)
-  (:export #:run-tests))
+  (:export #:run-tests
+           #:benchmark-server
+           #:benchmark-client))
 (in-package :cl-async-test)
 
 ;; TODO: test all functions in util package

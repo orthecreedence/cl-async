@@ -10,65 +10,67 @@
       (format s "~c~c" #\return #\newline)
       (format s "omglolwtf"))))
 
-(defun tcp-benchmark-client (&key (num-requests 40000) (delay 1) (client-id 0))
-  (as:tcp-connect "127.0.0.1" 9009
-    (lambda (sock data)
-      (declare (ignore sock data)))
-    (lambda (e)
-      (unless (subtypep (type-of e) 'as:tcp-eof)
-        (format t "(client event) ~a~%" e)))
-    :data (format nil "GET /~c~c~c~c" #\return #\newline #\return #\newline))
-  (when (< (1+ client-id) num-requests)
-    (as:delay
-      (lambda ()
-        (tcp-benchmark-client :num-requests num-requests
-                              :delay delay
-                              :client-id (1+ client-id)))
-      :time delay)))
-
-(defun tcp-benchmark-server (&key (num-requests 40000) (request-delay 0))
-  (let ((server nil)
-        (finished-requests 0)
-        (last-finished 0)
-        (last-time 0))
-    (setf server
-          (as:tcp-server nil 9009
-            (lambda (socket data)
-              (declare (ignore data))
-              (flet ((delay-fn ()
-                       (unless (as:socket-closed-p socket)
-                         (as:write-socket-data
-                           socket *http-response*
-                           :write-cb (lambda (socket)
-                                       (as:close-socket socket)
-                                       (incf finished-requests)
-                                       (when (<= num-requests finished-requests)
-                                         (as:close-tcp-server server)))))))
-                (if (< 0 request-delay)
-                    (as:delay #'delay-fn :time request-delay)
-                    (funcall #'delay-fn))))
-            (lambda (err)
-              (format t "TCP server event: ~a~%" err))))
-    (labels ((show-stats ()
-               (let* ((stats (as:stats))
-                      (incoming (getf stats :incoming-tcp-connections))
-                      (outgoing (getf stats :outgoing-tcp-connections))
-                      (now (get-internal-real-time))
-                      (sec (/ (- now last-time) internal-time-units-per-second))
-                      (rate (/ (- finished-requests last-finished) sec)))
-                 (setf last-finished finished-requests
-                       last-time now)
-                 (format t "incoming: ~a~%outgoing: ~a~%finished: ~a~%rate: ~f req/s~%~%" incoming outgoing finished-requests rate)
-                 ;(room)
-                 (format t "---------------~%~%"))
-               (unless (as::tcp-server-closed server)
-                 (as:delay #'show-stats :time 2))))
-      (show-stats))))
-
-(defun tcp-benchmark ()
+(defun benchmark-server (&key (port 9009) (request-delay 0) (num-requests 40000))
   (as:start-event-loop
     (lambda ()
-      (format t "Starting TCP benchmark. This might take a bit.~%")
-      (tcp-benchmark-server :num-requests 40000 :request-delay 0)
-      (tcp-benchmark-client :num-requests 40000 :delay 0)))
-  (format t "~%---~%TCP Benchmark finished.~%"))
+      (let ((server nil)
+            (finished-requests 0)
+            (last-finished 0)
+            (last-time 0))
+        (labels ((show-stats ()
+                   (let* ((stats (as:stats))
+                          (incoming (getf stats :incoming-tcp-connections))
+                          (outgoing (getf stats :outgoing-tcp-connections))
+                          (now (get-internal-real-time))
+                          (sec (/ (- now last-time) internal-time-units-per-second))
+                          (rate (/ (- finished-requests last-finished) sec)))
+                     (setf last-finished finished-requests
+                           last-time now)
+                     (format t "incoming: ~a~%outgoing: ~a~%finished: ~a / ~a~%rate: ~f req/s~%~%" incoming outgoing finished-requests num-requests rate)
+                     ;(room)
+                     (format t "---------------~%~%"))
+                   (unless (as::tcp-server-closed server)
+                     (as:delay #'show-stats :time 2)))
+                 (read-cb (socket data)
+                   (declare (ignore data))
+                   (flet ((delay-fn ()
+                            (unless (as:socket-closed-p socket)
+                              (as:write-socket-data
+                                socket *http-response*
+                                :write-cb (lambda (socket)
+                                            (as:close-socket socket)
+                                            (incf finished-requests)
+                                            (when (<= num-requests finished-requests)
+                                              (as:close-tcp-server server)
+                                              (as:free-signal-handler 2)))))))
+                     (if (< 0 request-delay)
+                         (as:delay #'delay-fn :time request-delay)
+                         (funcall #'delay-fn)))))
+          (setf server (as:tcp-server nil port
+                         #'read-cb
+                         (lambda (err)
+                           (format t "(benchmark server): ~a~%" err))))
+          (as:signal-handler 2
+            (lambda (signo)
+              (declare (ignore signo))
+              (as:close-tcp-server server)))
+          (show-stats))))))
+
+(defun benchmark-client (&key (server "127.0.0.1") (port 9009) (num-requests 40000) (delay 1) (client-id 0))
+  (as:start-event-loop
+    (lambda ()
+      (labels ((do-client (client-id)
+                 (as:tcp-connect server port
+                   (lambda (sock data)
+                     (declare (ignore sock data)))
+                   (lambda (e)
+                     (unless (subtypep (type-of e) 'as:tcp-eof)
+                       (format t "(benchmark client): ~a~%" e)))
+                   :data (format nil "GET /~c~c~c~c" #\return #\newline #\return #\newline))
+                 (when (< (1+ client-id) num-requests)
+                   (as:delay
+                     (lambda ()
+                       (do-client (1+ client-id)))
+                     :time delay))))
+        (do-client client-id)))))
+
