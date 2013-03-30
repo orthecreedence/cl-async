@@ -138,9 +138,14 @@
   "Creates a pointer in C land that can be used to attach data/callbacks to.
    Note that this must be freed via clear-pointer-data."
   (declare (optimize speed (debug 0)))
-  (cffi:foreign-alloc :char :count 1))
+  (let ((pt (cffi:foreign-alloc :char :count 1)))
+    ;; make sure there are no collisions with signal handlers
+    (if (< (cffi:pointer-address pt) 32)
+        (prog1 (create-data-pointer)
+          (cffi:foreign-free pt))
+        pt)))
 
-(defun* save-callbacks ((pointer cffi:foreign-pointer) (callbacks list))
+(defun* save-callbacks ((pointer cffi:foreign-pointer) (callbacks (or function list symbol)))
   "Save a set of callbacks, keyed by the given pointer."
   (declare (optimize speed (debug 0)))
   (unless (event-base-function-registry *event-base*)
