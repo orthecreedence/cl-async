@@ -39,18 +39,18 @@
   (:documentation "Thrown when a server fails to bind (generally, the port is already in use)."))
 
 (defclass socket ()
-  ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
+  ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer) :type cffi:foreign-pointer)
    (data :accessor socket-data :initarg data :initform nil)
-   (closed :accessor socket-closed :initarg :closed :initform nil)
-   (direction :accessor socket-direction :initarg :direction :initform nil)
-   (drain-read-buffer :accessor socket-drain-read-buffer :initarg :drain-read-buffer :initform t))
+   (closed :accessor socket-closed :initarg :closed :initform nil :type boolean)
+   (direction :accessor socket-direction :initarg :direction :initform nil :type symbol)
+   (drain-read-buffer :accessor socket-drain-read-buffer :initarg :drain-read-buffer :initform t :type boolean))
   (:documentation "Wraps around a libevent bufferevent socket."))
 
 (defclass tcp-server ()
-  ((c :accessor tcp-server-c :initarg :c :initform (cffi:null-pointer))
-   (closed :accessor tcp-server-closed :initarg :closed :initform nil)
-   (stream :accessor tcp-server-stream :initarg :stream :initform nil)
-   (data-pointer :accessor tcp-server-data-pointer :initarg :data-pointer :initform nil))
+  ((c :accessor tcp-server-c :initarg :c :initform (cffi:null-pointer) :type cffi:foreign-pointer)
+   (closed :accessor tcp-server-closed :initarg :closed :initform nil :type boolean)
+   (stream :accessor tcp-server-stream :initarg :stream :initform nil :type boolean)
+   (data-pointer :accessor tcp-server-data-pointer :initarg :data-pointer :initform nil :type cffi:foreign-pointer))
   (:documentation "Wraps around a libevent connection listener."))
 
 (defun get-last-tcp-err ()
@@ -72,7 +72,7 @@
               (cffi:foreign-funcall "strerror" :int code :string))))
 
 (declaim (inline check-socket-open))
-(defun* check-socket-open ((socket cffi:foreign-pointer))
+(defun* check-socket-open ((socket socket))
   "Throw a socket-closed condition if given a socket that's closed."
   (declare (optimize speed (debug 0)))
   (when (subtypep (type-of socket) 'socket)
@@ -114,11 +114,12 @@
     (le:evconnlistener-free (tcp-server-c tcp-server))
     (setf (tcp-server-closed tcp-server) t)))
 
-(defun* set-socket-timeouts ((socket cffi:foreign-pointer) (read-sec real) (write-sec real) &key ((socket-is-bufferevent boolean) nil))
+(defun* set-socket-timeouts ((socket (or socket cffi:foreign-pointer)) (read-sec real) (write-sec real) &key ((socket-is-bufferevent boolean) nil))
   "Given a pointer to a libevent socket (bufferevent), set the read/write
    timeouts on the bufferevent."
   (declare (optimize speed (debug 0)))
-  (check-socket-open socket)
+  (when (subtypep (type-of socket) 'socket)
+    (check-socket-open socket))
   (let ((socket (if socket-is-bufferevent
                     socket
                     (socket-c socket)))
@@ -192,6 +193,7 @@
 
 (defun* write-to-evbuffer ((evbuffer cffi:foreign-pointer) (data (or string (vector (unsigned-byte 8)))))
   "Writes data directly to evbuffer."
+  (declare (optimize speed (debug 0)))
   (let* ((data (if (stringp data)
                    (babel:string-to-octets data :encoding :utf-8)
                    data))
@@ -361,10 +363,11 @@
             (handler-case (close-socket socket)
               (socket-closed () nil))))))))
 
-(defun init-incoming-socket (bev callbacks server)
+(defun* (init-incoming-socket -> socket) ((bev cffi:foreign-pointer) (callbacks list) (server tcp-server))
   "Called by the tcp-accept-cb when an incoming connection is detected. Sets up
    a socket between the client and the server along with any callbacks the
    server has attached to it. Returns the cl-async socket object created."
+  (declare (optimize speed (debug 0)))
   (let* ((per-conn-data-pointer (create-data-pointer))
          (stream-data-p (tcp-server-stream server))
          (socket (make-instance 'socket :c bev :direction 'in :drain-read-buffer (not stream-data-p)))

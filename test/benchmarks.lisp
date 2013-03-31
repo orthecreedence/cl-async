@@ -63,9 +63,9 @@
                           (rate (/ (- finished-requests last-finished) sec)))
                      (setf last-finished finished-requests
                            last-time now)
-                     (format t "fn/data: ~a/~a~%incoming: ~a~%outgoing: ~a~%finished: ~a / ~a~%rate: ~f req/s~%~%" fn-count data-count incoming outgoing finished-requests num-requests rate)
+                     (format t "fn/data: ~a/~a~%incoming: ~a~%outgoing: ~a~%finished: ~a / ~a~%rate: ~f req/s~%" fn-count data-count incoming outgoing finished-requests num-requests rate)
                      ;(room)
-                     (format t "---------------~%~%"))
+                     (format t "---------------~%"))
                    (unless (as::tcp-server-closed server)
                      (as:delay #'show-stats :time 2)))
                  (read-cb (socket data)
