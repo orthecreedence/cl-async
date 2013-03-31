@@ -71,11 +71,14 @@
       (values code
               (cffi:foreign-funcall "strerror" :int code :string))))
 
-(defun check-socket-open (socket)
+(declaim (inline check-socket-open))
+(defun* check-socket-open ((socket cffi:foreign-pointer))
   "Throw a socket-closed condition if given a socket that's closed."
+  (declare (optimize speed (debug 0)))
   (when (subtypep (type-of socket) 'socket)
     (when (socket-closed socket)
-      (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket"))))
+      (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket")))
+  nil)
 
 (defun socket-closed-p (socket)
   "Return whether a socket is closed or not."
@@ -111,9 +114,10 @@
     (le:evconnlistener-free (tcp-server-c tcp-server))
     (setf (tcp-server-closed tcp-server) t)))
 
-(defun set-socket-timeouts (socket read-sec write-sec &key socket-is-bufferevent)
+(defun* set-socket-timeouts ((socket cffi:foreign-pointer) (read-sec float) (write-sec float) &key ((socket-is-bufferevent boolean) nil))
   "Given a pointer to a libevent socket (bufferevent), set the read/write
    timeouts on the bufferevent."
+  (declare (optimize speed (debug 0)))
   (check-socket-open socket)
   (let ((socket (if socket-is-bufferevent
                     socket
@@ -130,7 +134,8 @@
                               ('le::tv-usec write-usec))
             (let ((read-to (if (< 0 read-sec) read-to (cffi:null-pointer)))
                   (write-to (if (< 0 write-sec) write-to (cffi:null-pointer))))
-              (le:bufferevent-set-timeouts socket read-to write-to))))))))
+              (le:bufferevent-set-timeouts socket read-to write-to))))))
+    nil))
 
 (defun enable-socket (socket &key read write)
   "Enable read/write monitoring on a socket. If :read or :write are nil, they
@@ -185,7 +190,7 @@
       (decf num-bytes n))
     data-final))
 
-(defun write-to-evbuffer (evbuffer data)
+(defun* write-to-evbuffer ((evbuffer cffi:foreign-pointer) (data (vector (unsigned-byte 8))))
   "Writes data directly to evbuffer."
   (let* ((data (if (stringp data)
                    (babel:string-to-octets data :encoding :utf-8)
