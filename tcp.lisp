@@ -193,7 +193,7 @@
 
 (defun* write-to-evbuffer ((evbuffer cffi:foreign-pointer) (data (or string (vector (unsigned-byte 8)))))
   "Writes data directly to evbuffer."
-  (declare (optimize speed (debug 0)))
+  (declare (optimize speed (debug 0) (safety 0)))
   (let* ((data (if (stringp data)
                    (babel:string-to-octets data :encoding :utf-8)
                    data))
@@ -203,7 +203,9 @@
     ;; copy into evbuffer using existing c buffer
     (loop while (< 0 data-length) do
       (let ((bufsize (min data-length *buffer-size*)))
+        (declare (integer bufsize))
         (dotimes (i bufsize)
+          (declare (integer i))
           (setf (cffi:mem-aref buffer-c :unsigned-char i) (aref data data-index))
           (incf data-index))
         (le:evbuffer-add evbuffer buffer-c bufsize)
