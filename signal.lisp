@@ -49,7 +49,7 @@
            (original-lisp-signal-handler (getf sig-data :original-handler)))
       (le:event-del ev)
       (cffi:foreign-funcall "signal" :int signo :pointer original-lisp-signal-handler :pointer)
-      (free-pointer-data signo-sym)
+      (free-pointer-data signo-sym :preserve-pointer t)  ; preserve since we created it manually
       (free-pointer-data data-pointer))
     (setf (event-base-signal-handlers *event-base*) (remove signo (event-base-signal-handlers *event-base*)))))
 
