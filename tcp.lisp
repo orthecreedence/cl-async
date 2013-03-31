@@ -190,7 +190,7 @@
       (decf num-bytes n))
     data-final))
 
-(defun* write-to-evbuffer ((evbuffer cffi:foreign-pointer) (data (vector (unsigned-byte 8))))
+(defun* write-to-evbuffer ((evbuffer cffi:foreign-pointer) (data (or string (vector (unsigned-byte 8)))))
   "Writes data directly to evbuffer."
   (let* ((data (if (stringp data)
                    (babel:string-to-octets data :encoding :utf-8)
