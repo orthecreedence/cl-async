@@ -4,7 +4,12 @@
 
 (defpackage :cl-async-util
   (:use :cl :cl-async-base :defstar)
-  (:export #:+af-inet+
+  (:export #:octet
+           #:octet-vector
+           #:bytes-or-string
+           #:callback
+           
+           #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
            #:+af-unix+
@@ -32,6 +37,8 @@
            #:clear-pointer-data
            #:free-pointer-data
 
+           #:*timevals*
+           #:free-cached-timevals
            #:with-struct-timeval
            #:split-usec-time
 
@@ -47,6 +54,11 @@
            #:with-ip-to-sockaddr
            #:addrinfo-ai-addr))
 (in-package :cl-async-util)
+
+(deftype octet () '(unsigned-byte 8))
+(deftype octet-vector () '(simple-array octet (*)))
+(deftype bytes-or-string () '(or octet-vector string))
+(deftype callback () '(or null function symbol))
 
 (defconstant +af-inet+ le:+af-inet+)
 (defconstant +af-inet6+ le:+af-inet-6+)
@@ -127,7 +139,7 @@
      ,@body))
 
 (declaim (inline make-pointer-eql-able))
-(defun* (make-pointer-eql-able -> integer) ((pointer cffi:foreign-pointer))
+(defun* (make-pointer-eql-able -> fixnum) ((pointer cffi:foreign-pointer))
   "Abstraction to make a CFFI pointer #'eql to itself. Does its best to be the
    most performant for the current implementation."
   (declare (optimize speed (debug 0)))
@@ -205,15 +217,10 @@
           (cffi:foreign-free pointer)))))
   nil)
 
-(defmacro with-struct-timeval (var seconds &rest body)
-  "Convert seconds to a valid struct timeval C data type."
-  `(multiple-value-bind (time-sec time-usec) (split-usec-time ,seconds)
-     (make-foreign-type (,var (le::cffi-type le::timeval))
-                        (('le::tv-sec time-sec)
-                         ('le::tv-usec time-usec))
-       ,@body)))
+(defparameter *timevals* nil
+  "Holds cached timeval structures (freed on event loop exit).")
 
-(defun* (split-usec-time -> (values integer integer)) ((time-s real))
+(defun* (split-usec-time -> (values fixnum fixnum)) ((time-s real))
   "Given a second value, ie 3.67, return the number of seconds as the first
    value and the number of usecs for the second value."
   (declare (optimize speed (debug 0)))
@@ -221,6 +228,55 @@
       (multiple-value-bind (time-sec time-frac) (floor time-s)
         (values time-sec (floor (* 1000000 time-frac))))
       nil))
+
+(defun free-cached-timevals ()
+  "Free all cached timeval structs."
+  (dolist (timeval *timevals*)
+    (cffi:foreign-free timeval))
+  (setf *timevals* nil))
+
+(defun* (get-free-timeval -> cffi:foreign-pointer) ((seconds real))
+  "Tries to find an unused timeval object in *timevals*. If one exists, it pops
+   it off the *timevals* list, sets the specified seconds into it, and returns
+   it. If it doesnt find one, it instantiates a new timeval, sets the seconds,
+   and returns.
+   
+   Once a timeval is no longer needed it is pushed back into *timevals* to be
+   reused later by get-free-timevals."
+  (declare (optimize speed (debug 0) (safety 0)))
+  (let ((timeval (car *timevals*)))
+    (declare (type (or null cffi:foreign-pointer) timeval))
+    (setf *timevals* (cdr *timevals*))
+    (unless timeval
+      (setf timeval (cffi:foreign-alloc (le::cffi-type le::timeval))))
+    (multiple-value-bind (time-sec time-usec)
+        (split-usec-time seconds)
+      (declare (type fixnum time-sec time-usec))
+      (setf (le-a:timeval-tv-sec timeval) time-sec
+            (le-a:timeval-tv-usec timeval) time-usec))
+    timeval))
+
+(defun* (release-timeval -> null) ((timeval cffi:foreign-pointer))
+  "Release a timeval struct back into *timevals*."
+  (push timeval *timevals*)
+  nil)
+
+(defmacro with-struct-timeval (var seconds &rest body)
+  "Makes a timeval structure with the given seconds available to the body form
+   under that variable named by var."
+  `(let ((,var (get-free-timeval (the real ,seconds))))
+     (declare (type cffi:foreign-pointer ,var))
+     (unwind-protect
+       (progn ,@body)
+       (release-timeval ,var))))
+
+(defmacro with-struct-timeval_ (var seconds &rest body)
+  "Convert seconds to a valid struct timeval C data type."
+  `(multiple-value-bind (time-sec time-usec) (split-usec-time ,seconds)
+     (make-foreign-type (,var (le::cffi-type le::timeval))
+                        (('le::tv-sec time-sec)
+                         ('le::tv-usec time-usec))
+       ,@body)))
 
 (defun* (append-array -> vector) ((arr1 vector) (arr2 vector))
   "Create an array, made up of arr1 followed by arr2."
@@ -280,7 +336,7 @@
   #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-addr ,obj)
   #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-addr ,obj))
 
-(defun* (ip-str-to-sockaddr -> (values cffi:foreign-pointer integer)) ((address (or boolean string)) (port integer))
+(defun* (ip-str-to-sockaddr -> (values cffi:foreign-pointer fixnum)) ((address (or boolean string)) (port fixnum))
   "Convert a string IP address and port into a sockaddr-in struct. Must be freed
    by the app!"
   (declare (optimize speed (debug 0)))

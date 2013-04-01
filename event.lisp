@@ -7,7 +7,7 @@
 
 (defclass event ()
   ((c :accessor event-c :initarg :c :initform (cffi:null-pointer) :type cffi:foreign-pointer)
-   (free-callback :accessor event-free-callback :initarg :free-callback :initform nil :type (or null function))
+   (free-callback :accessor event-free-callback :initarg :free-callback :initform nil :type callback)
    (freed :accessor event-freed :reader event-freed-p :initform nil :type boolean))
   (:documentation "Wraps a C libevent event object."))
 
@@ -69,7 +69,7 @@
          (cb (getf callbacks :callback))
          (event-cb (getf callbacks :event-cb)))
     (declare (type event event)
-             (type (or null function) cb event-cb))
+             (type callback cb event-cb))
     (catch-app-errors event-cb
       (unwind-protect
         (when cb (funcall cb))
@@ -95,13 +95,13 @@
                  timeout-cb)
          (funcall timeout-cb)))))
 
-(defun* (delay -> event) ((callback function) &key ((time (or null real)) nil) ((event-cb (or null function)) nil))
+(defun* (delay -> event) ((callback callback) &key ((time (or null real)) nil) ((event-cb callback) nil))
   "Run a function, asynchronously, after the specified amount of seconds. An
    event loop must be running for this to work.
    
    If time is nil, callback is still called asynchronously, but is queued in the
    event loop with no delay."
-  (declare (optimize speed (debug 0)))
+  (declare (optimize speed (debug 0) (safety 0)))
   (check-event-loop-running)
   (let* ((data-pointer (the cffi:foreign-pointer (create-data-pointer)))
          (ev (le:event-new (event-base-c *event-base*)

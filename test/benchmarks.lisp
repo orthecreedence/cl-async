@@ -9,20 +9,27 @@
     as::write-to-evbuffer
     as::drain-evbuffer
     as::socket-drain-read-buffer
-    as::init-incoming-socket                 ; optimize
-    as::set-socket-timeouts                  ; optimize/cons
+    as::init-incoming-socket
+    as::set-socket-timeouts
     as::check-socket-open
-    cl-async-util::attach-data-to-pointer    ; optimize/cons
-    cl-async-util::deref-data-from-pointer   ; optimize
-    cl-async-util::free-pointer-data         ; optimize
-    cl-async-util::clear-callbacks           ; optimize
-    cl-async-util::clear-pointer-data        ; optimize
-    cl-async-util::get-callbacks             ; optimize
-    cl-async-util::save-callbacks            ; optimize
+    as::add-event
+    as::free-event
+    as::delay
+    as::check-event-unfreed
+    cl-async-util::attach-data-to-pointer
+    cl-async-util::deref-data-from-pointer
+    cl-async-util::free-pointer-data
+    cl-async-util::clear-callbacks
+    cl-async-util::clear-pointer-data
+    cl-async-util::get-callbacks
+    cl-async-util::save-callbacks
     cl-async-util::split-usec-time
     cl-async-util::create-data-pointer
     cl-async-util::make-pointer-eql-able
     cl-async-util::append-array
+    cl-async-util::get-free-timeval
+    cl-async-util::release-timeval
+    le::event-new
     le::evbuffer-drain
     le::bufferevent-get-output
     le::bufferevent-socket-new
@@ -111,6 +118,19 @@
                      :time delay))))
         (do-client client-id)))))
 
+(defun benchmark-delays (&key (num-delays 40000) (delay .0000000000001))
+  (let ((delay-num 0))
+    (time
+      (as:start-event-loop
+        (lambda ()
+          (labels ((do-delay ()
+                     (when (< delay-num num-delays)
+                       (incf delay-num)
+                       ;(when (zerop (mod delay-num 100))
+                         ;(format t "delay ~a.~%" delay-num))
+                       (as:delay #'do-delay :time delay))))
+            (do-delay)))))))
+
 (defun benchmark-data-pointers (&key (num-pointers 10000))
   (as:start-event-loop
     (lambda ()
@@ -132,3 +152,9 @@
                     sink2 (get-callbacks pt))))
           (loop for pointer across pointers do
             (cl-async-util::free-pointer-data pointer)))))))
+
+(defun lol () (format t "hai...~%"))
+(defun simple-test ()
+  (as:start-event-loop
+    (lambda ()
+      (as:delay 'lol :time 1))))

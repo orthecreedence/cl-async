@@ -53,7 +53,7 @@
    (data-pointer :accessor tcp-server-data-pointer :initarg :data-pointer :initform nil :type cffi:foreign-pointer))
   (:documentation "Wraps around a libevent connection listener."))
 
-(defun* (get-last-tcp-err -> (values integer string)) ()
+(defun* (get-last-tcp-err -> (values fixnum string)) ()
   "Since libevent provides a macro but not a function for getting the last error
    code, we have to essentially rebuild that macro here.
 
@@ -125,8 +125,8 @@
   (let ((socket (if socket-is-bufferevent
                     socket
                     (socket-c socket)))
-        (read-sec (if (numberp read-sec) read-sec -1))
-        (write-sec (if (numberp write-sec) write-sec -1)))
+        (read-sec (if (realp read-sec) read-sec -1))
+        (write-sec (if (realp write-sec) write-sec -1)))
     ;; since it takes time/memory to instantiate foreign timeval objects, we only
     ;; do the bare minimum here (which means a lot of switching logic)
     (cond ((and (< read-sec 0)
@@ -159,7 +159,7 @@
                (le:bufferevent-set-timeouts socket (cffi:null-pointer) write-to)))))
     nil))
 
-(defun* (enabled-socket -> integer) ((socket socket) &key ((read boolean) nil) ((write boolean) nil))
+(defun* (enabled-socket -> fixnum) ((socket socket) &key ((read boolean) nil) ((write boolean) nil))
   "Enable read/write monitoring on a socket. If :read or :write are nil, they
    are not disabled, but rather just not enabled."
   (declare (optimize speed (debug 0) (safety 0)))
@@ -168,7 +168,7 @@
     (le:bufferevent-enable bev (logior (if read le:+ev-read+ 0)
                                        (if write le:+ev-write+ 0)))))
 
-(defun* (disable-socket -> integer) ((socket socket) &key ((read boolean) nil) ((write boolean) nil))
+(defun* (disable-socket -> fixnum) ((socket socket) &key ((read boolean) nil) ((write boolean) nil))
   "Disable read/write monitoring on a socket. If :read or :write are nil, they
    are not enabled, but rather just not disabled."
   (declare (optimize speed (debug 0) (safety 0)))
@@ -177,7 +177,7 @@
     (le:bufferevent-disable bev (logior (if read le:+ev-read+ 0)
                                         (if write le:+ev-write+ 0)))))
 
-(defun* read-socket-data ((socket (or cffi:foreign-pointer socket)) (data-cb function) &key ((socket-is-evbuffer boolean) nil))
+(defun* read-socket-data ((socket (or cffi:foreign-pointer socket)) (data-cb callback) &key ((socket-is-evbuffer boolean) nil))
   "Read the data out of a bufferevent (or directly, an evbuffer)."
   (declare (optimize speed (debug 0) (safety 0)))
   (when (subtypep (type-of socket) 'socket)
@@ -188,19 +188,19 @@
         (input (if socket-is-evbuffer
                    socket
                    (le:bufferevent-get-input (socket-c socket)))))
-    (declare (type integer bufsize)
+    (declare (type fixnum bufsize)
              (type cffi:foreign-pointer buffer-c input)
-             (type (vector (unsigned-byte 8)) buffer-lisp))
-    (loop for n = (the integer (le:evbuffer-remove input buffer-c bufsize))
+             (type octet-vector buffer-lisp))
+    (loop for n = (the fixnum (le:evbuffer-remove input buffer-c bufsize))
           while (< 0 n) do
       (dotimes (i n)
-        (declare (type integer i))
+        (declare (type fixnum i))
         (setf (aref buffer-lisp i) (cffi:mem-aref buffer-c :unsigned-char i)))
       (funcall data-cb (subseq buffer-lisp 0 n)))))
 
-(defun* (read-bytes-from-socket -> (vector (unsigned-byte 8)))
+(defun* (read-bytes-from-socket -> octet-vector)
           ((socket (or cffi:foreign-pointer socket))
-           (num-bytes integer)
+           (num-bytes fixnum)
           &key ((socket-is-evbuffer boolean) nil))
   "Read num-bytes out of a socket's buffer and return them. If the evbuffer has
    less bytes than num-bytes, returns nil (ie, try again later)."
@@ -212,10 +212,10 @@
                    socket
                    (le:bufferevent-get-input (socket-c socket))))
         (data-final nil))
-    (declare (type integer bufsize)
+    (declare (type fixnum bufsize)
              (type cffi:foreign-pointer buffer-c input)
-             (type (vector (unsigned-byte 8)) buffer-lisp)
-             (type (or null (vector (unsigned-byte 8))) data-final))
+             (type octet-vector buffer-lisp)
+             (type (or null octet-vector) data-final))
     (loop for bytes-to-read = (min num-bytes bufsize (le:evbuffer-get-length input))
           for n = (le:evbuffer-remove input buffer-c bytes-to-read)
           while (< 0 n) do
@@ -228,7 +228,7 @@
       (decf num-bytes n))
     data-final))
 
-(defun* write-to-evbuffer ((evbuffer cffi:foreign-pointer) (data (or string (vector (unsigned-byte 8)))))
+(defun* write-to-evbuffer ((evbuffer cffi:foreign-pointer) (data bytes-or-string))
   "Writes data directly to evbuffer."
   (declare (optimize speed (debug 0) (safety 0)))
   (let* ((data (if (stringp data)
@@ -240,9 +240,9 @@
     ;; copy into evbuffer using existing c buffer
     (loop while (< 0 data-length) do
       (let ((bufsize (min data-length *buffer-size*)))
-        (declare (integer bufsize))
+        (declare (fixnum bufsize))
         (dotimes (i bufsize)
-          (declare (integer i))
+          (declare (fixnum i))
           (setf (cffi:mem-aref buffer-c :unsigned-char i) (aref data data-index))
           (incf data-index))
         (le:evbuffer-add evbuffer buffer-c bufsize)
@@ -250,10 +250,10 @@
 
 (defun* write-socket-data
           ((socket socket)
-           (data (or string (vector (unsigned-byte 8))))
-          &key ((read-cb (or null function)) nil)
-          ((write-cb (or null function)) nil)
-          ((event-cb (or null function)) nil))
+           (data bytes-or-string)
+          &key ((read-cb callback) nil)
+          ((write-cb callback) nil)
+          ((event-cb callback) nil))
   "Write data into a cl-async socket. Allows specifying read/write/event
    callbacks. Any callback left nil will use that current callback from the
    socket (so they only override when specified, otherwise keep the current
@@ -284,7 +284,7 @@
                    (write-cb-current (getf callbacks :write-cb))
                    (event-cb-current (getf callbacks :event-cb)))
               (declare (type cffi:foreign-pointer socket-data-pointer)
-                       (type (or null function) read-cb-current write-cb-current event-cb-current))
+                       (type callback read-cb-current write-cb-current event-cb-current))
               (save-callbacks socket-data-pointer
                               (list :read-cb (if (functionp read-cb) read-cb read-cb-current)
                                     :write-cb (if (functionp write-cb) write-cb write-cb-current)
@@ -296,11 +296,11 @@
         (funcall do-send))
     nil))
 
-(defun* (drain-evbuffer -> (vector (unsigned-byte 8))) ((evbuffer cffi:foreign-pointer))
+(defun* (drain-evbuffer -> octet-vector) ((evbuffer cffi:foreign-pointer))
   "Grab all data in an evbuffer and put it into a byte array (returned)."
   (declare (optimize speed (debug 0)))
   (let ((body nil))
-    (declare (type (or null (vector (unsigned-byte 8))) body))
+    (declare (type (or null octet-vector) body))
     (read-socket-data evbuffer
                       (lambda (data)
                         (setf body (if body
@@ -322,7 +322,7 @@
          (drain-read (socket-drain-read-buffer socket)))
     (declare (type socket socket)
              (type (or null async-stream) tcp-stream)
-             (type (or null function) read-cb event-cb)
+             (type callback read-cb event-cb)
              (type boolean drain-read))
     (catch-app-errors event-cb
       (cond ((and read-cb drain-read)
@@ -350,7 +350,7 @@
          (write-cb (getf callbacks :write-cb))
          (event-cb (getf callbacks :event-cb)))
     (declare (type socket socket)
-             (type (or null function) write-cb event-cb))
+             (type callback write-cb event-cb))
     (catch-app-errors event-cb
       (when write-cb
         (funcall write-cb socket)))))
@@ -369,7 +369,7 @@
     (declare (type (or null event-info) event)
              (type (or null cffi:foreign-pointer) dns-base)
              (type socket socket)
-             (type (or null function) event-cb connect-cb))
+             (type callback event-cb connect-cb))
     (catch-app-errors event-cb
       (unwind-protect
         ;; if we just connected and we have a connect-cb, call it (only for
@@ -433,16 +433,15 @@
    server has attached to it. Returns the cl-async socket object created."
   (declare (optimize speed (debug 0)))
   (let* ((per-conn-data-pointer (create-data-pointer))
-         (stream-data-p (tcp-server-stream server))
-         (socket (make-instance 'socket :c bev :direction 'in :drain-read-buffer (not stream-data-p)))
+         (stream-data-p (the boolean (tcp-server-stream server)))
+         (socket (the socket (make-instance 'socket :c bev :direction 'in :drain-read-buffer (not stream-data-p))))
          (stream (when stream-data-p (make-instance 'async-io-stream :socket socket)))
          (event-cb (getf callbacks :event-cb))
          (connect-cb (getf callbacks :connect-cb)))
     (declare (type cffi:foreign-pointer per-conn-data-pointer)
-             (type boolean stream-data-p)
              (type socket socket)
              (type (or null async-stream) stream)
-             (type (or null function) event-cb connect-cb))
+             (type callback event-cb connect-cb))
     (catch-app-errors event-cb
       ;; attach our data-pointer/socket/stream class to the bev
       (attach-data-to-pointer bev (list :data-pointer per-conn-data-pointer
@@ -497,15 +496,15 @@
                                             :tcp-server tcp-server)))))
 
 (defun* (init-tcp-socket -> (or socket async-stream))
-          ((read-cb (or null function))
-           (event-cb (or null function))
-          &key ((data (or null string (vector (unsigned-byte 8)))) nil)
+          ((read-cb callback)
+           (event-cb callback)
+          &key ((data (or null bytes-or-string)) nil)
                ((stream boolean) nil)
-               ((fd (or integer cffi:foreign-pointer)) -1)
-               ((connect-cb (or null function)) nil)
-               ((write-cb (or null function)) nil)
-               ((read-timeout integer) -1)
-               ((write-timeout integer) -1)
+               ((fd (or fixnum cffi:foreign-pointer)) -1)
+               ((connect-cb callback) nil)
+               ((write-cb callback) nil)
+               ((read-timeout fixnum) -1)
+               ((write-timeout fixnum) -1)
                ((dont-drain-read-buffer boolean) nil dont-drain-read-buffer-supplied-p))
   "Initialize an async socket, but do not connect it."
   (check-event-loop-running)
@@ -523,7 +522,7 @@
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
 
     (declare (type cffi:foreign-pointer data-pointer bev)
-             (type (or integer cffi:foreign-pointer) fd)
+             (type (or fixnum cffi:foreign-pointer) fd)
              (type boolean dont-drain-read-buffer)
              (type socket socket)
              (type (or null async-stream) tcp-stream))
@@ -557,7 +556,7 @@
 (defun* (connect-tcp-socket -> (or socket async-stream))
           ((socket/stream (or socket async-stream))
            (host (or string null))
-           (port integer))
+           (port fixnum))
   "Connect a tcp socket initialized with init-tcp-socket."
   (let* ((socket (if (subtypep (type-of socket/stream) 'async-stream)
                      (stream-socket socket/stream)
@@ -582,15 +581,15 @@
 
 (defun* (tcp-connect -> (or socket async-stream))
           ((host (or null string))
-           (port integer)
-           (read-cb (or null function))
-           (event-cb (or null function))
-          &key ((data (or null string (vector (unsigned-byte 8)))) nil)
+           (port fixnum)
+           (read-cb callback)
+           (event-cb callback)
+          &key ((data (or null bytes-or-string)) nil)
                ((stream boolean) nil)
-               ((connect-cb (or null function)) nil)
-               ((write-cb (or null function)) nil)
-               ((read-timeout integer) -1)
-               ((write-timeout integer) -1)
+               ((connect-cb callback) nil)
+               ((write-cb callback) nil)
+               ((read-timeout fixnum) -1)
+               ((write-timeout fixnum) -1)
                ((dont-drain-read-buffer boolean) nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
@@ -610,11 +609,11 @@
 
 (defun* (tcp-server -> tcp-server)
           ((bind-address (or null string))
-           (port integer)
-           (read-cb (or null function))
-           (event-cb (or null function))
-          &key ((connect-cb (or null function)) nil)
-               ((backlog integer) -1)
+           (port fixnum)
+           (read-cb callback)
+           (event-cb callback)
+          &key ((connect-cb callback) nil)
+               ((backlog fixnum) -1)
                ((stream boolean) nil))
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
