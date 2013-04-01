@@ -9,6 +9,7 @@
            #:+af-unspec+
            #:+af-unix+
            #:*default-lookup-type*
+           #:*addrinfo*
 
            #:+sockaddr-size+
            #:+sockaddr6-size+
@@ -44,7 +45,6 @@
            #:ip-address-p
            #:ip-str-to-sockaddr
            #:with-ip-to-sockaddr
-           #:*addrinfo*
            #:addrinfo-ai-addr))
 (in-package :cl-async-util)
 
@@ -59,10 +59,12 @@
     #-(or :bsd :freebsd :darwin) +af-unspec+)
   "Holds the best default lookup type for a given platform.")
 
-(defparameter *addrinfo*
-  #+(or :windows :bsd :freebsd :darwin) (le::cffi-type le::evutil-addrinfo)
-  #-(or :windows :bsd :freebsd :darwin) (le::cffi-type le::addrinfo)
-  "Determines the correct type of addrinfo for the current platform.")
+;; needs to load before the following defconstant block
+(eval-when (:compile-toplevel :load-toplevel)
+  (defparameter *addrinfo*
+    #+(or :windows :bsd :freebsd :darwin) (le::cffi-type le::evutil-addrinfo)
+    #-(or :windows :bsd :freebsd :darwin) (le::cffi-type le::addrinfo)
+    "Determines the correct type of addrinfo for the current platform."))
 
 ;; define some cached values to save CFFI calls. believe it or not, this does
 ;; make a performance difference
