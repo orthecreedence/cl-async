@@ -1,7 +1,7 @@
 (in-package :cl-async)
 
 (defclass async-stream (trivial-gray-stream-mixin)
-  ((socket :accessor stream-socket :initarg :socket :initform nil))
+  ((socket :accessor stream-socket :initarg :socket :initform nil :type socket))
   (:documentation "The underlying class for async streams. Wraps a tcp socket class."))
 (defclass async-output-stream (async-stream fundamental-binary-output-stream) ()
   (:documentation "Async output stream."))
