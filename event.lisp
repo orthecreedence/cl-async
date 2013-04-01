@@ -6,44 +6,52 @@
   (:documentation "Thrown when a freed event is operated on."))
 
 (defclass event ()
-  ((c :accessor event-c :initarg :c :initform (cffi:null-pointer))
-   (free-callback :accessor event-free-callback :initarg :free-callback :initform nil)
-   (freed :accessor event-freed :reader event-freed-p :initform nil))
+  ((c :accessor event-c :initarg :c :initform (cffi:null-pointer) :type cffi:foreign-pointer)
+   (free-callback :accessor event-free-callback :initarg :free-callback :initform nil :type (or null function))
+   (freed :accessor event-freed :reader event-freed-p :initform nil :type boolean))
   (:documentation "Wraps a C libevent event object."))
 
-(defun check-event-unfreed (event)
+(declaim (inline check-event-unfreed))
+(defun* (check-event-unfreed -> null) ((event (or event cffi:foreign-pointer)))
   "Checks that an event being operated on is not freed."
-  (when (event-freed event)
-    (error 'event-freed :event event)))
+  (when (subtypep (type-of event) 'event)
+    (when (event-freed event)
+      (error 'event-freed :event event))))
 
-(defun free-event (event)
+(defun* (free-event -> null) ((event event))
   "Free a cl-async event object and any resources it uses. It *is* safe to free
    a pending/active event."
+  (declare (optimize speed (debug 0) (safety 0)))
   (check-event-unfreed event)
   ;; run the free-callback (if any)
   (let ((free-cb (event-free-callback event)))
     (when free-cb (funcall free-cb event)))
   ;; free the event (also makes it inactive/non-pending before freeing)
   (le:event-free (event-c event))
-  (setf (event-freed event) t))
+  (setf (event-freed event) t)
+  nil)
 
-(defun remove-event (event)
+(defun* (remove-event -> boolean) ((event event))
   "Remove a pending event from the event loop. Returns t on success, nil on
    failure."
+  (declare (optimize speed (debug 0)))
   (check-event-unfreed event)
   (let ((ret (le:event-del (event-c event))))
+    (declare (type integer ret))
     (when (eq ret 0)
       t)))
 
-(defun add-event (event &key timeout activate)
+(defun* (add-event -> integer) ((event event) &key ((timeout (or null real)) nil) ((activate boolean) nil))
   "Add an event to its specified event loop (make it pending). If given a
    :timeout (in seconds) the event will fire after that amount of time, unless
    it's removed or freed. If :activate is true and the event has no timeout,
    the event will be activated directly without being added to the event loop,
    and its callback(s) will be fired."
+  (declare (optimize speed (debug 0) (safety 0)))
   (check-event-unfreed event)
   (let ((ev (event-c event)))
-    (cond ((numberp timeout)
+    (declare (type cffi:foreign-pointer ev))
+    (cond ((realp timeout)
            (with-struct-timeval time-c timeout
              (le:event-add ev time-c)))
           (activate
@@ -54,11 +62,14 @@
 (cffi:defcallback timer-cb :void ((fd :pointer) (what :pointer) (data-pointer :pointer))
   "Callback used by the async timer system to find and run user-specified
    callbacks on timer events."
-  (declare (ignore fd what))
+  (declare (ignore fd what)
+           (optimize speed (debug 0) (safety 0)))
   (let* ((event (deref-data-from-pointer data-pointer))
          (callbacks (get-callbacks data-pointer))
          (cb (getf callbacks :callback))
          (event-cb (getf callbacks :event-cb)))
+    (declare (type event event)
+             (type (or null function) cb event-cb))
     (catch-app-errors event-cb
       (unwind-protect
         (when cb (funcall cb))
@@ -84,20 +95,26 @@
                  timeout-cb)
          (funcall timeout-cb)))))
 
-(defun delay (callback &key time event-cb)
+(defun* (delay -> event) ((callback function) &key ((time (or null real)) nil) ((event-cb (or null function)) nil))
   "Run a function, asynchronously, after the specified amount of seconds. An
    event loop must be running for this to work.
    
    If time is nil, callback is still called asynchronously, but is queued in the
    event loop with no delay."
+  (declare (optimize speed (debug 0)))
   (check-event-loop-running)
-  (let* ((data-pointer (create-data-pointer))
-         (ev (le:event-new (event-base-c *event-base*) -1 0 (cffi:callback timer-cb) data-pointer))
+  (let* ((data-pointer (the cffi:foreign-pointer (create-data-pointer)))
+         (ev (le:event-new (event-base-c *event-base*)
+                           -1 0
+                           (cffi:callback timer-cb)
+                           data-pointer))
          (event (make-instance 'event
-                               :c ev
+                               :c (the cffi:foreign-pointer ev)
                                :free-callback (lambda (event)
                                                 (declare (ignore event))
                                                 (free-pointer-data data-pointer)))))
+    (declare (type cffi:foreign-pointer data-pointer ev)
+             (type event event))
     (save-callbacks data-pointer (list :callback callback :event-cb event-cb))
     (attach-data-to-pointer data-pointer event)
     (add-event event :timeout time :activate t)
@@ -107,6 +124,7 @@
   "Run a function, asynchronously, when the specified file descriptor is
    ready for write or read operations. An event loop must be running for
    this to work."
+  (declare (optimize speed (debug 0)))
   (check-event-loop-running)
   (let* ((data-pointer (create-data-pointer))
          (ev (le:event-new (event-base-c *event-base*)

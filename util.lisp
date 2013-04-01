@@ -163,14 +163,14 @@
   (when (event-base-function-registry *event-base*)
     (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*))))
 
-(defun* clear-callbacks ((pointer cffi:foreign-pointer))
+(defun* (clear-callbacks -> null) ((pointer cffi:foreign-pointer))
   "Clear out all callbacks for the given pointer."
   (declare (optimize speed (debug 0)))
   (when (event-base-function-registry *event-base*)
     (remhash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)))
   nil)
 
-(defun* attach-data-to-pointer ((pointer cffi:foreign-pointer) data)
+(defun* (attach-data-to-pointer -> null) ((pointer cffi:foreign-pointer) data)
   "Attach a lisp object to a foreign pointer."
   (declare (optimize speed (debug 0)))
   (unless (event-base-data-registry *event-base*)
@@ -184,7 +184,7 @@
   (when (and pointer (event-base-data-registry *event-base*))
     (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*))))
 
-(defun* clear-pointer-data ((pointer cffi:foreign-pointer))
+(defun* (clear-pointer-data -> null) ((pointer cffi:foreign-pointer))
   "Clear the data attached to a CFFI pointer."
   (declare (optimize speed (debug 0)))
   (when (and pointer (event-base-data-registry *event-base*))
