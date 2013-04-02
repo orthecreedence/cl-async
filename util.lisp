@@ -224,10 +224,10 @@
   "Given a second value, ie 3.67, return the number of seconds as the first
    value and the number of usecs for the second value."
   (declare (optimize speed (debug 0)))
-  (if (numberp time-s)
-      (multiple-value-bind (time-sec time-frac) (floor time-s)
-        (values time-sec (floor (* 1000000 time-frac))))
-      nil))
+  (multiple-value-bind (time-sec time-frac) (floor time-s)
+    (declare (type fixnum time-sec)
+             (type real time-s))
+    (values time-sec (floor (* 1000000 time-frac)))))
 
 (defun free-cached-timevals ()
   "Free all cached timeval structs."
@@ -238,7 +238,7 @@
 (defun* (get-free-timeval -> cffi:foreign-pointer) ((seconds real))
   "Tries to find an unused timeval object in *timevals*. If one exists, it pops
    it off the *timevals* list, sets the specified seconds into it, and returns
-   it. If it doesnt find one, it instantiates a new timeval, sets the seconds,
+   it. If it doesn't find one, it instantiates a new timeval, sets the seconds,
    and returns.
    
    Once a timeval is no longer needed it is pushed back into *timevals* to be
