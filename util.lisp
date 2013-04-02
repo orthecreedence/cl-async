@@ -37,7 +37,12 @@
            #:clear-pointer-data
            #:free-pointer-data
 
-           #:*timevals*
+           #:with-cached-foreign
+           #:release-foreign-to-cache
+           #:free-foreign-cached-collection
+
+           #:*timeval-cache*
+
            #:free-cached-timevals
            #:with-struct-timeval
            #:split-usec-time
@@ -217,7 +222,26 @@
           (cffi:foreign-free pointer)))))
   nil)
 
-(defparameter *timevals* nil
+(defmacro with-cached-foreign ((var storage-list) &body body)
+  "Sets up a very simple pop/list cache geared for foreign objects."
+  `(let ((,var (car ,storage-list)))
+     (declare (type (or null cffi:foreign-pointer) ,var))
+     (setf ,storage-list (cdr ,storage-list))
+     ,@body))
+
+(defmacro release-foreign-to-cache (foreign-val storage-list)
+  "Release a foreign object back into its list cache."
+  `(push ,foreign-val ,storage-list))
+
+(defmacro free-foreign-cached-collection (storage-list &optional (free-fn ''cffi:foreign-free))
+  "Free all cached timeval structs."
+  (let ((cached-foreign (gensym "cached-foreign")))
+    `(progn
+       (dolist (,cached-foreign ,storage-list)
+         (funcall ,free-fn ,cached-foreign))
+       (setf ,storage-list nil))))
+
+(defparameter *timeval-cache* nil
   "Holds cached timeval structures (freed on event loop exit).")
 
 (defun* (split-usec-time -> (values fixnum fixnum)) ((time-s real))
@@ -229,24 +253,16 @@
              (type real time-s))
     (values time-sec (floor (* 1000000 time-frac)))))
 
-(defun free-cached-timevals ()
-  "Free all cached timeval structs."
-  (dolist (timeval *timevals*)
-    (cffi:foreign-free timeval))
-  (setf *timevals* nil))
-
 (defun* (get-free-timeval -> cffi:foreign-pointer) ((seconds real))
-  "Tries to find an unused timeval object in *timevals*. If one exists, it pops
-   it off the *timevals* list, sets the specified seconds into it, and returns
+  "Tries to find an unused timeval object in *timeval-cache*. If one exists, it pops
+   it off the *timeval-cache* list, sets the specified seconds into it, and returns
    it. If it doesn't find one, it instantiates a new timeval, sets the seconds,
    and returns.
    
-   Once a timeval is no longer needed it is pushed back into *timevals* to be
+   Once a timeval is no longer needed it is pushed back into *timeval-cache* to be
    reused later by get-free-timevals."
   (declare (optimize speed (debug 0) (safety 0)))
-  (let ((timeval (car *timevals*)))
-    (declare (type (or null cffi:foreign-pointer) timeval))
-    (setf *timevals* (cdr *timevals*))
+  (with-cached-foreign (timeval *timeval-cache*)
     (unless timeval
       (setf timeval (cffi:foreign-alloc (le::cffi-type le::timeval))))
     (multiple-value-bind (time-sec time-usec)
@@ -256,11 +272,6 @@
             (le-a:timeval-tv-usec timeval) time-usec))
     timeval))
 
-(defun* (release-timeval -> null) ((timeval cffi:foreign-pointer))
-  "Release a timeval struct back into *timevals*."
-  (push timeval *timevals*)
-  nil)
-
 (defmacro with-struct-timeval (var seconds &rest body)
   "Makes a timeval structure with the given seconds available to the body form
    under that variable named by var."
@@ -268,7 +279,7 @@
      (declare (type cffi:foreign-pointer ,var))
      (unwind-protect
        (progn ,@body)
-       (release-timeval ,var))))
+       (release-foreign-to-cache ,var *timeval-cache*))))
 
 (defmacro with-struct-timeval_ (var seconds &rest body)
   "Convert seconds to a valid struct timeval C data type."
