@@ -117,7 +117,6 @@
                                  (list :catch-app-errors catch-app-errors))
                                (when (functionp default-event-cb)
                                  (list :default-event-handler default-event-cb)))))
-        (*timeval-cache* nil)
         (*socket-buffer-c* (cffi:foreign-alloc :unsigned-char :count *buffer-size*))
         (*socket-buffer-lisp* (make-array *buffer-size* :element-type '(unsigned-byte 8)))
         (callbacks nil))
@@ -144,7 +143,7 @@
       (cffi:foreign-free *socket-buffer-c*)
       (free-pointer-data (event-base-c *event-base*) :preserve-pointer t)
       (le:event-base-free (event-base-c *event-base*))
-      (free-foreign-cached-collection *timeval-cache*)
+      (free-foreign-cached-collection (event-base-timeval-cache *event-base*))
       (setf *event-base* nil))))
 
 (defun exit-event-loop ()

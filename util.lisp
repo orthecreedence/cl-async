@@ -41,8 +41,6 @@
            #:release-foreign-to-cache
            #:free-foreign-cached-collection
 
-           #:*timeval-cache*
-
            #:free-cached-timevals
            #:with-struct-timeval
            #:split-usec-time
@@ -241,9 +239,6 @@
          (funcall ,free-fn ,cached-foreign))
        (setf ,storage-list nil))))
 
-(defparameter *timeval-cache* nil
-  "Holds cached timeval structures (freed on event loop exit).")
-
 (defun* (split-usec-time -> (values fixnum fixnum)) ((time-s real))
   "Given a second value, ie 3.67, return the number of seconds as the first
    value and the number of usecs for the second value."
@@ -254,15 +249,15 @@
     (values time-sec (floor (* 1000000 time-frac)))))
 
 (defun* (get-free-timeval -> cffi:foreign-pointer) ((seconds real))
-  "Tries to find an unused timeval object in *timeval-cache*. If one exists, it pops
-   it off the *timeval-cache* list, sets the specified seconds into it, and returns
-   it. If it doesn't find one, it instantiates a new timeval, sets the seconds,
-   and returns.
+  "Tries to find an unused timeval object in the timeval cache. If one exists,
+   it pops it off the timeval cache list, sets the specified seconds into it,
+   and returns it. If it doesn't find one, it instantiates a new timeval, sets
+   the seconds, and returns.
    
-   Once a timeval is no longer needed it is pushed back into *timeval-cache* to be
+   Once a timeval is no longer needed it is pushed back into timeval cache to be
    reused later by get-free-timevals."
   (declare (optimize speed (debug 0) (safety 0)))
-  (with-cached-foreign (timeval *timeval-cache*)
+  (with-cached-foreign (timeval (event-base-timeval-cache *event-base*))
     (unless timeval
       (setf timeval (cffi:foreign-alloc (le::cffi-type le::timeval))))
     (multiple-value-bind (time-sec time-usec)
@@ -279,7 +274,7 @@
      (declare (type cffi:foreign-pointer ,var))
      (unwind-protect
        (progn ,@body)
-       (release-foreign-to-cache ,var *timeval-cache*))))
+       (release-foreign-to-cache ,var (event-base-timeval-cache *event-base*)))))
 
 (defmacro with-struct-timeval_ (var seconds &rest body)
   "Convert seconds to a valid struct timeval C data type."
