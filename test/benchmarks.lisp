@@ -97,8 +97,10 @@
           (as:signal-handler 2
             (lambda (signo)
               (declare (ignore signo))
-              (as:close-tcp-server server)))
-          (show-stats))))))
+              (format t "Got sigint, closing server.~%")
+              (as:exit-event-loop)))
+          (show-stats))))
+    :catch-app-errors t))
 
 (defun benchmark-client (&key (server "127.0.0.1") (port 9009) (num-requests 40000) (delay 1) (client-id 0))
   (as:start-event-loop
@@ -126,8 +128,6 @@
           (labels ((do-delay ()
                      (when (< delay-num num-delays)
                        (incf delay-num)
-                       ;(when (zerop (mod delay-num 100))
-                         ;(format t "delay ~a.~%" delay-num))
                        (as:delay #'do-delay :time delay))))
             (do-delay)))))))
 
