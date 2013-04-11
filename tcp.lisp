@@ -72,10 +72,10 @@
               (cffi:foreign-funcall "strerror" :int code :string))))
 
 (declaim (inline check-socket-open))
-(defun* check-socket-open ((socket socket))
+(defun* (check-socket-open -> null) ((socket socket))
   "Throw a socket-closed condition if given a socket that's closed."
   (declare (optimize speed (debug 0)))
-  (when (subtypep (type-of socket) 'socket)
+  (when (typep socket 'socket)
     (when (socket-closed socket)
       (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket")))
   nil)
