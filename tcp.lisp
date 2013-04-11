@@ -73,7 +73,7 @@
 
 (defun check-socket-open (socket)
   "Throw a socket-closed condition if given a socket that's closed."
-  (when (subtypep (type-of socket) 'socket)
+  (when (typep socket 'socket)
     (when (socket-closed socket)
       (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket"))))
 
