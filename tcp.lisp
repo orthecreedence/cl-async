@@ -116,7 +116,7 @@
     (le:evconnlistener-free (tcp-server-c tcp-server))
     (setf (tcp-server-closed tcp-server) t)))
 
-(defun* set-socket-timeouts ((socket (or socket cffi:foreign-pointer)) (read-sec real) (write-sec real) &key ((socket-is-bufferevent boolean) nil))
+(defun* set-socket-timeouts ((socket (or socket cffi:foreign-pointer)) (read-sec (or null real)) (write-sec (or null real)) &key ((socket-is-bufferevent boolean) nil))
   "Given a pointer to a libevent socket (bufferevent), set the read/write
    timeouts on the bufferevent."
   (declare (optimize speed (debug 0)))
