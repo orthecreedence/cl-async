@@ -2,6 +2,7 @@
 (in-suite cl-async-test-core)
 
 ;; TODO: timeouts (integer, float)
+;; TODO: enable/disable socket
 
 (test tcp-simple-client-server
   "Test both tcp-connect and tcp-server"
