@@ -159,7 +159,7 @@
                (le:bufferevent-set-timeouts socket (cffi:null-pointer) write-to)))))
     nil))
 
-(defun* (enabled-socket -> fixnum) ((socket socket) &key ((read boolean) nil) ((write boolean) nil))
+(defun* (enable-socket -> fixnum) ((socket socket) &key ((read boolean) nil) ((write boolean) nil))
   "Enable read/write monitoring on a socket. If :read or :write are nil, they
    are not disabled, but rather just not enabled."
   (declare (optimize speed (debug 0) (safety 0)))
