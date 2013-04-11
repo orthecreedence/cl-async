@@ -64,12 +64,15 @@
 (defmethod stream-write-byte ((stream async-output-stream) byte)
   "Write one byte to the underlying socket."
   (when (open-stream-p stream)
-    (write-socket-data (stream-socket stream) (vector byte))))
+    (write-socket-data (stream-socket stream) (make-array 1 :element-type '(unsigned-byte 8) :initial-contents (list byte)))))
   
 (defmethod stream-write-sequence ((stream async-output-stream) sequence start end &key)
   "Write a sequence of bytes to the underlying socket."
   (when (open-stream-p stream)
-    (let ((seq (subseq sequence start end)))
+    (let* ((seq (subseq sequence start end))
+           (seq (if (typep seq 'bytes-or-string)
+                    seq
+                    (bytes seq))))
       (write-socket-data (stream-socket stream) seq))))
 
 ;; -----------------------------------------------------------------------------

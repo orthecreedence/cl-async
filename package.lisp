@@ -6,6 +6,11 @@
            #:+af-unspec+
            #:+af-unix+
 
+           ;; util functions
+           #:octet
+           #:octet-vector
+           #:bytes
+
            ;; common conditions/accessors
            #:event-info
            #:event-error
