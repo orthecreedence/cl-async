@@ -35,7 +35,7 @@
 (defun signal-sym (signo)
   "Does nothing. Can be used in the future to prevent collissions in the data/
    callback space if needed."
-  signo)
+  (cffi:make-pointer signo))
 
 (defun free-signal-handler (signo)
   "Clear a signal handler and unbind it."
