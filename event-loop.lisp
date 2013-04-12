@@ -145,6 +145,24 @@
       (le:event-base-free (event-base-c *event-base*))
       (setf *event-base* nil))))
 
+(defmacro with-event-loop ((&key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
+                           &body body)
+  "Makes starting an event loop a tad less annoying. I really couldn't take
+   typing out `(start-event-loop (lambda () ...) ...) every time. Example:
+
+     (with-event-loop (:catch-app-errors t)
+       (do-something-one-does-when-an-event-loop-is-running))
+
+   See how nice that is?"
+  (append
+    `(as:start-event-loop (lambda () ,@body)
+       :fatal-cb ,fatal-cb
+       :logger-cb ,logger-cb
+       :default-event-cb ,default-event-cb)
+    (when catch-app-errors-supplied-p
+      `(:catch-app-errors ,catch-app-errors))))
+       
+
 (defun exit-event-loop ()
   "Exit the event loop if running."
   (if (event-base-c *event-base*)
