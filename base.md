@@ -84,7 +84,13 @@ the same values for each thread.
 
 Wraps around [start-event-loop](#start-event-loop), taking away a little bit of
 the syntax. The options match up 1 to 1 with `start-event-loop`, so I won't
-duplicate the documentation.
+duplicate the documentation. Because I'm such a great guy though, here's an
+example:
+
+{% highlight cl %}
+(with-event-loop (:catch-app-errors t)
+  (do-whatever-it-is-people-do-when-they-are-inside-of-an-event-loop))
+{% endhighlight %}
 
 <a id="exit-event-loop"></a>
 ### exit-event-loop
