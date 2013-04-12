@@ -21,6 +21,7 @@
            #:dump-event-loop-status
            #:add-event-loop-exit-callback
            #:start-event-loop
+           #:with-event-loop
            #:exit-event-loop
 
            ;; event functions
