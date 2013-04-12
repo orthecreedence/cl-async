@@ -69,8 +69,8 @@
 (defun proxy-remote-response (sock-remote data)
   "Send data received on the remote socket into the local socket."
   (when *debug*
-    (handler-case (format t "remote~%------------~%~a~%" (babel:octets-to-string data :encoding :utf-8))
-      (t () (format t "remote~%------------~%~a~%" data))))
+    (handler-case (format t "---remote(~a)---~%~a~%" (length data) (babel:octets-to-string data :encoding :utf-8))
+      (t () (format t "---remote(~a)---~%~a~%" (length data) data))))
   (let ((sock-local (as:socket-data sock-remote)))
     (if (as:socket-closed-p sock-local)
         (close-paired-socket sock-local)
@@ -92,13 +92,13 @@
                        (lambda (sock-local data)
                          (declare (ignore sock-local))
                          (when *debug*
-                           (handler-case (format t "local~%------------~%~a~%" (babel:octets-to-string data :encoding :utf-8))
-                             (t () (format t "local~%------------~%~a~%" data))))
+                           (handler-case (format t "---local(~a)---~%~a~%" (length data) (babel:octets-to-string data :encoding :utf-8))
+                             (t () (format t "---local(~a)---~%~a~%" (length data) data))))
                          (as:write-socket-data sock-remote data))
                        #'proxy-event-handler
                        :connect-cb (lambda (sock-local)
                                      (when *debug*
-                                       (format t "- New local connection~%"))
+                                       (format t "---connection---~%"))
                                      ;; on local connect, establish the remote connection
                                      (setf sock-remote (as:tcp-connect remote-host remote-port
                                                                        #'proxy-remote-response
