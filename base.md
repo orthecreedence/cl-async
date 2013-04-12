@@ -10,6 +10,7 @@ This section describes the base functions for cl-async and also the low-level
 conditions it uses.
 
 - [start-event-loop](#start-event-loop) _function_
+- [with-event-loop](#with-event-loop) _macro_
 - [exit-event-loop](#exit-event-loop) _function_
 - [add-event-loop-exit-callback](#add-event-loop-exit-callback) _function_
 - [dump-event-loop-status](#dump-event-loop-status) _function_
@@ -72,6 +73,18 @@ calling `start-event-loop` not only cuts down on `setf`s you have to do when
 starting your evented app, but also uses thread-local versions of the vars,
 meaning you can start multiple event loops in multiple threads wiithout using
 the same values for each thread.
+
+<a id="with-event-loop"></a>
+### with-event-loop
+{% highlight cl %}
+(defmacro with-event-loop ((&key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
+                           &body body)
+  => integer
+{% endhighlight %}
+
+Wraps around [start-event-loop](#start-event-loop), taking away a little bit of
+the syntax. The options match up 1 to 1 with `start-event-loop`, so I won't
+duplicate the documentation.
 
 <a id="exit-event-loop"></a>
 ### exit-event-loop
