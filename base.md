@@ -77,7 +77,7 @@ the same values for each thread.
 <a id="with-event-loop"></a>
 ### with-event-loop
 {% highlight cl %}
-(defmacro with-event-loop ((&key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
+(defmacro with-event-loop ((&key fatal-cb logger-cb default-event-cb catch-app-errors)
                            &body body)
   => integer
 {% endhighlight %}
