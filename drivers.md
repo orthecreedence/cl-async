@@ -8,9 +8,11 @@ Drivers built on cl-async
 
 - [drakma-async](https://github.com/orthecreedence/drakma-async)  
 - [beanstalkd](https://github.com/orthecreedence/beanstalk-async)  
-- [MongoDB](https://github.com/archimag/mongo-cl-driver)  
+- [mongo-cl-driver](https://github.com/archimag/mongo-cl-driver)  
   mongo-cl-driver allows different connection backends to MongoDB, one of them
   being a cl-async interface.
+- [cl-rethinkdb](https://github.com/orthecreedence/cl-rethinkdb)  
+  An async database driver for RethinkDB.
 - [Wookie](https://github.com/orthecreedence/wookie)  
   Originally started as a Hunchentoot port, Wookie is now its own async HTTP
   web server.
