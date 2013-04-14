@@ -1,7 +1,12 @@
 (defpackage :cl-async
   (:use :cl :cl-async-base :cl-async-util :trivial-gray-streams :defstar)
   (:nicknames :as)
-  (:export #:+af-inet+
+  (:export #:octet
+           #:octet-vector
+
+           #:bytes
+           
+           #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
            #:+af-unix+
