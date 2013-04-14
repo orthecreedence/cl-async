@@ -4,7 +4,14 @@
 
 (defpackage :cl-async-util
   (:use :cl :cl-async-base)
-  (:export #:+af-inet+
+  (:export #:octet
+           #:octet-vector
+           #:bytes-or-string
+           #:callback
+
+           #:bytes
+           
+           #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
            #:+af-unix+
@@ -47,6 +54,16 @@
            #:*addrinfo*
            #:addrinfo-ai-addr))
 (in-package :cl-async-util)
+
+(deftype octet () '(unsigned-byte 8))
+(deftype octet-vector () '(simple-array octet (*)))
+(deftype bytes-or-string () '(or octet-vector string))
+(deftype callback () '(or null function symbol))
+
+(defun bytes (vector)
+  "Convert any vector/string into a byte array. Useful for sending direct byte
+   data into write-socket-data."
+  (coerce vector '(vector octet)))
 
 (defconstant +af-inet+ le:+af-inet+)
 (defconstant +af-inet6+ le:+af-inet-6+)
