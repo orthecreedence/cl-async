@@ -75,7 +75,7 @@
   "Throw a socket-closed condition if given a socket that's closed."
   (when (typep socket 'socket)
     (when (socket-closed socket)
-      (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket"))))
+      (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket" :socket socket))))
 
 (defun socket-closed-p (socket)
   "Return whether a socket is closed or not."
