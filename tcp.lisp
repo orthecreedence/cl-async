@@ -252,8 +252,8 @@
           ((socket socket)
            (data bytes-or-string)
           &key ((read-cb callback) nil)
-          ((write-cb callback) nil)
-          ((event-cb callback) nil))
+               ((write-cb callback) nil)
+               ((event-cb callback) nil))
   "Write data into a cl-async socket. Allows specifying read/write/event
    callbacks. Any callback left nil will use that current callback from the
    socket (so they only override when specified, otherwise keep the current
