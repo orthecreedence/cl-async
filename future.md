@@ -25,6 +25,7 @@ are constantly dealing with values that are not yet realized.
 - [Nicer syntax](#nicer-syntax)
   - [alet](#alet) _macro_
   - [alet*](#alet-star) _macro_
+  - [aif](#aif) _macro_
   - [multiple-future-bind](#multiple-future-bind) _macro_
   - [wait-for](#wait-for) _macro_
 - [Error handling](#error-handling)
@@ -411,6 +412,26 @@ bound to the variable (just like `let*`).
 (alet* ((x (grab-x-from-server))
         (nil (save-val x)))
   (format t "got: ~a~%" x))
+{% endhighlight %}
+
+<a id="aif"></a>
+### aif
+{% highlight cl %}
+(defmacro aif (future-gen true-form false-form))
+  => new-future
+{% endhighlight %}
+
+This macro provides `if` for asynchronous values. It is a very simple wrapper
+around `alet` that provides a nice syntax for making decisions based on what a
+future will return:
+
+{% highlight cl %}
+;; `grab-user-from-db` can return a future here. if the future is finished with
+;; any value other than NIL, "User exists!" will be printed. If NIL, then "User
+;; does not exist..." will print.
+(aif (my-app:grab-user-from-db user-id)
+     (format t "User exists!~%")
+     (format t "User does not exist...~%"))
 {% endhighlight %}
 
 <a id="multiple-future-bind"></a>
