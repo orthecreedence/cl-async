@@ -25,6 +25,16 @@
 (in-package :simple-proxy)
 
 (defparameter *debug* nil "If T, will echo all data coming through the proxy")
+(defparameter *ascii* nil "If T, will echo all non-UTF8 data as a string of ASCII bytes instead of a vector")
+
+(defun to-ascii (data)
+  "Print data to an ASCII string byte by byte (if enabled)."
+  (if *ascii*
+      (progn
+        (loop for byte-code across data do
+          (format t "~c" (code-char byte-code)))
+        (format t "~%"))
+      data))
 
 (defun socketp (socket)
   "Test if given object is an as:socket."
@@ -70,20 +80,21 @@
   "Send data received on the remote socket into the local socket."
   (when *debug*
     (handler-case (format t "---remote(~a)---~%~a~%" (length data) (babel:octets-to-string data :encoding :utf-8))
-      (t () (format t "---remote(~a)---~%~a~%" (length data) data))))
+      (t () (format t "---remote(~a)---~%~a~%" (length data) (to-ascii data)))))
   (let ((sock-local (as:socket-data sock-remote)))
     (if (as:socket-closed-p sock-local)
         (close-paired-socket sock-local)
         (as:write-socket-data sock-local data))))
 
-(defun start (local-bind local-port remote-host remote-port &key stats debug)
+(defun start (local-bind local-port remote-host remote-port &key stats debug ascii)
   "Start a proxy on a local port and proxy to a remote host. If :stats is T,
    connection stats are printed every 2 seconds. If :debug is T, all data
    passing through the proxy is echoed to STDOUT."
   (let ((server nil)
         (sock-remote nil)
         (quit nil)
-        (*debug* debug))
+        (*debug* debug)
+        (*ascii* ascii))
     (as:start-event-loop
       (lambda ()
         (format t "Starting proxy.~%")
@@ -93,7 +104,7 @@
                          (declare (ignore sock-local))
                          (when *debug*
                            (handler-case (format t "---local(~a)---~%~a~%" (length data) (babel:octets-to-string data :encoding :utf-8))
-                             (t () (format t "---local(~a)---~%~a~%" (length data) data))))
+                             (t () (format t "---local(~a)---~%~a~%" (length data) (to-ascii data)))))
                          (as:write-socket-data sock-remote data))
                        #'proxy-event-handler
                        :connect-cb (lambda (sock-local)
@@ -130,3 +141,4 @@
             (print-stats)))))
     :catch-app-errors t)
   (format t "Closed.~%"))
+
