@@ -53,6 +53,8 @@
     (let ((paired-socket (as:socket-data socket)))
       (when (and (socketp paired-socket)
                  (not (as:socket-closed-p paired-socket)))
+        (when *debug*
+          (format t "---close---~%"))
         (as:close-socket paired-socket)
         ;; deref them
         (setf (as:socket-data socket) nil
