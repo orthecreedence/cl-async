@@ -25,6 +25,26 @@
 (in-package :simple-proxy)
 
 (defparameter *debug* nil "If T, will echo all data coming through the proxy")
+(defparameter *ascii* nil "If T, will echo all non-UTF8 data as a string of ASCII bytes instead of a vector")
+
+(defun to-ascii (data)
+  "Print data to an ASCII string byte by byte (if enabled)."
+  (if *ascii*
+      (progn
+        (loop for byte-code across data do
+          (format t "~c" (code-char byte-code)))
+        (format t "~%"))
+      data))
+
+(defun output-data (location &optional data)
+  "Outputs the given data using the specified location as the header."
+  (when *debug*
+    (if data
+        (progn
+          (format t "---~a(~a)---~%" location (length data))
+          (handler-case (format t "~a~%" (babel:octets-to-string data :encoding :utf-8))
+            (t () (format t "~a~%" (to-ascii data)))))
+        (format t "---~a---~%" location))))
 
 (defun socketp (socket)
   "Test if given object is an as:socket."
@@ -43,6 +63,7 @@
     (let ((paired-socket (as:socket-data socket)))
       (when (and (socketp paired-socket)
                  (not (as:socket-closed-p paired-socket)))
+        (output-data "close")
         (as:close-socket paired-socket)
         ;; deref them
         (setf (as:socket-data socket) nil
@@ -68,65 +89,65 @@
 
 (defun proxy-remote-response (sock-remote data)
   "Send data received on the remote socket into the local socket."
-  (when *debug*
-    (handler-case (format t "---remote(~a)---~%~a~%" (length data) (babel:octets-to-string data :encoding :utf-8))
-      (t () (format t "---remote(~a)---~%~a~%" (length data) data))))
+  (output-data "remote" data)
   (let ((sock-local (as:socket-data sock-remote)))
     (if (as:socket-closed-p sock-local)
         (close-paired-socket sock-local)
         (as:write-socket-data sock-local data))))
 
-(defun start (local-bind local-port remote-host remote-port &key stats debug)
+(defun proxy-local-data (sock-local data)
+  "Send data received on the local socket into the remote socket."
+  (output-data "local" data)
+  (let ((sock-remote (as:socket-data sock-local)))
+    (if (as:socket-closed-p sock-remote)
+        (close-paired-socket sock-remote)
+        (as:write-socket-data sock-remote data))))
+
+(defun start (local-bind local-port remote-host remote-port &key stats debug ascii)
   "Start a proxy on a local port and proxy to a remote host. If :stats is T,
    connection stats are printed every 2 seconds. If :debug is T, all data
    passing through the proxy is echoed to STDOUT."
   (let ((server nil)
-        (sock-remote nil)
         (quit nil)
-        (*debug* debug))
-    (as:start-event-loop
-      (lambda ()
-        (format t "Starting proxy.~%")
-        (setf server (as:tcp-server
-                       local-bind local-port
-                       (lambda (sock-local data)
-                         (declare (ignore sock-local))
-                         (when *debug*
-                           (handler-case (format t "---local(~a)---~%~a~%" (length data) (babel:octets-to-string data :encoding :utf-8))
-                             (t () (format t "---local(~a)---~%~a~%" (length data) data))))
-                         (as:write-socket-data sock-remote data))
-                       #'proxy-event-handler
-                       :connect-cb (lambda (sock-local)
-                                     (when *debug*
-                                       (format t "---connection---~%"))
-                                     ;; on local connect, establish the remote connection
-                                     (setf sock-remote (as:tcp-connect remote-host remote-port
-                                                                       #'proxy-remote-response
-                                                                       #'proxy-event-handler))
+        (*debug* debug)
+        (*ascii* ascii))
+    (as:with-event-loop (:catch-app-errors t)
+      (format t "Starting proxy.~%")
+      (setf server (as:tcp-server
+                     local-bind local-port
+                     (lambda (sock-local data)
+                       (proxy-local-data sock-local data))
+                     #'proxy-event-handler
+                     :connect-cb (lambda (sock-local)
+                                   (output-data "connection")
+                                   ;; on local connect, establish the remote connection
+                                   (let ((sock-remote (as:tcp-connect remote-host remote-port
+                                                                      #'proxy-remote-response
+                                                                      #'proxy-event-handler)))
                                      ;; pair the local and remote sockets. if
                                      ;; one closes, so does the other.
-                                     (pair-sockets sock-local sock-remote))
-                       :backlog -1))
+                                     (pair-sockets sock-local sock-remote)))
+                     :backlog -1))
 
-        ;; SIGINT will *cleanly* close the proxy (doesn't accept any new
-        ;; connections, but lets current ones run free until they close).
-        (as:signal-handler as:+sigint+
-          (lambda (sig)
-            (declare (ignore sig))
-            (format t "Closing proxy...~%")
-            (setf quit t)
-            (as:close-tcp-server server)
-            (as:free-signal-handler as:+sigint+)))
+      ;; SIGINT will *cleanly* close the proxy (doesn't accept any new
+      ;; connections, but lets current ones run free until they close).
+      (as:signal-handler as:+sigint+
+        (lambda (sig)
+          (declare (ignore sig))
+          (format t "Closing proxy...~%")
+          (setf quit t)
+          (as:close-tcp-server server)
+          (as:free-signal-handler as:+sigint+)))
 
-        ;; if :stats is T, print connections statistics every few seconds
-        (when stats
-          (labels ((print-stats ()
-                     (let* ((stats (as:stats))
-                            (incoming (getf stats :incoming-tcp-connections))
-                            (outgoing (getf stats :outgoing-tcp-connections)))
-                       (format t "incoming: ~a~%outgoing: ~a~%~%" incoming outgoing))
-                     (unless quit
-                       (as:delay #'print-stats :time 2))))
-            (print-stats)))))
-    :catch-app-errors t)
+      ;; if :stats is T, print connections statistics every few seconds
+      (when stats
+        (labels ((print-stats ()
+                   (let* ((stats (as:stats))
+                          (incoming (getf stats :incoming-tcp-connections))
+                          (outgoing (getf stats :outgoing-tcp-connections)))
+                     (format t "incoming: ~a~%outgoing: ~a~%~%" incoming outgoing))
+                   (unless quit
+                     (as:delay #'print-stats :time 2))))
+          (print-stats)))))
   (format t "Closed.~%"))
+
