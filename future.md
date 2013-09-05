@@ -30,6 +30,7 @@ are constantly dealing with values that are not yet realized.
   - [wait-for](#wait-for) _macro_
 - [Error handling](#error-handling)
   - [future-handler-case](#future-handler-case) _macro_
+  - [:future-debug](#future-debug) _feature_
 
 
 <a id="intro"></a>
@@ -553,3 +554,19 @@ Really, if you want to call out to another function that performs asynchronous
 operations from within a `future-handler-case`, make sure that function is
 perfectly capable of handling its own errors without relying on the calling form
 to catch them *OR ELSE*.
+
+<a id="future-debug"></a>
+### :future-debug
+If this keyword is present in `*features*` when compiling your app, *all* future
+error handling is turned off (ie [future-handler-case](#future-handler-case)
+doesn't catch any errors), and [signal-error](#signal-error) will throw the given
+condition (instead of pushing it onto the future errors array).
+
+This makes it (in some cases) a lot easier to debug an app that has layers upon
+layers of async. Sometimes it can be tricky to see where a particular error is
+coming from and it makes sense to turn off *all* error handling and just let
+things bubble up to the top level.
+
+Note that if you push `:future-debug` onto `*features*`, you have to recompile
+your app (since it works on the macro level).
+
