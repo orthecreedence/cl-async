@@ -25,6 +25,7 @@
 (in-package :simple-proxy)
 
 (defparameter *debug* nil "If T, will echo all data coming through the proxy")
+(defparameter *verbose* nil "If T (and *debug* is T), will spit out every byte that passes through")
 (defparameter *ascii* nil "If T, will echo all non-UTF8 data as a string of ASCII bytes instead of a vector")
 
 (defun to-ascii (data)
@@ -42,8 +43,9 @@
     (if data
         (progn
           (format t "---~a(~a)---~%" location (length data))
-          (handler-case (format t "~a~%" (babel:octets-to-string data :encoding :utf-8))
-            (t () (format t "~a~%" (to-ascii data)))))
+          (when *verbose*
+            (handler-case (format t "~a~%" (babel:octets-to-string data :encoding :utf-8))
+              (t () (format t "~a~%" (to-ascii data))))))
         (format t "---~a---~%" location))))
 
 (defun socketp (socket)
@@ -103,13 +105,14 @@
         (close-paired-socket sock-remote)
         (as:write-socket-data sock-remote data))))
 
-(defun start (local-bind local-port remote-host remote-port &key stats debug ascii)
+(defun start (local-bind local-port remote-host remote-port &key stats debug ascii verbose)
   "Start a proxy on a local port and proxy to a remote host. If :stats is T,
    connection stats are printed every 2 seconds. If :debug is T, all data
    passing through the proxy is echoed to STDOUT."
   (let ((server nil)
         (quit nil)
         (*debug* debug)
+        (*verbose* verbose)
         (*ascii* ascii))
     (as:with-event-loop (:catch-app-errors t)
       (format t "Starting proxy.~%")
