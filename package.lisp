@@ -76,7 +76,7 @@
            ;; signal handling functions
            #:signal-handler
            #:free-signal-handler
-           #:clear-signal-handler
+           #:clear-signal-handlers
 
            ;; dns conditions
            #:dns-error
