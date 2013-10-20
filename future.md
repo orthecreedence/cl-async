@@ -28,6 +28,7 @@ are constantly dealing with values that are not yet realized.
   - [aif](#aif) _macro_
   - [multiple-future-bind](#multiple-future-bind) _macro_
   - [wait-for](#wait-for) _macro_
+  - [adolist](#adolist) _macro_
 - [Error handling](#error-handling)
   - [future-handler-case](#future-handler-case) _macro_
   - [:future-debug](#future-debug) _feature_
@@ -474,6 +475,46 @@ want to know when an operation has finished but don't care about the result.
 ;; example: run-command can return a future
 (wait-for (run-command)
   (format t "Command finished.~%"))
+{% endhighlight %}
+
+<a id="wait-for"></a>
+### adolist
+{% highlight cl %}
+(defmacro adolist ((item items &optional future-bind) &body body))
+  => new-future
+{% endhighlight %}
+
+This macro allows looping over items in an async fashion. Since it can be tricky
+to iterate over a set of results that each does async processing but need to
+happen in sequence, this macro abstracts all this away.
+
+Here are some toy examples:
+
+{% highlight cl %}
+;; define a timer function
+(defun mydelay (time)
+  (let ((future (make-future)))
+    (format t "delay for ~a~%" time)
+    (as:delay (lambda () (finish future)) :time time)
+    future))
+
+;; loop over a list of integers, waiting for each one to finish before
+;; triggering the next one.
+;;
+;; this prints:
+;;   delay for 1  (1s pause)
+;;   delay for 2  (2s pause)
+;;   delay for 3  (3s pause)
+;;   DONE!
+(wait-for (adolist (item '(1 2 3))
+            (mydelay item))
+  (format t "DONE!~%"))
+
+;; to get more control over how the future finishes, specify the future-bind arg
+(adolist (item '(1 2 3) future)
+  (wait-for (mydelay item)
+    ;; continue the loop explicitely
+    (finish future)))
 {% endhighlight %}
 
 <a id="error-handling"></a>
