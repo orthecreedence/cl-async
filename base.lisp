@@ -29,7 +29,7 @@
 
 (define-condition event-info () ()
   (:documentation "Describes the base event for any action in cl-async.")
-  (:report (lambda (c s) (format s "Info event: ~a" c))))
+  (:report (lambda (c s) (format s "Info event"))))
 
 (define-condition event-error (event-info error)
   ((code :initarg :code :reader event-errcode :initform 0)
