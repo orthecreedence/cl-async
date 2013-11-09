@@ -57,10 +57,10 @@ or active. Doing so makes the event inactive/non-pending before freeing.
   => t/nil
 {% endhighlight %}
 
-This removes an event from the event loop. The event is still "alive" and can be
-re-added using [add-event](#add-event), but none of its callbacks will trigger
-until it is added back to the event loop. This can be used to "pause" an event
-from triggering until further notice.
+This removes an event from the event loop. The event still exists, and can be
+added back into the event loop via [add-event](#add-event), but must be
+activated again after adding back into the loop (by either specifying
+`:active t` or giving a timeout in seconds via `:timeout`.
 
 Returns `t` on success, `nil` otherwise (a `nil` can mean that the event is
 already removed and doesn't need to be remove again).
@@ -83,6 +83,10 @@ met.
 If `:activate` is true *and* `:timeout` is null, the event is not added back
 into the event loop, but is instead manually activated (via [libevent's
 event\_active function](http://www.wangafu.net/~nickm/libevent-book/Ref4_event.html#_manually_activating_an_event)).
+
+Note that if you omit *both* `:activate` *and* `:timeout`, the event will be
+added to the loop but not activated (and will never be run unless you call
+`add-event` again with either `:activate` or `:timeout` specified.
 
 <a id="delay"></a>
 ### delay
