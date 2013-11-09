@@ -86,7 +86,7 @@ event\_active function](http://www.wangafu.net/~nickm/libevent-book/Ref4_event.h
 
 Note that if you omit *both* `:activate` *and* `:timeout`, the event will be
 added to the loop but not activated (and will never be run unless you call
-`add-event` again with either `:activate` or `:timeout` specified.
+`add-event` again with either `:activate` or `:timeout` specified).
 
 <a id="delay"></a>
 ### delay
