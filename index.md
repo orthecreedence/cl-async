@@ -33,7 +33,7 @@ I've decided to make some window binaries:
 
 Unzip anywhere in your %PATH% and you should be able to jump right in without
 problems. Note that the 32bit library is recommended (and contains the
-`libevent-openssl` DLL (missing in 64bit) but in some cases 64bit is needed
+`libevent-openssl` DLL missing in 64bit) but in some cases 64bit is needed
 (like when running CCL64 which cannot load 32bit DLLs).
 
 ## Library updates
