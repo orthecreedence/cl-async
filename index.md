@@ -29,7 +29,7 @@ People have had trouble getting the libevent library compiled on Windows, so
 I've decided to make some window binaries:
 
 - [Windows 32bit DLL package](/cl-async/files/libevent-2.0.20-x86-bin.zip)
-- [Windows 64bit DLL package](/cl-async/files/libevent-2.0.20-x64-bin/zip)
+- [Windows 64bit DLL package](/cl-async/files/libevent-2.0.20-x64-bin.zip)
 
 Unzip anywhere in your %PATH% and you should be able to jump right in without
 problems. Note that the 32bit library is recommended (and contains the
