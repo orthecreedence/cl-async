@@ -103,6 +103,10 @@
     (add-event event :timeout time :activate t)
     event))
 
+(defmacro with-delay ((seconds) &body body)
+  "Nicer syntax for delay function."
+  `(as:delay (lambda () ,@body) :time ,seconds))
+
 (defun watch-fd (fd &key event-cb read-cb write-cb timeout-cb timeout)
   "Run a function, asynchronously, when the specified file descriptor is
    ready for write or read operations. An event loop must be running for
