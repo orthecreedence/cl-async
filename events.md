@@ -17,6 +17,7 @@ watching an OS file descriptor for changes.
 - [remove-event](#remove-event) _function_
 - [add-event](#add-event) _function_
 - [delay](#delay) _function_
+- [with-delay](#with-delay) _macro_
 - [watch-fd](#watch-fd) _function_
 - [event-freed](#event-freed) _condition_
 
@@ -104,6 +105,21 @@ occur while running `callback`.
 ;; example:
 (delay (lambda () (format t "Run me immediately after control is given to the event loop.~%")))
 (delay (lambda () (format t "I will run 3.2 seconds after calling (delay).~%")) :time 3.2)
+{% endhighlight %}
+
+<a id="with-delay"></a>
+### with-delay
+{% highlight cl %}
+(defmacro with-delay ((seconds) &body body))
+  => event
+{% endhighlight %}
+
+Syntax wrapper around [delay](#delay) to make it a bit less annoying to type.
+
+{% highlight cl %}
+;; example:
+(with-delay (5)
+  (format t "Five seconds passed!~%"))
 {% endhighlight %}
 
 <a id="watch-fd"></a>
