@@ -38,6 +38,7 @@
            #:remove-event
            #:add-event
            #:delay
+           #:with-delay
            #:watch-fd
            #:fd-add
 
