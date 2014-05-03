@@ -11,9 +11,6 @@
   (cl-ppcre:create-scanner "[ \\s\\t\\r\\n]+" :case-insensitive-mode t)
   "A regex for matching hosts entries in a windows hosts file.")
 
-(let ((str ""))
-  (cl-ppcre:split *scanner-parse-hosts-entries* str))
-
 (defun populate-windows-local-hosts (&key force)
   "Grab and store all entries from the windows hosts file. If we already have
    the data, skip (unless :force t is passed)."
@@ -161,7 +158,8 @@
   (let ((local-entry (when (hash-table-p *windows-local-hosts*)
                        (gethash host *windows-local-hosts*))))
     (if (and local-entry
-             (cond ((= family +af-inet+) (ipv4-address-p local-entry))
+             (cond ((= family +af-unspec+) t)
+                   ((= family +af-inet+) (ipv4-address-p local-entry))
                    ((= family +af-inet6+) (ipv6-address-p local-entry))))
         ;; AHHHHHAHAHAHA!!!!!!!!!! windows local host: fire callback directly
         (funcall resolve-cb local-entry family)
