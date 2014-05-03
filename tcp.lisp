@@ -463,6 +463,11 @@
   (let* ((socket (if (subtypep (type-of socket/stream) 'async-stream)
                      (stream-socket socket/stream)
                      socket/stream))
+         ;; since libevent doesn't use Windows' /etc/hosts, we have to basically
+         ;; go behind its back here.
+         (host (if (gethash host *windows-local-hosts*)
+                   (gethash host *windows-local-hosts*)
+                   host))
          (bev (socket-c socket))
          (data-pointer (getf (deref-data-from-pointer bev) :data-pointer)))
     ;; track the connection
