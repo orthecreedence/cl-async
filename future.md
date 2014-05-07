@@ -112,9 +112,7 @@ Integration with cl-async
 Futures are at their core, the representation of one value. Because of this, I
 feel that their integration into cl-async is not appropriate. Most, if not all,
 of the asynchronous operations in cl-async are stream-oriented, server oriented,
-or have no values at all. The [http-client](/cl-async/http#http-client) is the
-only piece that would benefit from using futures, and as such it's a bit weird
-to use callbacks everywhere but one function, which uses futures.
+or have no values at all.
 
 Instead, futures are provided as a standard way to build drivers. Most drivers
 provide a request-response interface, which is much more suited to futures.

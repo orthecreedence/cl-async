@@ -14,8 +14,7 @@ lisp implementations focus on linux performance a lot more than Windows (at
 least when it comes to CFFI).
 
 On my (already crowded) Linode 512, cl-async (for both
-[tcp-server](/cl-async/tcp#tcp-server) and
-[http-server](/cl-async/http#http-server)) was able to process about 40K
+[tcp-server](/cl-async/tcp#tcp-server) was able to process about 40K
 concurrent requests with this example before running out of memory:
 
 {% highlight cl %}
