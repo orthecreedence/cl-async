@@ -465,7 +465,8 @@
                      socket/stream))
          ;; since libevent doesn't use Windows' /etc/hosts, we have to basically
          ;; go behind its back here.
-         (host (if (gethash host *windows-local-hosts*)
+         (host (if (and (hash-table-p *windows-local-hosts*)
+                        (gethash host *windows-local-hosts*))
                    (gethash host *windows-local-hosts*)
                    host))
          (bev (socket-c socket))
