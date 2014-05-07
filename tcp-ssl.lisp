@@ -84,7 +84,7 @@
                             :string)
       errcode)))
 
-(cffi:defcallback ssl-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
+(define-c-callback ssl-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
    callback system to track failures/disconnects."
   (let* ((bev-data (deref-data-from-pointer bev))
@@ -115,7 +115,7 @@
             (cffi:callback tcp-event-cb) ()
             :pointer bev :short events :pointer data-pointer))))))
 
-(cffi:defcallback tcp-ssl-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (data-pointer :pointer))
+(define-c-callback tcp-ssl-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (data-pointer :pointer))
   "Called when a connection is accepted on an SSL listener. Inits a socket with
    the client via init-incoming-socket and then wraps that socket in SSL."
   (declare (ignore socklen addr))

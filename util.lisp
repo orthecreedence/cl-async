@@ -26,6 +26,8 @@
            #:catch-app-errors
            #:run-event-cb
 
+           #:define-c-callback
+
            #:make-foreign-type
 
            #:make-pointer-eql-able
@@ -125,7 +127,19 @@
        ;; catch-app-errors)
        (setf _evcb-err e)
        (error e))))
-     
+
+(defmacro define-c-callback (name return-val (&rest args) &body body)
+  "Define a top-level function with the given and also define a C callback that
+   calls the function directly. The idea is that CFFI callbacks aren't directly
+   callable/debuggable, but it's obnoxious to have to define and callback *and*
+   a function right next to each other."
+  (let ((arg-names (loop for x in args collect (car x))))
+    `(progn
+       (defun ,name ,arg-names
+         ,@body)
+       (cffi:defcallback ,name ,return-val ,args
+         (,name ,@arg-names)))))
+
 (defmacro make-foreign-type ((var type &key initial type-size) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."

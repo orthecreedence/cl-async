@@ -251,7 +251,7 @@
                       :socket-is-evbuffer t)
     body))
 
-(cffi:defcallback tcp-read-cb :void ((bev :pointer) (data-pointer :pointer))
+(define-c-callback tcp-read-cb :void ((bev :pointer) (data-pointer :pointer))
   "Called whenever a read event happens on a TCP socket. Ties into the anonymous
    callback system to run user-specified anonymous callbacks on read events."
   (let* ((bev-data (deref-data-from-pointer bev))
@@ -279,7 +279,7 @@
              ;; probably some sort of stream operation
              nil)))))
 
-(cffi:defcallback tcp-write-cb :void ((bev :pointer) (data-pointer :pointer))
+(define-c-callback tcp-write-cb :void ((bev :pointer) (data-pointer :pointer))
   "Called when data is finished being written to a socket."
   (let* ((socket (getf (deref-data-from-pointer bev) :socket))
          (callbacks (get-callbacks data-pointer))
@@ -289,7 +289,7 @@
       (when write-cb
         (funcall write-cb socket)))))
 
-(cffi:defcallback tcp-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
+(define-c-callback tcp-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
    callback system to track failures/disconnects."
   (let* ((event nil)
@@ -393,7 +393,7 @@
       (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
       socket)))
 
-(cffi:defcallback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (data-pointer :pointer))
+(define-c-callback tcp-accept-cb :void ((listener :pointer) (fd :int) (addr :pointer) (socklen :int) (data-pointer :pointer))
   "Called by a listener when an incoming connection is detected. Thin wrapper
    around init-incoming-socket, which does all the setting up of callbacks and
    pointers and so forth."
@@ -404,7 +404,7 @@
          (bev (le:bufferevent-socket-new event-base fd +bev-opt-close-on-free+)))
     (init-incoming-socket bev callbacks server)))
 
-(cffi:defcallback tcp-accept-err-cb :void ((listener :pointer) (data-pointer :pointer))
+(define-c-callback tcp-accept-err-cb :void ((listener :pointer) (data-pointer :pointer))
   "Called when an error occurs accepting a connection."
   (let* ((tcp-server (deref-data-from-pointer data-pointer))
          (callbacks (get-callbacks data-pointer))

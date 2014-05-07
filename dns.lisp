@@ -71,7 +71,7 @@
     (setf (event-base-dns-ref-count *event-base*) 0)
     (setf (event-base-dns-base *event-base*) nil)))
 
-(cffi:defcallback dns-log-cb :void ((is-warning :int) (msg :string))
+(define-c-callback dns-log-cb :void ((is-warning :int) (msg :string))
   "Callback for DNS logging."
   (let* ((callbacks (get-callbacks :dns-callbacks))
          (event-cb (getf callbacks :event-cb))
@@ -80,7 +80,7 @@
       (when log-cb
         (funcall log-cb is-warning msg)))))
 
-(cffi:defcallback dns-cb :void ((errcode :int) (addrinfo :pointer) (data-pointer :pointer))
+(define-c-callback dns-cb :void ((errcode :int) (addrinfo :pointer) (data-pointer :pointer))
   "Callback for DNS lookups."
   (let* ((callbacks (get-callbacks data-pointer))
          (resolve-cb (getf callbacks :resolve-cb))

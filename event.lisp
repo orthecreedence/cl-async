@@ -51,7 +51,7 @@
           (t
            (le:event-add ev (cffi:null-pointer))))))
 
-(cffi:defcallback timer-cb :void ((fd :pointer) (what :pointer) (data-pointer :pointer))
+(define-c-callback timer-cb :void ((fd :pointer) (what :pointer) (data-pointer :pointer))
   "Callback used by the async timer system to find and run user-specified
    callbacks on timer events."
   (declare (ignore fd what))
@@ -64,7 +64,7 @@
         (when cb (funcall cb))
         (free-event event)))))
 
-(cffi:defcallback fd-cb :void ((fd :int) (what :short) (data-pointer :pointer))
+(define-c-callback fd-cb :void ((fd :int) (what :short) (data-pointer :pointer))
   "Called when an event watching a file descriptor is triggered."
   (declare (ignore fd))
   (let* (;(event (deref-data-from-pointer data-pointer))

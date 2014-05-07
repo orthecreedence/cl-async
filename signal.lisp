@@ -57,7 +57,7 @@
     (free-signal-handler signo))
   (setf (event-base-signal-handlers *event-base*) nil))
 
-(cffi:defcallback lisp-signal-cb :void ((signo :int))
+(define-c-callback lisp-signal-cb :void ((signo :int))
   "Generic callback for lisp signal handling."
   (declare (ignore signo))
   (let ((callback (car (get-callbacks (signal-sym signo)))))
@@ -70,7 +70,7 @@
   (save-callbacks (signal-sym signo) fn)
   (cffi:foreign-funcall "signal" :int signo :pointer (cffi:callback lisp-signal-cb) :pointer))
 
-(cffi:defcallback signal-cb :void ((signo :int) (event :short) (data-pointer :pointer))
+(define-c-callback signal-cb :void ((signo :int) (event :short) (data-pointer :pointer))
   "All signals come through here."
   (let* ((callbacks (get-callbacks data-pointer))
          (signal-cb (getf callbacks :signal-cb))

@@ -1,18 +1,18 @@
 (in-package :cl-async)
 
-(cffi:defcallback fatal-cb :void ((err :int))
+(define-c-callback fatal-cb :void ((err :int))
   "Used to handle fatal libevent errors."
   (let ((fatal-cb (getf (get-callbacks (event-base-c *event-base*)) :fatal-cb)))
     (when fatal-cb
       (funcall fatal-cb err))))
 
-(cffi:defcallback logger-cb :void ((severity :int) (msg :string))
+(define-c-callback logger-cb :void ((severity :int) (msg :string))
   "Used to catch log messages (if setup in start-event-loop)."
   (let ((logger-cb (getf (get-callbacks (event-base-c *event-base*)) :logger-cb)))
     (when logger-cb
       (funcall logger-cb severity msg))))
 
-(cffi:defcallback event-debug-cb :void ((severity :int) (msg :string))
+(define-c-callback event-debug-cb :void ((severity :int) (msg :string))
   (let ((sev-str (cond
                    ((= severity le:+event-log-debug+) "debug")
                    ((= severity le:+event-log-msg+) "msg")
