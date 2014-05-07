@@ -1,7 +1,7 @@
 (asdf:defsystem cl-async-base
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
-  :version "0.4.3"
+  :version "0.4.4"
   :description "Base system for cl-async."
   :depends-on (#:cffi #:cl-libevent2)
   :components
