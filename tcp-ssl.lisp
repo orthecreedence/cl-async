@@ -137,7 +137,7 @@
     (cl+ssl::ssl-ctx-ctrl client-ctx
                           cl+ssl::+SSL_CTRL_MODE+ 
                           cl+ssl::+SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER+
-                          0)
+                          (cffi:null-pointer))
     (cl+ssl::ssl-set-connect-state client-ctx)
     (when (zerop (cl+ssl::ssl-set-cipher-list client-ctx "ALL"))
       (error 'cl+ssl::ssl-error-initialize :reason "Can't set SSL cipher list"))
