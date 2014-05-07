@@ -23,13 +23,14 @@
         (with-open-file (s hostsfile :direction :input)
           (loop for line = (read-line s nil :eof)
                 until (eq line :eof) do
-            (unless (member (aref line 0)
-                            '(#\# #\return #\newline #\space #\tab))
-              (let* ((entries (cl-ppcre:split *scanner-parse-hosts-entries* line))
-                     (ip (car entries)))
-                (when ip
-                  (dolist (host (cdr entries))
-                    (setf (gethash host *windows-local-hosts*) ip))))))))))
+            (when (< 0 (length line))
+              (unless (member (aref line 0)
+                              '(#\# #\return #\newline #\space #\tab))
+                (let* ((entries (cl-ppcre:split *scanner-parse-hosts-entries* line))
+                       (ip (car entries)))
+                  (when ip
+                    (dolist (host (cdr entries))
+                      (setf (gethash host *windows-local-hosts*) ip)))))))))))
   *windows-local-hosts*)
 
 (defun get-dns-base ()
