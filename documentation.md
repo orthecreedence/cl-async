@@ -18,6 +18,7 @@ abilities of cl-async:
   - [TCP stream](/cl-async/tcp-stream)
   - [TCP SSL](/cl-async/tcp-ssl)
   - [Futures](/cl-async/future)
+  - [Threading](/cl-async/threading)
   - [Stats](/cl-async/stats)
 - [Event callbacks and error handling](/cl-async/event-handling)
 
