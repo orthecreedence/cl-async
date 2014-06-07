@@ -8,10 +8,16 @@ Threading
 =========
 
 The goal of this section is to describe how to do some basic threaded tasks with
-cl-async. 
+cl-async.
+
+Before diving in, it's important to know that you cannot currently 
+*safely* add events to cl-async from outside the event loop, only activate
+events that already exist. This is because cl-async uses a number of objects to
+track internal state, and these objects are not thread-safe. Activating an
+existing event does not modify these objects, but adding a new one does.
 
 - [enable-threading-support](#enable-threading-support)
-- [make-event / add-event](#make-event)
+{% comment %}- [Example: doing event-loop operations from another thread](#thread){% endcomment %}
 - [Example: queuing a background job](#queuing)
 - [Example: using futures seamlessly](#futures)
 
@@ -26,12 +32,31 @@ Tells libevent that you plan to use threading in this session. This sets up
 proper locking around your event base and makes it safe to call libevent's
 functions from different threads.
 
-<a id="make-event"></a>
-### make-event / add-event
+{% comment %}
+<a id="thread"></a>
+### Example: doing event-loop operations from another thread
+Let's run some operations that affect the event loop from another thread.
 
-[make-event](/cl-async/events#make-event) and [add-event](/cl-async/events#add-event)
-make is easy to create an event in your main libevent thread, attach a callback
-to it, and then mark the event as complete from another thread.
+{% highlight cl %}
+(defparameter *loop* nil)
+
+(as:enable-threading-support)
+(as:with-event-loop ()
+  (setf *loop* cl-async-base:*event-base*)
+  (as:with-delay (3)
+    (format t "Done!"))
+  (bt:make-thread
+    (lambda ()
+      (let ((cl-async-base:*event-base* *loop*))
+        (as:with-delay (1)
+          (format t "Hai from another thread!~%"))))))
+(setf *loop* nil)
+{% endcomment %}
+
+Here's a trivial example, but we can "steal" our event loop's context and make
+it available in another thread (obviously, making sure to enable thread support
+first).
+*}
 
 <a id="queuing"></a>
 ### Example: queuing a background job
