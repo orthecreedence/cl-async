@@ -17,11 +17,12 @@ track internal state, and these objects are not thread-safe. Activating an
 existing event does not modify these objects, but adding a new one does.
 
 - [enable-threading-support](#enable-threading-support)
+- [Example: queuing a background job](#queuing)
+- [Example: using futures seamlessly](#futures)
+
 <!--
 - [Example: doing event-loop operations from another thread](#thread)
 -->
-- [Example: queuing a background job](#queuing)
-- [Example: using futures seamlessly](#futures)
 
 <a id="enable-threading-support"></a>
 ### enable-threading-support
