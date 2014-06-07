@@ -17,9 +17,9 @@ track internal state, and these objects are not thread-safe. Activating an
 existing event does not modify these objects, but adding a new one does.
 
 - [enable-threading-support](#enable-threading-support)
-{% comment %}
+<!--
 - [Example: doing event-loop operations from another thread](#thread)
-{% endcomment %}
+-->
 - [Example: queuing a background job](#queuing)
 - [Example: using futures seamlessly](#futures)
 
@@ -34,7 +34,7 @@ Tells libevent that you plan to use threading in this session. This sets up
 proper locking around your event base and makes it safe to call libevent's
 functions from different threads.
 
-{% comment %}
+<!--
 <a id="thread"></a>
 ### Example: doing event-loop operations from another thread
 Let's run some operations that affect the event loop from another thread.
@@ -57,7 +57,7 @@ Let's run some operations that affect the event loop from another thread.
 Here's a trivial example, but we can "steal" our event loop's context and make
 it available in another thread (obviously, making sure to enable thread support
 first).
-{% endcomment %}
+-->
 
 <a id="queuing"></a>
 ### Example: queuing a background job
