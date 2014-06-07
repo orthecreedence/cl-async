@@ -13,6 +13,7 @@ cl-async.
 - [enable-threading-support](#enable-threading-support)
 - [make-event / add-event](#make-event)
 - [Example: queuing a background job](#queuing)
+- [Example: using futures seamlessly](#futures)
 
 <a id="enable-threading-support"></a>
 ### enable-threading-support
@@ -62,4 +63,46 @@ Note that we save the result of our work into `result`. We can do this without
 locking in this case because we know that once the callback fires, `result` is
 done being written to (and won't be written to again by the worker thread). Your
 specific use-cases may require locking, so keep that in mind.
+
+<a id="futures"></a>
+### Example: using futures seamlessly
+Let's integrate what we just did with [futures](/cl-async/futures).
+
+{% highlight cl %}
+(defmacro work (operation)
+  "Run `operation` in a background thread, and finish the returned future with
+   the result(s) of the operation once complete. The future will be finished on
+   the same thread `(work ...)` was spawned from (your event-loop thread)."
+  (let ((future (gensym "future-sailors"))
+        (result (gensym "result"))
+        (err (gensym "error"))
+        (event (gensym "event")))
+    `(let* ((,future (make-future))
+            (,err nil)
+            (,result nil)
+            (,event (as:make-event (lambda ()
+                                     (if ,err
+                                         (signal-error ,future ,err)
+                                         (apply 'finish (append (list ,future) ,result))
+                                         )))))
+       (bt:make-thread (lambda ()
+                         (setf ,result (multiple-value-list ,operation))
+                         (as:add-event ,event :activate t)))
+       ,future)))
+
+;; let's test it out! notice that our `with-delay` call runs after a second,
+;; even though we're running what would be a blocking operation (sleep). this
+;; confirms that our worker is running without blocking the event loop.
+(as:enable-threading-support)
+(as:with-event-loop ()
+  (as:with-delay (1) (format t "event loop still running...~%"))
+  (alet ((val (work (progn (sleep 3) (+ 4 5)))))
+    (format t "got val: ~a~%" val)))
+{% endhighlight %}
+
+Note that this is a toy example: you shouldn't spawn a thread every time you
+need a background job done. It makes more sense to use a thread pool or
+something like [lparallel](http://lparallel.org/). What's important is that
+we can use futures for both async work and on a threaded basis when using
+cl-async's threading support.
 
