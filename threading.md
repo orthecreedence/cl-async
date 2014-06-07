@@ -53,6 +53,7 @@ Let's run some operations that affect the event loop from another thread.
         (as:with-delay (1)
           (format t "Hai from another thread!~%"))))))
 (setf *loop* nil)
+{% endhighlight %}
 
 Here's a trivial example, but we can "steal" our event loop's context and make
 it available in another thread (obviously, making sure to enable thread support
