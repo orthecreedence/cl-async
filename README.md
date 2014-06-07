@@ -34,6 +34,7 @@ Quick links:
   - [TCP stream](http://orthecreedence.github.com/cl-async/tcp-stream)
   - [TCP SSL](http://orthecreedence.github.com/cl-async/tcp-ssl)
   - [Futures](http://orthecreedence.github.com/cl-async/future)
+  - [Threading](http://orthecreedence.github.com/cl-async/threading)
   - [Stats](http://orthecreedence.github.com/cl-async/stats)
   - [Event callbacks and error handling](http://orthecreedence.github.com/cl-async/event-handling)
 - [Examples](http://orthecreedence.github.com/cl-async/examples)
