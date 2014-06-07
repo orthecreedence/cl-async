@@ -107,6 +107,16 @@
   "Nicer syntax for delay function."
   `(as:delay (lambda () ,@body) :time ,seconds))
 
+(defun make-event (callback &key event-cb)
+  "Make an arbitrary event, and add it to the event loop. It *must* be triggered
+   by (add-event <the event> :activate t) or it will sit, idle, for a year. Or
+   you can remove/free it instead.
+
+   This is useful for triggering arbitrary events, and can even be triggered
+   from a thread outside the libevent loop (if you call
+   enable-threading-support)."
+  (delay callback :event-cb event-cb :time 31536000))
+
 (defun watch-fd (fd &key event-cb read-cb write-cb timeout-cb timeout)
   "Run a function, asynchronously, when the specified file descriptor is
    ready for write or read operations. An event loop must be running for

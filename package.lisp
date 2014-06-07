@@ -18,6 +18,7 @@
            #:event-errmsg
            ;; common functions
            #:stats
+           #:enable-threading-support
            #:dump-event-loop-status
            #:add-event-loop-exit-callback
            #:start-event-loop
@@ -33,6 +34,7 @@
            #:remove-event
            #:add-event
            #:delay
+           #:make-event
            #:with-delay
            #:watch-fd
            #:fd-add
