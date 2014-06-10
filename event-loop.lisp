@@ -90,7 +90,10 @@
             ;; intermingle with the event loop's
             (*socket-buffer-c* (cffi:foreign-alloc :unsigned-char :count *buffer-size*))
             (*socket-buffer-lisp* (make-array *buffer-size* :element-type '(unsigned-byte 8))))
-       ,@body)))
+       (unwind-protect
+         (progn ,@body)
+         (cffi:foreign-free *socket-buffer-c*)
+         (setf *socket-buffer-lisp* nil)))))
 
 (defun add-event-loop-exit-callback (fn)
   "Add a function to be run when the event loop exits."
