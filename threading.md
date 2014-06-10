@@ -29,13 +29,20 @@ functions from different threads.
 <a id="with-threading-context"></a>
 ### with-threading-context
 {% highlight cl %}
-(defmacro with-threading-context ((&optional base-id) &body body))
+(defmacro with-threading-context ((&key base-id (io t)) &body body)
   => <return val of body form>
 {% endhighlight %}
 
 This macro grabs the context of the current running event base and binds it to
 a thread-local variable. It also creates thread-local versions of the standard
 lisp/C buffer objects.
+
+Note that if you pass `:io nil` you forego the creating of thread-local buffer
+objects (C/lisp buffers), but you must be careful to not to any socket IO. In
+other words, you're pretty much limited to [delay](/cl-async/events#delay)
+type calls. You can probably get away with [DNS lookups](/cl-async/dns) as well.
+That said, if you *are* only creating local events, by all means use `:io nil`
+because it will be a *lot* more efficient for one-off calls.
 
 This allows you to run any cl-async operations from within your separate thread
 while being thread safe. __NOTE__ that you have to use `with-threading-context`
@@ -67,7 +74,7 @@ event loop's ID:
   ...)
 
 ;; from another thread...
-(as:with-threading-context (*base-id*)
+(as:with-threading-context (:base-id *base-id*)
   ...)
 {% endhighlight %}
 
