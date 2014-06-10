@@ -8,7 +8,7 @@
     (bt:make-thread
       (lambda ()
         (sleep 1)
-        (as:with-threading-context ()
+        (as:with-threading-context (:io nil)
           (as:with-delay (1)
             (incf delay-val 42)))))
     (as:with-event-loop ()
@@ -23,7 +23,7 @@
     (bt:make-thread
       (lambda ()
         (sleep 1)
-        (as:with-threading-context (base-id)
+        (as:with-threading-context (:base-id base-id)
           (as:with-delay (1)
             (incf delay-val 33)))))
     (as:with-event-loop ()

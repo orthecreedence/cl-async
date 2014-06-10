@@ -47,7 +47,7 @@
             (cffi:foreign-funcall-pointer use-win-threads () :void)))
     (setf *enable-threading* t)))
 
-(defmacro with-threading-context ((&optional base-id) &body body)
+(defmacro with-threading-context ((&key base-id (io t)) &body body)
   "Use this to wrap the top level of any non-event-loop thread that is meant to
    access the event loop:
    
@@ -88,12 +88,14 @@
             (cl-async-base:*event-base* ,base)
             ;; recreate our buffers because it would be a sin to let them
             ;; intermingle with the event loop's
-            (*socket-buffer-c* (cffi:foreign-alloc :unsigned-char :count *buffer-size*))
-            (*socket-buffer-lisp* (make-array *buffer-size* :element-type '(unsigned-byte 8))))
+            (*socket-buffer-c* ,(when io `(cffi:foreign-alloc :unsigned-char :count *buffer-size*)))
+            (*socket-buffer-lisp* ,(when io `(make-array *buffer-size* :element-type '(unsigned-byte 8)))))
        (unwind-protect
          (progn ,@body)
-         (cffi:foreign-free *socket-buffer-c*)
-         (setf *socket-buffer-lisp* nil)))))
+         ,(when io
+            `(progn
+               (cffi:foreign-free *socket-buffer-c*)
+               (setf *socket-buffer-lisp* nil)))))))
 
 (defun add-event-loop-exit-callback (fn)
   "Add a function to be run when the event loop exits."
