@@ -13,9 +13,8 @@
                  (:file "dns")
                  (:file "tcp")
                  (:file "tcp-stream")
+                 (:file "threading")
 				 ;(:file "tcp-ssl")
-                 ;; NOTE: deprecating HTTP
-                 ;(:file "http")
                  (:file "signal")
 				 (:file "benchmarks")
                  (:file "run")))))

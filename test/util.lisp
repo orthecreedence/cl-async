@@ -7,6 +7,8 @@
 
 ;; TODO: test all functions in util package
 
+(as:enable-threading-support)
+
 (defmacro async-let ((&rest bindings) &body body)
   "Wrap an async op inside of a let/start-event-loop block to mimick a blocking
    action. Bindings must be set from withing the block via setf."
@@ -57,8 +59,7 @@
   
 ;; define the test suite
 (def-suite cl-async-test :description "cl-async test suite")
-(def-suite cl-async-test-core :in cl-async-test
-                              :description "cl-async test suite")
+(def-suite cl-async-test-core :in cl-async-test :description "cl-async test suite")
 (in-suite cl-async-test-core)
 
 (test data-pointers

@@ -38,14 +38,59 @@
   "Enable threading support in libevent. This attempts to guess which threading
    function of libevent's to use and call it.
 
-   Experimental, only supports pthreads or Windows."
+   Note that you MUST call this *before* starting your event loop."
   (let ((use-pthreads (cffi:foreign-symbol-pointer "evthread_use_pthreads"))
         (use-win-threads (cffi:foreign-symbol-pointer "evthread_use_windows_threads")))
-    (cond
-      (use-pthreads
-        (cffi:foreign-funcall-pointer use-pthreads () :void))
-      (use-win-threads
-        (cffi:foreign-funcall-pointer use-win-threads () :void)))))
+    (cond (use-pthreads
+            (cffi:foreign-funcall-pointer use-pthreads () :void))
+          (use-win-threads
+            (cffi:foreign-funcall-pointer use-win-threads () :void)))
+    (setf *enable-threading* t)))
+
+(defmacro with-threading-context ((&optional base-id) &body body)
+  "Use this to wrap the top level of any non-event-loop thread that is meant to
+   access the event loop:
+   
+   (bt:make-thread
+     (lambda ()
+       (with-threading-context ()
+         (as:with-delay (3) (print 'hello-world)))))
+   
+   This macro sets up buffers as well as binds the cl-async-base:*event-base*
+   variable so any calls to event loop functions from your thread will have
+   access to the event loop.
+
+   If you have more than one event loop running, the ID of the event base you
+   wish to operate on should be passed in:
+   
+   (defvar *base-id* nil)
+   (with-event-loop ()
+     (setf *base-id* (cl-async-base:event-base-id cl-async-base:*event-base*))
+     (bt:make-thread
+       (lambda ()
+         (with-threading-context (*base-id*)
+           ...))))
+   
+   You *MUST* call (enable-threading-support) before starting your event loop."
+  (let ((base-id-bind (gensym "base-id"))
+        (base (gensym "base")))
+    `(let* ((,base-id-bind ,base-id)
+            (,base (bt:with-lock-held (*event-base-registry-lock*) 
+                     (if ,base-id-bind
+                         ;; grab our event base by id
+                         (gethash ,base-id-bind *event-base-registry*)
+                         ;; grab the first event base
+                         (let ((base nil))
+                           (loop for val being the hash-values of *event-base-registry* do
+                             (setf base val)
+                             (return))
+                           base))))
+            (cl-async-base:*event-base* ,base)
+            ;; recreate our buffers because it would be a sin to let them
+            ;; intermingle with the event loop's
+            (*socket-buffer-c* (cffi:foreign-alloc :unsigned-char :count *buffer-size*))
+            (*socket-buffer-lisp* (make-array *buffer-size* :element-type '(unsigned-byte 8))))
+       ,@body)))
 
 (defun add-event-loop-exit-callback (fn)
   "Add a function to be run when the event loop exits."
@@ -91,7 +136,14 @@
                  (data (make-string len)))
             (values data (read-sequence data s))))
       (delete-file file))))
-  
+
+(defvar *event-base-registry* (make-hash-table :test 'eq)
+  "Holds ID -> event-base lookups for every active event loop. Mainly used when
+   grabbing the threading context for a particular event loop.")
+
+(defvar *event-base-registry-lock* (bt:make-lock)
+  "Locks the event-base registry.")
+
 (defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
   "Simple wrapper function that starts an event loop which runs the given
    callback, most likely to init your server/client.
@@ -134,6 +186,8 @@
     ;; instead of a data-pointer since the callbacks don't take any void* args,
     ;; meaning we have to dereference from the global (event-base-c *event-base*) object.
     (save-callbacks (event-base-c *event-base*) callbacks)
+    (bt:with-lock-held (*event-base-registry-lock*)
+      (setf (gethash (event-base-id *event-base*) *event-base-registry*) *event-base*))
     (unwind-protect
       (progn
         ;; this will block until all events are processed
@@ -143,6 +197,8 @@
       (cffi:foreign-free *socket-buffer-c*)
       (free-pointer-data (event-base-c *event-base*) :preserve-pointer t)
       (le:event-base-free (event-base-c *event-base*))
+      (bt:with-lock-held (*event-base-registry-lock*)
+        (remhash (event-base-id *event-base*) *event-base-registry*))
       (setf *event-base* nil))))
 
 (defmacro with-event-loop ((&key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))

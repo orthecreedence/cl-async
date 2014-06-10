@@ -30,6 +30,8 @@
 
            #:make-foreign-type
 
+           #:with-lock
+           
            #:make-pointer-eql-able
            #:create-data-pointer
            #:save-callbacks
@@ -150,6 +152,14 @@
          `(setf (cffi:foreign-slot-value ,var ,type ,(car binding)) ,(cadr binding)))
      ,@body))
 
+(defmacro with-lock (&body body)
+  "If threading is enabled, locks the current event loop before processing body
+   and releases the lock after body is finished."
+  `(if *enable-threading*
+       (bt:with-lock-held ((event-base-lock *event-base*))
+         ,@body)
+       (progn ,@body)))
+
 (defun make-pointer-eql-able (pointer)
   "Abstraction to make a CFFI pointer #'eql to itself. Does its best to be the
    most performant for the current implementation."
@@ -168,38 +178,44 @@
 
 (defun save-callbacks (pointer callbacks)
   "Save a set of callbacks, keyed by the given pointer."
-  (unless (event-base-function-registry *event-base*)
-    (setf (event-base-function-registry *event-base*) (make-hash-table :test #'eql)))
-  (let ((callbacks (if (listp callbacks)
-                       callbacks
-                       (list callbacks))))
-    (setf (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)) callbacks)))
+  (with-lock
+    (unless (event-base-function-registry *event-base*)
+      (setf (event-base-function-registry *event-base*) (make-hash-table :test #'eql)))
+    (let ((callbacks (if (listp callbacks)
+                         callbacks
+                         (list callbacks))))
+      (setf (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)) callbacks))))
 
 (defun get-callbacks (pointer)
   "Get all callbacks for the given pointer."
-  (when (event-base-function-registry *event-base*)
-    (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*))))
+  (with-lock
+    (when (event-base-function-registry *event-base*)
+      (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)))))
 
 (defun clear-callbacks (pointer)
   "Clear out all callbacks for the given pointer."
-  (when (event-base-function-registry *event-base*)
-    (remhash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*))))
+  (with-lock
+    (when (event-base-function-registry *event-base*)
+      (remhash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)))))
 
 (defun attach-data-to-pointer (pointer data)
   "Attach a lisp object to a foreign pointer."
-  (unless (event-base-data-registry *event-base*)
-    (setf (event-base-data-registry *event-base*) (make-hash-table :test #'eql)))
-  (setf (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)) data))
+  (with-lock
+    (unless (event-base-data-registry *event-base*)
+      (setf (event-base-data-registry *event-base*) (make-hash-table :test #'eql)))
+    (setf (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)) data)))
 
 (defun deref-data-from-pointer (pointer)
   "Grab data attached to a CFFI pointer."
-  (when (and pointer (event-base-data-registry *event-base*))
-    (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*))))
+  (with-lock
+    (when (and pointer (event-base-data-registry *event-base*))
+      (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)))))
 
 (defun clear-pointer-data (pointer)
   "Clear the data attached to a CFFI pointer."
-  (when (and pointer (event-base-data-registry *event-base*))
-    (remhash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*))))
+  (with-lock
+    (when (and pointer (event-base-data-registry *event-base*))
+      (remhash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)))))
 
 (defun free-pointer-data (pointer &key preserve-pointer)
   "Clears out all data attached to a foreign pointer, and frees the pointer
@@ -210,8 +226,9 @@
         (clear-callbacks pointer)
         (clear-pointer-data pointer))
       (unless preserve-pointer
-        (when (cffi:pointerp pointer)
-          (cffi:foreign-free pointer))))))
+        (with-lock
+          (when (cffi:pointerp pointer)
+            (cffi:foreign-free pointer)))))))
 
 (defmacro with-struct-timeval (var seconds &rest body)
   "Convert seconds to a valid struct timeval C data type."

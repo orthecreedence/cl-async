@@ -7,6 +7,7 @@
 
            #:*event-base*
            #:*event-base-next-id*
+           #:*enable-threading*
            #:event-base
            #:event-base-c
            #:event-base-id
@@ -18,6 +19,7 @@
            #:event-base-dns-ref-count
            #:event-base-catch-app-errors
            #:event-base-default-event-handler
+           #:event-base-lock
            #:event-base-num-connections-in
            #:event-base-num-connections-out
 
@@ -40,7 +42,6 @@
   "THE event base object used to process all async operations.")
 (defvar *event-base-next-id* 0
   "The numeric identifier assigned to each new event base.")
-
 (defclass event-base ()
   ((c :accessor event-base-c :initarg :c :initform nil
      :documentation "Holds the C object pointing to the libevent event base.")
@@ -74,6 +75,8 @@
                                         ;; this is just info, let it slide
                                         (event-info () nil)))
      :documentation "Used as the default event handler if one is not specified.")
+   (lock :accessor event-base-lock :initarg :lock :initform (bt:make-lock)
+     :documentation "Holds *the* lock for this event base.")
    ;; stats
    (num-connections-in :accessor event-base-num-connections-in :initform 0)
    (num-connections-out :accessor event-base-num-connections-out :initform 0))
@@ -89,4 +92,11 @@
   "A pointer to the buffer in C land that reads from sockets.")
 (defvar *socket-buffer-lisp* nil
   "An array in lisp land that holds data copied from a socket.")
+
+;; threading/locking state. i had an internal debate whether or note to include
+;; these inside the event-base class itself, but i'd honestly rather not muddy
+;; it up with threading stuff.
+(defvar *enable-threading* nil
+  "If true, various pieces of the cl-async internals will lock their restecpive
+   structures before operating to ensure thread safety.")
 

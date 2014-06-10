@@ -19,6 +19,7 @@
            ;; common functions
            #:stats
            #:enable-threading-support
+           #:with-threading-context
            #:dump-event-loop-status
            #:add-event-loop-exit-callback
            #:start-event-loop

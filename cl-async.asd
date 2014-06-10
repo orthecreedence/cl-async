@@ -3,7 +3,7 @@
   :license "MIT"
   :version "0.4.4"
   :description "Base system for cl-async."
-  :depends-on (#:cffi #:cl-libevent2)
+  :depends-on (#:cffi #:cl-libevent2 #:bordeaux-threads)
   :components
   ((:file "base")))
 

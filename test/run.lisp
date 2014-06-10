@@ -1,10 +1,13 @@
 (in-package :cl-async-test)
 
-(defun run-tests (&key ssl)
+(defun run-tests (&key ssl threading)
   (when ssl
     (unless (find-package :cl-async-ssl)
       (asdf:oos 'asdf:load-op :cl-async-ssl))
     (load (asdf:system-relative-pathname :cl-async #P"test/tcp-ssl")))
-  (if ssl
-      (run! 'cl-async-test)
-      (run! 'cl-async-test-core)))
+  (run! 'cl-async-test-core)
+  (when ssl
+    (run! 'cl-async-ssl-test))
+  (when threading
+    (run! 'cl-async-threading-test)))
+
