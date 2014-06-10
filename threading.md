@@ -10,19 +10,10 @@ Threading
 The goal of this section is to describe how to do some basic threaded tasks with
 cl-async.
 
-Before diving in, it's important to know that you cannot currently 
-*safely* add events to cl-async from outside the event loop, only activate
-events that already exist. This is because cl-async uses a number of objects to
-track internal state, and these objects are not thread-safe. Activating an
-existing event does not modify these objects, but adding a new one does.
-
 - [enable-threading-support](#enable-threading-support)
+- [with-threading-context](#with-threading-context)
 - [Example: queuing a background job](#queuing)
 - [Example: using futures seamlessly](#futures)
-
-<!--
-- [Example: doing event-loop operations from another thread](#thread)
--->
 
 <a id="enable-threading-support"></a>
 ### enable-threading-support
@@ -35,31 +26,46 @@ Tells libevent that you plan to use threading in this session. This sets up
 proper locking around your event base and makes it safe to call libevent's
 functions from different threads.
 
-<!--
-<a id="thread"></a>
-### Example: doing event-loop operations from another thread
-Let's run some operations that affect the event loop from another thread.
-
+<a id="with-threading-context"></a>
+### with-threading-context
 {% highlight cl %}
-(defparameter *loop* nil)
-
-(as:enable-threading-support)
-(as:with-event-loop ()
-  (setf *loop* cl-async-base:*event-base*)
-  (as:with-delay (3)
-    (format t "Done!"))
-  (bt:make-thread
-    (lambda ()
-      (let ((cl-async-base:*event-base* *loop*))
-        (as:with-delay (1)
-          (format t "Hai from another thread!~%"))))))
-(setf *loop* nil)
+(defmacro with-threading-context ((&optional base-id) &body body))
+  => <return val of body form>
 {% endhighlight %}
 
-Here's a trivial example, but we can "steal" our event loop's context and make
-it available in another thread (obviously, making sure to enable thread support
-first).
--->
+This macro grabs the context of the current running event base and binds it to
+a thread-local variable. It also creates thread-local versions of the standard
+lisp/C buffer objects.
+
+This allows you to run any cl-async operations from within your separate thread
+while being thread safe. A trivial example:
+
+{% highlight cl %}
+(bt:make-thread
+  (lambda ()
+    (as:with-threading-context ()
+      (as:with-delay (3)
+        ;; this form will be run in the same thread as your event loop
+        (format t "hai!~%")))))
+{% endhighlight %}
+
+Using this method makes it trivial to share events that occur on an outside
+thread with our event loop without having to resort to barbaric methods such as
+polling.
+
+For those running more than one event loop, here is a method to get the current
+event loop's ID:
+
+{% highlight cl %}
+(defvar *base-id* nil)
+(as:with-eventloop ()
+  (setf *base-id* (cl-async-base:event-base-id cl-async-base:*event-base*))
+  ...)
+(bt:make-thread
+  (lambda ()
+    (as:with-threading-context (*base-id*)
+      ...)))
+{% endhighlight %}
 
 <a id="queuing"></a>
 ### Example: queuing a background job
