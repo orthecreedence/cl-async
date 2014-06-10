@@ -38,7 +38,11 @@ a thread-local variable. It also creates thread-local versions of the standard
 lisp/C buffer objects.
 
 This allows you to run any cl-async operations from within your separate thread
-while being thread safe. A trivial example:
+while being thread safe. __NOTE__ that you have to use `with-threading-context`
+when adding new events to the event loop, but if you are only [activating an
+existing event](#queuing), it's best to avoid the overhead of calling it.
+    
+A trivial example:
 
 {% highlight cl %}
 (bt:make-thread
@@ -61,10 +65,10 @@ event loop's ID:
 (as:with-eventloop ()
   (setf *base-id* (cl-async-base:event-base-id cl-async-base:*event-base*))
   ...)
-(bt:make-thread
-  (lambda ()
-    (as:with-threading-context (*base-id*)
-      ...)))
+
+;; from another thread...
+(as:with-threading-context (*base-id*)
+  ...)
 {% endhighlight %}
 
 <a id="queuing"></a>
@@ -73,6 +77,12 @@ Here's a really short example of how we can create an event (with a callback),
 queue some background work, and once the work is done, signal the event as
 complete (from the background thread). Then the callback will be triggered *from
 the libevent thread*.
+
+Note that we don't need to use [with-threading-context](#with-threading-context)
+here because we are adding an event to our event loop from *within* the event
+loop. The separate thread is only *activating* the existing event (which is
+inherently thread-safe, assuming [enable-threading-support](#enable-threading-support)
+has been called).
 
 {% highlight cl %}
 (ql:quickload '(:cl-async :bordeaux-threads))
