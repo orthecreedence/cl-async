@@ -433,7 +433,7 @@
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
 
     ;; be sure to mark the socket as nonblocking if we passed one in
-    (unless (equal fd -1)
+    (unless (eq fd -1)
       (le:evutil-make-socket-nonblocking fd))
 
     (le:bufferevent-setcb bev
@@ -501,17 +501,6 @@
     (connect-tcp-socket socket/stream host port)
     socket/stream))
 
-(defun tcp-send (host port data read-cb event-cb &key write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) stream)
-  "DEPRECATED, exists for backwards compatibility. Use tcp-connect."
-  (apply #'tcp-connect (append (list host port read-cb event-cb
-                                     :data data
-                                     :write-cb write-cb
-                                     :read-timeout read-timeout
-                                     :write-timeout write-timeout
-                                     :stream stream)
-                               (when dont-drain-read-buffer-supplied-p
-                                 (list :dont-drain-read-buffer dont-drain-read-buffer)))))
-                                     
 (defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1) stream)
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
