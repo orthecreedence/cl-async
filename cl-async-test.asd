@@ -3,7 +3,7 @@
   :license "MIT"
   :version "0.2"
   :description "TESTS FOR Asynchronous operations for Common Lisp."
-  :depends-on (#:cffi #:cl-async #:eos #:bordeaux-threads #:usocket)
+  :depends-on (#:cffi #:cl-async #:fiveam #:bordeaux-threads #:usocket)
   :components
   ((:module test
     :serial t

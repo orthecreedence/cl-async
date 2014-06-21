@@ -1,5 +1,5 @@
 (defpackage :cl-async-test
-  (:use :cl :eos :cl-async-base :cl-async-util :cl-async-future)
+  (:use :cl :fiveam :cl-async-base :cl-async-util :cl-async-future)
   (:export #:run-tests
            #:benchmark-server
            #:benchmark-client))
