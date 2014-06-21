@@ -43,7 +43,6 @@
                (if dns-windows
                    ;; we're on windows, so load entries from registry
                    (progn
-                     (populate-windows-local-hosts)
                      (le:evdns-base-search-clear dns-base)
                      (cffi:foreign-funcall-pointer dns-windows () :pointer dns-base :int))
                    ;; on *nix, so load from resolv.conf (if available)

@@ -193,6 +193,10 @@
     (save-callbacks (event-base-c *event-base*) callbacks)
     (bt:with-lock-held (*event-base-registry-lock*)
       (setf (gethash (event-base-id *event-base*) *event-base-registry*) *event-base*))
+    ;; we're on windows, so load entries from registry
+    (when (or #+windows t
+              (cffi:foreign-symbol-pointer "evdns_base_config_windows_nameservers"))
+      (populate-windows-local-hosts))
     (unwind-protect
       (progn
         ;; this will block until all events are processed
