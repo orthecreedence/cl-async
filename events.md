@@ -149,11 +149,11 @@ This is a very thin wrapper around [delay](#delay), in fact all it does is call
   => event
 {% endhighlight %}
 
-Allows you to create an event that watched a file descriptor. This can be useful
+Allows you to create an event that watches a file descriptor. This can be useful
 if you need to manually watch a socket without having libevent/cl-async do any
 buffering on it.
 
-`:read-cb` is fired when the fd is ready to be ready from.  
+`:read-cb` is fired when the fd is ready to be read from.  
 `:write-cb` is fired when the fd is ready to be written to.  
 `:timeout-cb` is fired when the time given by `:timeout` (in seconds) expires.  
 `:timeout` specifies that the event fire in the given number of seconds.
