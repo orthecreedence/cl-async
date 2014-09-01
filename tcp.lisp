@@ -301,53 +301,54 @@
          (connect-cb (getf callbacks :connect-cb)))
     (catch-app-errors event-cb
       (unwind-protect
-        ;; if we just connected and we have a connect-cb, call it (only for
-        ;; outgoing connections though, since incoming are handled in the
-        ;; accept-cb)
-        (when (and connect-cb
-                   (eq (socket-direction socket) 'out)
-                   (logand events le:+bev-event-connected+))
-          (funcall connect-cb socket))
-        ;; process any errors we received
-        (cond
-          ((< 0 (logand events (logior le:+bev-event-error+
-                                       le:+bev-event-timeout+)))
-           (multiple-value-bind (errcode errstr) (get-last-tcp-err)
-             (let ((dns-err (le:bufferevent-socket-get-dns-error bev)))
-               (cond
-                 ;; DNS error
-                 ((and (< 0 (logand events le:+bev-event-error+))
-                       (not (zerop dns-err)))
-                  (setf event (make-instance 'dns-error
-                                             :code dns-err
-                                             :msg (le:evutil-gai-strerror dns-err)))
-                  (release-dns-base))
+        (progn
+          ;; if we just connected and we have a connect-cb, call it (only for
+          ;; outgoing connections though, since incoming are handled in the
+          ;; accept-cb)
+          (when (and connect-cb
+                     (eq (socket-direction socket) :out)
+                     (logand events le:+bev-event-connected+))
+            (funcall connect-cb socket))
+          ;; process any errors we received
+          (cond
+            ((< 0 (logand events (logior le:+bev-event-error+
+                                         le:+bev-event-timeout+)))
+             (multiple-value-bind (errcode errstr) (get-last-tcp-err)
+               (let ((dns-err (le:bufferevent-socket-get-dns-error bev)))
+                 (cond
+                   ;; DNS error
+                   ((and (< 0 (logand events le:+bev-event-error+))
+                         (not (zerop dns-err)))
+                    (setf event (make-instance 'dns-error
+                                               :code dns-err
+                                               :msg (le:evutil-gai-strerror dns-err)))
+                    (release-dns-base))
 
-                 ;; socket timeout
-                 ((< 0 (logand events le:+bev-event-timeout+))
-                  (setf event (make-instance 'tcp-timeout :socket socket :code -1 :msg "Socket timed out")))
+                   ;; socket timeout
+                   ((< 0 (logand events le:+bev-event-timeout+))
+                    (setf event (make-instance 'tcp-timeout :socket socket :code -1 :msg "Socket timed out")))
 
-                 ;; connection reset by peer
-                 ((or (eq errcode 104)
-                      (< 0 (logand events le:+bev-event-eof+)))
-                  (setf event (make-instance 'tcp-eof :socket socket)))
+                   ;; connection reset by peer
+                   ((or (eq errcode 104)
+                        (< 0 (logand events le:+bev-event-eof+)))
+                    (setf event (make-instance 'tcp-eof :socket socket)))
 
-                 ;; since we don't know what the error was, just spawn a general
-                 ;; error.
-                 ((< 0 errcode)
-                  (setf event (make-instance 'tcp-error :socket socket :code errcode :msg errstr)))
-                 ;; libevent signaled an error, but nothing actually happened
-                 ;; (that we know of anyway). ignore...
-                 ;(t
-                 ; (setf event (make-instance 'tcp-error :socket socket :code events :msg (format nil "Unkonwn error (~a): ~a" events errcode))))
-                 ))))
-          ;; peer closed connection.
-          ((< 0 (logand events le:+bev-event-eof+))
-           (setf event (make-instance 'tcp-eof :socket socket)))
-          ((and dns-base
-                (< 0 (logand events le:+bev-event-connected+))         
-                (not (cffi:null-pointer-p dns-base)))
-           (release-dns-base)))
+                   ;; since we don't know what the error was, just spawn a general
+                   ;; error.
+                   ((< 0 errcode)
+                    (setf event (make-instance 'tcp-error :socket socket :code errcode :msg errstr)))
+                   ;; libevent signaled an error, but nothing actually happened
+                   ;; (that we know of anyway). ignore...
+                   ;(t
+                   ; (setf event (make-instance 'tcp-error :socket socket :code events :msg (format nil "Unkonwn error (~a): ~a" events errcode))))
+                   ))))
+            ;; peer closed connection.
+            ((< 0 (logand events le:+bev-event-eof+))
+             (setf event (make-instance 'tcp-eof :socket socket)))
+            ((and dns-base
+                  (< 0 (logand events le:+bev-event-connected+))
+                  (not (cffi:null-pointer-p dns-base)))
+             (release-dns-base))))
         (when event
           (unwind-protect
             (when event-cb (run-event-cb event-cb event))
@@ -362,7 +363,7 @@
    server has attached to it. Returns the cl-async socket object created."
   (let* ((per-conn-data-pointer (create-data-pointer))
          (stream-data-p (tcp-server-stream server))
-         (socket (make-instance 'socket :c bev :direction 'in :drain-read-buffer (not stream-data-p)))
+         (socket (make-instance 'socket :c bev :direction :in :drain-read-buffer (not stream-data-p)))
          (stream (when stream-data-p (make-instance 'async-io-stream :socket socket)))
          (event-cb (getf callbacks :event-cb))
          (connect-cb (getf callbacks :connect-cb)))
@@ -428,7 +429,7 @@
                                      t
                                      dont-drain-read-buffer))
          (socket (make-instance 'socket :c bev
-                                        :direction 'out
+                                        :direction :out
                                         :drain-read-buffer (not dont-drain-read-buffer)))
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
 

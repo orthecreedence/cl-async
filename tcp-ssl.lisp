@@ -163,7 +163,7 @@
                                      t
                                      dont-drain-read-buffer))
          (socket (make-instance 'ssl-socket :c bev
-                                            :direction 'out
+                                            :direction :out
                                             :ctx client-ctx
                                             :drain-read-buffer (not dont-drain-read-buffer)))
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
