@@ -117,7 +117,7 @@ specific use-cases may require locking, so keep that in mind.
 
 <a id="futures"></a>
 ### Example: using futures seamlessly
-Let's integrate what we just did with [futures](/cl-async/futures).
+Let's integrate what we just did with [futures](/cl-async/future).
 
 {% highlight cl %}
 (defun work (operation)
