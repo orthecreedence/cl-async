@@ -94,7 +94,7 @@
          (bev-data (deref-data-from-pointer bev))
          (bev-data-pointer (getf bev-data :data-pointer)))
     (le:bufferevent-disable bev (logior le:+ev-read+ le:+ev-write+))
-    (if (eq (socket-direction socket) 'in)
+    (if (eq (socket-direction socket) :in)
         (decf (event-base-num-connections-in *event-base*))
         (decf (event-base-num-connections-out *event-base*)))
     (le:bufferevent-free bev)
