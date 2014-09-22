@@ -18,6 +18,9 @@ watching an OS file descriptor for changes.
 - [add-event](#add-event) _function_
 - [delay](#delay) _function_
 - [with-delay](#with-delay) _macro_
+- [interval](#interval) _function_
+- [with-interval](#with-interval) _macro_
+- [remove-interval](#remove-interval) _function_
 - [make-event](#make-event) _function_
 - [watch-fd](#watch-fd) _function_
 - [event-freed](#event-freed) _condition_
@@ -122,6 +125,37 @@ Syntax wrapper around [delay](#delay) to make it a bit less annoying to type.
 (with-delay (5)
   (format t "Five seconds passed!~%"))
 {% endhighlight %}
+
+<a id="interval"></a>
+### interval
+{% highlight cl %}
+(defun interval (callback &key time event-cb))
+  => cancel-closure
+{% endhighlight %}
+
+Like [delay](#delay), but runs the given callback every `time` seconds until
+stopped by either `funcall`ing the returned closure, or calling [remove-inteval](#remove-interval)
+on the returned closure.
+
+<a id="with-interval"></a>
+### with-interval
+{% highlight cl %}
+(defmacro with-interval ((seconds) &body body))
+  => cancel-closure
+{% endhighlight %}
+
+Syntax wrapper around [interval](#interval). Returns the same cancellation
+closure that `interval` does.
+
+<a id="remove-interval"></a>
+### remove-interval
+{% highlight cl %}
+(defun remove-interval (interval-closure))
+  => nil
+{% endhighlight %}
+
+When given the closure returned from calling [interval](#interval), stops the
+timer on the interval (cancels it).
 
 <a id="make-event"></a>
 ### make-event
