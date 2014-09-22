@@ -35,8 +35,11 @@
            #:remove-event
            #:add-event
            #:delay
-           #:make-event
            #:with-delay
+           #:interval
+           #:with-interval
+           #:remove-interval
+           #:make-event
            #:watch-fd
            #:fd-add
 

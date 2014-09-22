@@ -105,7 +105,28 @@
 
 (defmacro with-delay ((seconds) &body body)
   "Nicer syntax for delay function."
-  `(as:delay (lambda () ,@body) :time ,seconds))
+  `(delay (lambda () ,@body) :time ,seconds))
+
+(defun interval (callback &key time event-cb)
+  "Run a function, asynchronously, every `time` seconds. This function returns a
+   function which, when called, cancels the interval."
+  (let (event)
+    (labels ((main ()
+               (funcall callback)
+               (when event
+                 (setf event (as:delay #'main :time time :event-cb event-cb)))))
+      (setf event (as:delay #'main :time time :event-cb event-cb))
+      (lambda ()
+        (remove-event event)
+        (setf event nil)))))
+
+(defmacro with-interval ((seconds) &body body)
+  "Nicer syntax for interval function."
+  `(interval (lambda () ,@body) :time ,seconds))
+
+(defun remove-interval (interval-fn)
+  "Stops an interval from looping."
+  (funcall interval-fn))
 
 (defun make-event (callback &key event-cb)
   "Make an arbitrary event, and add it to the event loop. It *must* be triggered

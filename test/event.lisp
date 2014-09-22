@@ -29,3 +29,11 @@
     (is (identity timer2))
     (is (identity timer3))))
 
+(test interval
+  "Test intervals"
+  (is (eq (async-let ((c 0))
+            (let ((interval (as:interval (lambda () (incf c)) :time .1)))
+              (as:with-delay (.32)
+                (as:remove-interval interval))))
+          3)))
+
