@@ -314,54 +314,20 @@
   (cond
     ((or (null address)
          (ipv4-address-p address))
-     (let ((sockaddr (cffi:foreign-alloc (le::cffi-type le::sockaddr-in)))
-           (address (if (string= address "0.0.0.0")
-                        nil
-                        address))
-           (c-address (if address
-                          (cffi:foreign-funcall "inet_addr" :string address :unsigned-long)
-                          (cffi:foreign-funcall "htonl" :unsigned-long 0 :unsigned-long))))
-       (cffi:foreign-funcall "memset" :pointer sockaddr :unsigned-char 0 :unsigned-char +sockaddr-size+)
-       #+(and ecl windows (not ecl-bytecmp))
-       (progn
-         ;; in ECL (w/ C compiler on windows), SOMEHOW the return address of
-         ;; ip-str-to-sockaddr (this fn) was getting overwritten. this *hand
-         ;; crafted* (sustainably raised) C code fixes our little problem.
-         (ffi:clines "#include <winsock2.h>")
-         (ffi:c-inline (sockaddr +af-inet+ port c-address)
-                       (:pointer :short :unsigned-short :unsigned-long)
-                       :void
-           "struct sockaddr_in *addr = ecl_to_pointer(#0);
-            struct in_addr ia;
-            ia.S_un.S_addr = #3;
-            addr->sin_family = #1;
-            addr->sin_port = htons(#2);
-            addr->sin_addr = ia;"
-           :one-liner nil
-           :side-effects t))
-       #-(and ecl windows (not ecl-bytecmp))
-       (progn
-         (setf (sockaddr-in-sin-family sockaddr) +af-inet+)
-         (setf (sockaddr-in-sin-port sockaddr) (cffi:foreign-funcall "htons" :int port :unsigned-short))
-         (setf (sockaddr-in-sin-addr sockaddr) c-address))
-       (values sockaddr +sockaddr-size+)))
+     (let ((sockaddr (cffi:foreign-alloc '(:pointer (:struct uv:sockaddr-in)))))
+       (uv:uv-ip-4-addr address port sockaddr)
+       sockaddr))
     ((ipv6-address-p address)
-     (let ((sockaddr6 (cffi:foreign-alloc (le::cffi-type le::sockaddr-in-6))))
-       (cffi:foreign-funcall "memset" :pointer sockaddr6 :unsigned-char 0 :unsigned-char +sockaddr6-size+)
-       (setf (le-a:sockaddr-in-6-sin-6-family sockaddr6) +af-inet6+
-             (le-a:sockaddr-in-6-sin-6-port sockaddr6) (cffi:foreign-funcall "htons" :int port :unsigned-short))
-       (cffi:foreign-funcall "inet_pton"
-                             :short +af-inet6+
-                             :string address
-                             :pointer (cffi:foreign-slot-pointer sockaddr6 (le::cffi-type le::sockaddr-in-6) 'le::sin-6-addr-0))
-       (values sockaddr6 +sockaddr6-size+)))
+     (let ((sockaddr (cffi:foreign-alloc '(:pointer (:struct uv:sockaddr-in-6)))))
+       (uv:uv-ip-6-addr address port sockaddr)
+       sockaddr))
     (t
      (error (format nil "Invalid address passed (not IPv4 or IPV6): ~s~%" address)))))
 
-(defmacro with-ip-to-sockaddr (((bind bind-size) address port) &body body)
+(defmacro with-ip-to-sockaddr (((bind) address port) &body body)
   "Wraps around ipv4-str-to-sockaddr. Converts a string address and port and
    creates a sockaddr-in object, runs the body with it bound, and frees it."
-  `(multiple-value-bind (,bind ,bind-size) (ip-str-to-sockaddr ,address ,port)
+  `(let ((,bind (ip-str-to-sockaddr ,address ,port)))
      (unwind-protect
        (progn ,@body)
        (cffi:foreign-free ,bind))))

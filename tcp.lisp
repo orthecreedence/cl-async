@@ -12,6 +12,10 @@
   (:report (lambda (c s) (format s "TCP connection EOF: ~a" (tcp-socket c))))
   (:documentation "Passed to an event callback when a peer closes a TCP connection."))
 
+(define-condition tcp-reset (tcp-error) ()
+  (:report (lambda (c s) (format s "TCP connection reset ~a: ~a" (event-errcode c) (event-errmsg c))))
+  (:documentation "Passed to an event callback when a TCP connection times out."))
+
 (define-condition tcp-timeout (tcp-error) ()
   (:report (lambda (c s) (format s "TCP connection timeout: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to an event callback when a TCP connection times out."))
@@ -251,6 +255,75 @@
                       :socket-is-evbuffer t)
     body))
 
+(define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int))
+  (declare (ignore handle))
+  (uv:uv-buf-init (cffi:foreign-alloc :char :count size) size))
+
+(defun tcp-event-cb (socket errno event-cb)
+  "Called when an event (error, mainly) occurs on a TCP stream."
+  (let* ((event nil)
+         (errstr "TODO: grab error strings from libuv"))
+    (catch-app-errors event-cb
+      (unwind-protect
+        (cond
+          ((= errno uv:+uv--etimedout+)
+           (setf event (make-instance 'tcp-timeout :socket socket :code errno)))
+          ((= errno uv:+uv--econnreset+)
+           (setf event (make-instance 'tcp-reset :socket socket :code errno)))
+          ((= errno uv:+uv--econnrefused+)
+           (setf event (make-instance 'tcp-refused :socket socket :code errno)))
+          ((= errno uv:+uv--eof+)
+           (setf event (make-instance 'tcp-eof :socket socket :code errno)))
+          (t
+           (setf event (make-instance 'tcp-error :socket socket :code errno :msg errstr))))
+        (when event
+          (unwind-protect
+            (when event-cb (run-event-cb event-cb event))
+            ;; if the app closed the socket in the event cb (perfectly fine),
+            ;; make sure we don't trigger an error trying to close it again.
+            (handler-case (close-socket socket)
+              (socket-closed () nil))))))))
+
+(define-c-callback tcp-read-cb :void ((uv-stream :pointer) (nread :int) (buf :pointer))
+  (let* ((stream-data (deref-data-from-pointer uv-stream))
+         (socket (getf stream-data :socket))
+         (stream (getf stream-data :stream))
+         (data-pointer (getf stream-data :data-pointer))
+         (callbacks (get-callbacks data-pointer))
+         (read-cb (getf callbacks :read-cb))
+         (event-cb (getf callbacks :event-cb))
+         (buf-ptr (uv-a:uv-buf-t-base buf))
+         (buf-len (uv-a:uv-buf-t-len buf)))
+    (catch-app-errors event-cb
+      (when (< nread 0)
+        ;; we got an error
+        (unless (cffi:null-pointer-p buf-ptr)
+          (cffi:foreign-free buf-ptr))
+        (uv:uv-close uv-stream (cffi:null-pointer))
+        (tcp-event-cb socket nread event-cb)
+        (return-from tcp-read-cb))
+
+      ;; read the buffer
+      (let ((bytes (make-array buf-len :element-type '(unsigned-byte 8))))
+        (dotimes (i buf-len)
+          (setf (aref bytes i) (cffi:mem-aref buf-ptr :unsigned-char i)))
+        (funcall read-cb socket bytes))
+      
+      ;; free the buffer
+      (unless (cffi:null-pointer-p buf-ptr)
+        (cffi:foreign-free buf-ptr)))))
+
+(define-c-callback tcp-connect-cb :void ((uv-stream :pointer) (status :int))
+  (let* ((stream-data (deref-data-from-pointer uv-stream))
+         (socket (getf stream-data :socket))
+         (stream (getf stream-data :stream))
+         (data-pointer (getf stream-data :data-pointer))
+         (callbacks (get-callbacks data-pointer))
+         (connect-cb (getf callbacks :connect-cb)))
+    (when connect-cb
+      (funcall connect-cb (or stream socket)))
+    (uv:uv-read-start uv-stream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb))))
+
 (define-c-callback tcp-read-cb :void ((bev :pointer) (data-pointer :pointer))
   "Called whenever a read event happens on a TCP socket. Ties into the anonymous
    callback system to run user-specified anonymous callbacks on read events."
@@ -288,74 +361,6 @@
     (catch-app-errors event-cb
       (when write-cb
         (funcall write-cb socket)))))
-
-(define-c-callback tcp-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
-  "Called whenever anything happens on a TCP socket. Ties into the anonymous
-   callback system to track failures/disconnects."
-  (let* ((event nil)
-         (dns-base (deref-data-from-pointer data-pointer))
-         (bev-data (deref-data-from-pointer bev))
-         (socket (getf bev-data :socket))
-         (callbacks (get-callbacks data-pointer))
-         (event-cb (getf callbacks :event-cb))
-         (connect-cb (getf callbacks :connect-cb)))
-    (catch-app-errors event-cb
-      (unwind-protect
-        (progn
-          ;; if we just connected and we have a connect-cb, call it (only for
-          ;; outgoing connections though, since incoming are handled in the
-          ;; accept-cb)
-          (when (and connect-cb
-                     (eq (socket-direction socket) :out)
-                     (logand events le:+bev-event-connected+))
-            (funcall connect-cb socket))
-          ;; process any errors we received
-          (cond
-            ((< 0 (logand events (logior le:+bev-event-error+
-                                         le:+bev-event-timeout+)))
-             (multiple-value-bind (errcode errstr) (get-last-tcp-err)
-               (let ((dns-err (le:bufferevent-socket-get-dns-error bev)))
-                 (cond
-                   ;; DNS error
-                   ((and (< 0 (logand events le:+bev-event-error+))
-                         (not (zerop dns-err)))
-                    (setf event (make-instance 'dns-error
-                                               :code dns-err
-                                               :msg (le:evutil-gai-strerror dns-err)))
-                    (release-dns-base))
-
-                   ;; socket timeout
-                   ((< 0 (logand events le:+bev-event-timeout+))
-                    (setf event (make-instance 'tcp-timeout :socket socket :code -1 :msg "Socket timed out")))
-
-                   ;; connection reset by peer
-                   ((or (eq errcode 104)
-                        (< 0 (logand events le:+bev-event-eof+)))
-                    (setf event (make-instance 'tcp-eof :socket socket)))
-
-                   ;; since we don't know what the error was, just spawn a general
-                   ;; error.
-                   ((< 0 errcode)
-                    (setf event (make-instance 'tcp-error :socket socket :code errcode :msg errstr)))
-                   ;; libevent signaled an error, but nothing actually happened
-                   ;; (that we know of anyway). ignore...
-                   ;(t
-                   ; (setf event (make-instance 'tcp-error :socket socket :code events :msg (format nil "Unkonwn error (~a): ~a" events errcode))))
-                   ))))
-            ;; peer closed connection.
-            ((< 0 (logand events le:+bev-event-eof+))
-             (setf event (make-instance 'tcp-eof :socket socket)))
-            ((and dns-base
-                  (< 0 (logand events le:+bev-event-connected+))
-                  (not (cffi:null-pointer-p dns-base)))
-             (release-dns-base))))
-        (when event
-          (unwind-protect
-            (when event-cb (run-event-cb event-cb event))
-            ;; if the app closed the socket in the event cb (perfectly fine),
-            ;; make sure we don't trigger an error trying to close it again.
-            (handler-case (close-socket socket)
-              (socket-closed () nil))))))))
 
 (defun init-incoming-socket (bev callbacks server)
   "Called by the tcp-accept-cb when an incoming connection is detected. Sets up
@@ -417,49 +422,42 @@
                                             :listener listener
                                             :tcp-server tcp-server)))))
 
-(defun init-tcp-socket (read-cb event-cb &key data stream (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun init-tcp-socket (read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Initialize an async socket, but do not connect it."
   (check-event-loop-running)
 
   (let* ((data-pointer (create-data-pointer))
-         (fd (or fd -1))
-         (bev (le:bufferevent-socket-new (event-base-c *event-base*) fd +bev-opt-close-on-free+))
+         (uvstream (cffi:foreign-alloc '(:pointer (:struct uv:uv-tcp-s))))
          ;; assume dont-drain-read-buffer if unspecified and requesting a stream
          (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
                                      t
                                      dont-drain-read-buffer))
-         (socket (make-instance 'socket :c bev
+         (socket (make-instance 'socket :c uvstream
                                         :direction :out
                                         :drain-read-buffer (not dont-drain-read-buffer)))
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
-
-    ;; be sure to mark the socket as nonblocking if we passed one in
-    (unless (eq fd -1)
-      (le:evutil-make-socket-nonblocking fd))
-
-    (le:bufferevent-setcb bev
-                          (cffi:callback tcp-read-cb)
-                          (cffi:callback tcp-write-cb)
-                          (cffi:callback tcp-event-cb)
-                          data-pointer)
-    (le:bufferevent-enable bev (logior le:+ev-read+ le:+ev-write+))
+    (uv:uv-tcp-init (event-base-c *event-base*) uvstream)
+    (when data
+      (let* ((old-connect-cb connect-cb)
+             (new-connect-cb (lambda (sock)
+                               (write-socket-data sock data)
+                               (funcall old-connect-cb sock))))
+        (setf connect-cb new-connect-cb)))
     (save-callbacks data-pointer (list :read-cb read-cb
                                        :event-cb event-cb
                                        :write-cb write-cb
                                        :connect-cb connect-cb))
-    (when data
-      (write-to-evbuffer (le:bufferevent-get-output bev) data))
-    (set-socket-timeouts bev read-timeout write-timeout :socket-is-bufferevent t)
+    (set-socket-timeouts uvstream read-timeout write-timeout)
 
-    ;; allow the data pointer/socket class to be referenced directly by the bev
-    (attach-data-to-pointer bev (list :data-pointer data-pointer
-                                      :socket socket
-                                      :stream tcp-stream))
+    ;; allow the data pointer/socket class to be referenced directly by the uvstream
+    (attach-data-to-pointer uvstream (list :data-pointer data-pointer
+                                           :socket socket
+                                           :stream tcp-stream))
     (if stream
         tcp-stream
         socket)))
 
-(defun connect-tcp-socket (socket/stream host port)
+(defun connect-tcp-socket (socket/stream host port &key event-cb)
   "Connect a tcp socket initialized with init-tcp-socket."
   (let* ((socket (if (subtypep (type-of socket/stream) 'async-stream)
                      (stream-socket socket/stream)
@@ -470,20 +468,25 @@
                         (gethash host *windows-local-hosts*))
                    (gethash host *windows-local-hosts*)
                    host))
-         (bev (socket-c socket))
-         (data-pointer (getf (deref-data-from-pointer bev) :data-pointer)))
+         (uvstream (socket-c socket)))
     ;; track the connection
     (incf (event-base-num-connections-out *event-base*))
     ;; only connect if we didn't get an existing fd passed in
-    (if (ip-address-p host)
-        ;; got an IP so just connect directly
-        (with-ip-to-sockaddr ((sockaddr sockaddr-size) host port)
-          (le:bufferevent-socket-connect bev sockaddr sockaddr-size))
+    (flet ((do-connect (ip port)
+             (with-ip-to-sockaddr ((sockaddr) ip port)
+               (cffi:with-foreign-object (req '(:pointer (:struct uv:uv-connect-s)))
+                 (uv:uv-tcp-connect req uvstream sockaddr (cffi:callback tcp-connect-cb))))))
+      (if (ip-address-p host)
+          ;; got an IP so just connect directly
+          (do-connect host port)
 
-        ;; get a DNS base and do an async lookup
-        (let ((dns-base (get-dns-base)))
-          (attach-data-to-pointer data-pointer dns-base)
-          (le:bufferevent-socket-connect-hostname bev dns-base *default-lookup-type* host port))))
+          ;; get a DNS base and do an async lookup
+          (dns-lookup
+            host
+            (lambda (ip family)
+              (declare (ignore family))
+              (do-connect ip port))
+            event-cb))))
   socket/stream)
 
 (defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
@@ -499,40 +502,34 @@
                                             :write-timeout write-timeout)
                                       (when dont-drain-read-buffer-supplied-p
                                         (list :dont-drain-read-buffer dont-drain-read-buffer))))))
-    (connect-tcp-socket socket/stream host port)
+    (connect-tcp-socket socket/stream host port :event-cb event-cb)
     socket/stream))
 
 (defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1) stream)
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (check-event-loop-running)
-  (with-ip-to-sockaddr ((sockaddr sockaddr-size) bind-address port)
-    (let* ((data-pointer (create-data-pointer))
-           (listener (le:evconnlistener-new-bind (event-base-c *event-base*)
-                                                  (cffi:callback tcp-accept-cb)
-                                                  data-pointer
-                                                  (logior le:+lev-opt-reuseable+ le:+lev-opt-close-on-free+)
-                                                  backlog
-                                                  sockaddr
-                                                  sockaddr-size))
-           (server-class (make-instance 'tcp-server
-                                        :c listener
-                                        :stream stream
-                                        :data-pointer data-pointer)))
-      ;; check that our listener instantiated properly
-      (when (or (and (not (cffi:pointerp listener))
-                     (zerop listener))
-                (cffi:null-pointer-p listener))
-        (free-pointer-data data-pointer)
-        (error (make-instance 'tcp-server-bind-error :addr bind-address :port port)))
-      ;; make sure the server is closed/freed on exit
-      (add-event-loop-exit-callback (lambda ()
-                                      (close-tcp-server server-class)
-                                      (free-pointer-data data-pointer)))
-      (attach-data-to-pointer data-pointer server-class)
-      ;; setup an accept error cb
-      (le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
-      (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
-      ;; return the listener, which can be closed by the app if needed
-      server-class)))
+  (cffi:with-foreign-object (server '(:pointer (:struct uv:uv-tcp-s)))
+    (with-ip-to-sockaddr ((sockaddr sockaddr-size) bind-address port)
+      (uv:uv-tcp-init (event-base-c *event-base*) server)
+      (uv:uv-tcp-bind server sockaddr 0)
+      (let* ((data-pointer (create-data-pointer))
+             (server-class (make-instance 'tcp-server
+                                          :c server
+                                          :stream stream
+                                          :data-pointer data-pointer))
+             (r (uv:uv-listen server 128 (cffi:callback tcp-accept-cb))))
+        ;; check that our listener instantiated properly
+        (when (zerop r)
+          (free-pointer-data data-pointer)
+          (error (make-instance 'tcp-server-bind-error :addr bind-address :port port)))
+        ;; make sure the server is closed/freed on exit
+        (add-event-loop-exit-callback (lambda ()
+                                        (close-tcp-server server-class)
+                                        (free-pointer-data data-pointer)))
+        (attach-data-to-pointer data-pointer server-class)
+        ;; setup an accept error cb
+        (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
+        ;; return the listener, which can be closed by the app if needed
+        server-class)))
 
