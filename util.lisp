@@ -22,6 +22,7 @@
            #:+addrinfo-size+
            #:+timeval-size+
            #:+bev-opt-close-on-free+
+           #:+bev-opt-defer-callbacks+
 
            #:catch-app-errors
            #:run-event-cb
@@ -87,6 +88,7 @@
 (defconstant +addrinfo-size+ (cffi:foreign-type-size (le::cffi-type le::addrinfo)))
 (defconstant +timeval-size+ (cffi:foreign-type-size (le::cffi-type le::timeval)))
 (defconstant +bev-opt-close-on-free+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+))
+(defconstant +bev-opt-defer-callbacks+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-defer-callbacks+))
 
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
