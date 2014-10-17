@@ -1,7 +1,11 @@
 (in-package :cl-async)
 
+(defun make-buffer (&optional data)
+  (make-array 0 :element-type 'octet :initial-contents data))
+
 (defclass async-stream (trivial-gray-stream-mixin)
-  ((socket :accessor stream-socket :initarg :socket :initform nil))
+  ((socket :accessor stream-socket :initarg :socket :initform nil)
+   (buffer :accessor stream-buffer :initform (make-buffer)))
   (:documentation "The underlying class for async streams. Wraps a tcp socket class."))
 (defclass async-output-stream (async-stream fundamental-binary-output-stream) ()
   (:documentation "Async output stream."))
@@ -13,13 +17,17 @@
 ;; -----------------------------------------------------------------------------
 ;; base stream
 ;; -----------------------------------------------------------------------------
+(defmethod stream-append-bytes ((stream async-stream) bytes)
+  "Append some data to a stream's underlying buffer."
+  (setf (stream-buffer stream) (cl-async-util:append-array (stream-buffer stream) bytes)))
+
 (defmethod stream-output-type ((stream async-stream))
   "This is always a binary stream."
-  '(unsigned-byte 8))
+  'cl-async-util:octet)
 
 (defmethod stream-element-type ((stream async-stream))
   "This is always a binary stream."
-  '(unsigned-byte 8))
+  'cl-async-util:octet)
 
 (defmethod open-stream-p ((stream async-stream))
   "Test the underlying socket to see if this stream is open."
@@ -41,21 +49,15 @@
 ;; -----------------------------------------------------------------------------
 (defmethod stream-clear-output ((stream async-output-stream))
   "Attempt to clear the output buffer of an output stream."
-  (when (open-stream-p stream)
-    (let* ((socket (stream-socket stream))
-           (bev (socket-c socket))
-           (bev-output (le::bufferevent-get-output bev)))
-      (loop while (< 0 (le:evbuffer-get-length bev-output)) do
-        (le:evbuffer-drain bev-output 9999999)))))
+  ;; we don't have the concept of an output buffer, only an underlying UV stream
+  ;; that's either written to or isn't
+  nil)
 
 (defmethod stream-force-output ((stream async-output-stream))
   "Force an output stream to send its data to the underlying fd."
-  (when (open-stream-p stream)
-    (let* ((socket (stream-socket stream))
-           (bev (socket-c socket))
-           (bev-output (le:bufferevent-get-output bev))
-           (fd (le:bufferevent-getfd bev)))
-      (le:evbuffer-write bev-output fd))))
+  ;; we don't have the concept of an output buffer, only an underlying UV stream
+  ;; that's either written to or isn't
+  nil)
 
 (defmethod stream-finish-output ((stream async-output-stream))
   "Really, since we're async, same as force-output."
@@ -78,25 +80,22 @@
 (defmethod stream-clear-input ((stream async-input-stream))
   "Attempt to clear the input buffer of an input stream."
   (when (open-stream-p stream)
-    (let* ((socket (stream-socket stream))
-           (bev (socket-c socket))
-           (bev-input (le::bufferevent-get-input bev)))
-      (loop while (< 0 (le:evbuffer-get-length bev-input)) do
-        (le:evbuffer-drain bev-input 9999999)))))
+    (setf (stream-buffer stream) (make-empty-buffer))))
 
 (defmethod stream-read-byte ((stream async-input-stream))
   "Read one byte from the underlying socket."
-  (let ((byte (read-bytes-from-socket (stream-socket stream) 1)))
-    (if byte
-        (aref byte 0)
+  (let* ((buff (make-array 1 :element-type '(unsigned-byte 8)))
+         (num (stream-read-sequence stream buff 0 1)))
+    (if (= num 1)
+        (aref buff 0)
         :eof)))
 
 (defmethod stream-read-sequence ((stream async-input-stream) sequence start end &key)
   "Attempt to read a sequence of bytes from the underlying socket."
-  (let ((seq (read-bytes-from-socket (stream-socket stream) (- end start))))
-    (if seq
-        (progn
-          (replace sequence seq)
-          (length seq))
-        start)))
+  (let* ((numbytes (- end start))
+         (buffer (stream-buffer stream))
+         (bytes (subseq buffer start (min (length buffer) numbytes))))
+    (setf (stream-buffer stream) (make-buffer (subseq buffer numbytes)))
+    (replace sequence bytes)
+    (length bytes)))
 

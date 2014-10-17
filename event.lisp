@@ -24,16 +24,17 @@
   (let ((free-cb (event-free-callback event)))
     (when free-cb (funcall free-cb event)))
   ;; free the event (also makes it inactive/non-pending before freeing)
-  (le:event-free (event-c event))
+  (let ((timer-c (event-c event)))
+    (uv:uv-timer-stop timer-c)
+    (cffi:foreign-free timer-c))
   (setf (event-freed event) t))
 
 (defun remove-event (event)
-  "Remove a pending event from the event loop. Returns t on success, nil on
-   failure."
+  "Remove a pending event from the event loop."
   (check-event-unfreed event)
-  (let ((ret (le:event-del (event-c event))))
-    (when (eq ret 0)
-      t)))
+  (let ((timer-c (event-c event)))
+    (uv:uv-timer-stop timer-c))
+  t)
 
 (defun add-event (event &key timeout activate)
   "Add an event to its specified event loop (make it pending). If given a
@@ -42,21 +43,15 @@
    the event will be activated directly without being added to the event loop,
    and its callback(s) will be fired."
   (check-event-unfreed event)
-  (let ((ev (event-c event)))
-    (cond ((numberp timeout)
-           (with-struct-timeval time-c timeout
-             (le:event-add ev time-c)))
-          (activate
-           (le:event-active ev 0 0))
-          (t
-           (le:event-add ev (cffi:null-pointer))))))
+  (let ((timer-c (event-c event)))
+    (uv:uv-timer-start timer-c (cffi:callback timer-cb) (* (or timeout 0) 1000))))
 
-(define-c-callback timer-cb :void ((fd :pointer) (what :pointer) (data-pointer :pointer))
+(define-c-callback timer-cb :void ((timer-c :pointer))
   "Callback used by the async timer system to find and run user-specified
    callbacks on timer events."
   (declare (ignore fd what))
-  (let* ((event (deref-data-from-pointer data-pointer))
-         (callbacks (get-callbacks data-pointer))
+  (let* ((event (deref-data-from-pointer timer-c))
+         (callbacks (get-callbacks timer-c))
          (cb (getf callbacks :callback))
          (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
@@ -64,7 +59,8 @@
         (when cb (funcall cb))
         (free-event event)))))
 
-(define-c-callback fd-cb :void ((fd :int) (what :short) (data-pointer :pointer))
+#|
+(define-c-callback fd-cb :void ((poller :int) (status :int) (events :int))
   "Called when an event watching a file descriptor is triggered."
   (declare (ignore fd))
   (let* (;(event (deref-data-from-pointer data-pointer))
@@ -83,6 +79,7 @@
       (when (and (< 0 (logand what le:+ev-timeout+))
                  timeout-cb)
          (funcall timeout-cb)))))
+|#
 
 (defun delay (callback &key time event-cb)
   "Run a function, asynchronously, after the specified amount of seconds. An
@@ -91,15 +88,11 @@
    If time is nil, callback is still called asynchronously, but is queued in the
    event loop with no delay."
   (check-event-loop-running)
-  (let* ((data-pointer (create-data-pointer))
-         (ev (le:event-new (event-base-c *event-base*) -1 0 (cffi:callback timer-cb) data-pointer))
-         (event (make-instance 'event
-                               :c ev
-                               :free-callback (lambda (event)
-                                                (declare (ignore event))
-                                                (free-pointer-data data-pointer)))))
-    (save-callbacks data-pointer (list :callback callback :event-cb event-cb))
-    (attach-data-to-pointer data-pointer event)
+  (let* ((timer-c (cffi:foreign-alloc '(:pointer (:struct uv:uv-timer-s))))
+         (event (make-instance 'event :c timer-c)))
+    (uv:uv-timer-init (event-base-c *event-base*) timer-c)
+    (save-callbacks timer-c (list :callback callback :event-cb event-cb))
+    (attach-data-to-pointer timer-c event)
     (add-event event :timeout time :activate t)
     event))
 
@@ -110,6 +103,7 @@
 (defun interval (callback &key time event-cb)
   "Run a function, asynchronously, every `time` seconds. This function returns a
    function which, when called, cancels the interval."
+  ;; TODO: convert to uv-timer w/repeat
   (let (event)
     (labels ((main ()
                (funcall callback)
@@ -130,28 +124,29 @@
 
 (defun make-event (callback &key event-cb)
   "Make an arbitrary event, and add it to the event loop. It *must* be triggered
-   by (add-event <the event> :activate t) or it will sit, idle, for a year. Or
-   you can remove/free it instead.
+   by (add-event <the event> :activate t) or it will sit, idle, for 100 years.
+   Or you can remove/free it instead.
 
    This is useful for triggering arbitrary events, and can even be triggered
-   from a thread outside the libevent loop (if you call
-   enable-threading-support)."
-  (delay callback :event-cb event-cb :time 31536000))
+   from a thread outside the libevent loop."
+  (delay callback :event-cb event-cb :time (* 100 31536000)))
 
+#|
 (defun watch-fd (fd &key event-cb read-cb write-cb timeout-cb timeout)
   "Run a function, asynchronously, when the specified file descriptor is
    ready for write or read operations. An event loop must be running for
    this to work."
   (check-event-loop-running)
+  ;; TODO: see uv_poll
   (let* ((data-pointer (create-data-pointer))
          (ev (le:event-new (event-base-c *event-base*)
                            fd
                            ;; listen to read/timeout events, and keep listening
                            (logior
-                            (if timeout-cb le:+ev-timeout+ 0)
-                            (if read-cb le:+ev-read+ 0)
-                            (if write-cb le:+ev-write+ 0)
-                            le:+ev-persist+)
+                             (if timeout-cb le:+ev-timeout+ 0)
+                             (if read-cb le:+ev-read+ 0)
+                             (if write-cb le:+ev-write+ 0)
+                             le:+ev-persist+)
                            (cffi:callback fd-cb)
                            data-pointer))
          (event (make-instance 'event
@@ -166,12 +161,5 @@
     (attach-data-to-pointer data-pointer event)
     (add-event event :timeout timeout)
     event))
+|#
 
-(defun fd-add (fd &key event-cb read-cb write-cb timeout-cb timeout)
-  "Deprecated. Backwards compatible function wrapping watch-fd."
-  (watch-fd fd
-            :event-cb event-cb
-            :read-cb read-cb
-            :write-cb write-cb
-            :timeout-cb timeout-cb
-            :timeout timeout))

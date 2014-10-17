@@ -70,12 +70,12 @@
   (save-callbacks (signal-sym signo) fn)
   (cffi:foreign-funcall "signal" :int signo :pointer (cffi:callback lisp-signal-cb) :pointer))
 
-(define-c-callback signal-cb :void ((signo :int) (event :short) (data-pointer :pointer))
+(define-c-callback signal-cb :void ((watcher :pointer) (signo :int))
   "All signals come through here."
-  (let* ((callbacks (get-callbacks data-pointer))
+  (let* ((callbacks (get-callbacks watcher))
          (signal-cb (getf callbacks :signal-cb))
          (event-cb (getf callbacks :event-cb))
-         (sig-data (deref-data-from-pointer data-pointer))
+         (sig-data (deref-data-from-pointer watcher))
          (ev (getf sig-data :ev)))
     (catch-app-errors event-cb
       (funcall signal-cb signo))))
@@ -89,9 +89,7 @@
   ;; un-bind this signal handler if it is already bound. this ensures we don't
   ;; lose the original lisp signal handler when we overwrite it.
   (free-signal-handler signo)
-  (let* ((data-pointer (create-data-pointer))
-         (ev (le:event-new (event-base-c *event-base*) signo (logior le:+ev-signal+ le:+ev-persist+) (cffi:callback signal-cb) data-pointer))
-         (lisp-signal-handler (set-lisp-signal-handler signo (lambda () (le:event-active ev))))
+  (let* ((event (le:event-new (event-base-c *event-base*) signo (logior le:+ev-signal+ le:+ev-persist+) (cffi:callback signal-cb) data-pointer))
          (signo-sym (signal-sym signo)))
     (le:event-add ev (cffi:null-pointer))
     (save-callbacks data-pointer (list :signal-cb signal-cb :event-cb event-cb))

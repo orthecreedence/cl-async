@@ -20,8 +20,6 @@
            #:+sockaddr-size+
            #:+sockaddr6-size+
            #:+addrinfo-size+
-           #:+timeval-size+
-           #:+bev-opt-close-on-free+
 
            #:catch-app-errors
            #:run-event-cb
@@ -55,8 +53,7 @@
            #:ip-address-p
            #:ip-str-to-sockaddr
            #:with-ip-to-sockaddr
-           #:*addrinfo*
-           #:addrinfo-ai-addr))
+           #:addrinfo-to-string))
 (in-package :cl-async-util)
 
 (deftype octet () '(unsigned-byte 8))
@@ -69,10 +66,10 @@
    data into write-socket-data."
   (coerce vector '(vector octet)))
 
-(defconstant +af-inet+ le:+af-inet+)
-(defconstant +af-inet6+ le:+af-inet-6+)
-(defconstant +af-unspec+ le:+af-unspec+)
-(defconstant +af-unix+ le:+af-unix+)
+(defconstant +af-inet+ uv:+af-inet+)
+(defconstant +af-inet6+ uv:+af-inet-6+)
+(defconstant +af-unspec+ uv:+af-unspec+)
+(defconstant +af-unix+ uv:+af-unix+)
 
 (defvar *default-lookup-type*
   (progn
@@ -82,11 +79,9 @@
 
 ;; define some cached values to save CFFI calls. believe it or not, this does
 ;; make a performance difference
-(defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
-(defconstant +sockaddr6-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in-6)))
-(defconstant +addrinfo-size+ (cffi:foreign-type-size (le::cffi-type le::addrinfo)))
-(defconstant +timeval-size+ (cffi:foreign-type-size (le::cffi-type le::timeval)))
-(defconstant +bev-opt-close-on-free+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+))
+(defconstant +sockaddr-size+ (cffi:foreign-type-size '(:struct uv:sockaddr-in)))
+(defconstant +sockaddr6-size+ (cffi:foreign-type-size '(:struct uv:sockaddr-in-6)))
+(defconstant +addrinfo-size+ (cffi:foreign-type-size '(:struct uv:addrinfo)))
 
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
@@ -145,11 +140,11 @@
 (defmacro make-foreign-type ((var type &key initial type-size) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."
-  `(cffi:with-foreign-object (,var ,type)
+  `(cffi:with-foreign-object (,var '(:pointer (:struct ,type)))
      ,(when initial
-        `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size ,type))))
+        `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size '(:struct ,type)))))
      ,@(loop for binding in bindings collect
-         `(setf (cffi:foreign-slot-value ,var ,type ,(car binding)) ,(cadr binding)))
+         `(setf (cffi:foreign-slot-value ,var '(:struct ,type) ,(car binding)) ,(cadr binding)))
      ,@body))
 
 (defmacro with-lock (&body body)
@@ -230,22 +225,6 @@
           (when (cffi:pointerp pointer)
             (cffi:foreign-free pointer)))))))
 
-(defmacro with-struct-timeval (var seconds &rest body)
-  "Convert seconds to a valid struct timeval C data type."
-  `(multiple-value-bind (time-sec time-usec) (split-usec-time ,seconds)
-     (make-foreign-type (,var (le::cffi-type le::timeval))
-                        (('le::tv-sec time-sec)
-                         ('le::tv-usec time-usec))
-       ,@body)))
-
-(defun split-usec-time (time-s)
-  "Given a second value, ie 3.67, return the number of seconds as the first
-   value and the number of usecs for the second value."
-  (if (numberp time-s)
-      (multiple-value-bind (time-sec time-frac) (floor time-s)
-        (values time-sec (floor (* 1000000 time-frac))))
-      nil))
-
 (defun append-array (arr1 arr2)
   "Create an array, made up of arr1 followed by arr2."
   (let ((arr1-length (length arr1))
@@ -281,33 +260,6 @@
   (or (ipv4-address-p addr)
       (ipv6-address-p addr)))
 
-(defparameter *addrinfo*
-  #+(or :windows :bsd :freebsd :darwin) (le::cffi-type le::evutil-addrinfo)
-  #-(or :windows :bsd :freebsd :darwin) (le::cffi-type le::addrinfo)
-  "Determines the correct type of addrinfo for the current platform.")
-
-;; define some abstracted accessors.
-(defmacro addrinfo-ai-addr (pt)
-  "A wrapper around addrinfo's ai-addr accessor (there is one for windows that
-   uses evutil_addrinfo, and one for linux that uses addrinfo)."
-  #+(or :windows :bsd :freebsd :darwin) `(le-a:evutil-addrinfo-ai-addr ,pt)
-  #-(or :windows :bsd :freebsd :darwin) `(le-a:addrinfo-ai-addr ,pt))
-
-(defmacro sockaddr-in-sin-family (obj)
-  "Wrapper around getting/setting sockaddr_in->sin_family"
-  #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-family ,obj)
-  #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-family ,obj))
-
-(defmacro sockaddr-in-sin-port (obj)
-  "Wrapper around getting/setting sockaddr_in->sin_port"
-  #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-port ,obj)
-  #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-port ,obj))
-
-(defmacro sockaddr-in-sin-addr (obj)
-  "Wrapper around getting/setting sockaddr_in->sin_addr"
-  #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-addr ,obj)
-  #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-addr ,obj))
-
 (defun ip-str-to-sockaddr (address port)
   "Convert a string IP address and port into a sockaddr-in struct. Must be freed
    by the app!"
@@ -331,4 +283,26 @@
      (unwind-protect
        (progn ,@body)
        (cffi:foreign-free ,bind))))
+
+(defun addrinfo-to-string (addrinfo)
+  "Given a (horrible) addrinfo C object pointer, grab either an IP4 or IP6
+   address and return is as a string."
+  (let ((family (cffi:foreign-slot-value addrinfo '(:struct uv:addrinfo) 'uv::ai-family))
+        (addr nil)
+        (err nil))
+    (cffi:with-foreign-object (buf :unsigned-char 128)
+      ;; note here, we use the OS-dependent addrinfo-ai-addr macro
+      ;; defined in util.lisp
+      (let ((ai-addr (uv-a:addrinfo-ai-addr addrinfo)))
+        (if (cffi:null-pointer-p ai-addr)
+            (setf err "the addrinfo->ai_addr object was null (stinks of a memory alignment issue)")
+            (cond ((eq family +af-inet+)
+                   (let ((sin-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in) 'uv::sin-addr)))
+                     (setf addr (uv:uv-inet-ntop family sin-addr buf 128))))
+                  ((eq family +af-inet6+)
+                   (let ((sin6-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in-6) 'uv::sin-6-addr-0)))
+                     (setf addr (uv:uv-inet-ntop family sin6-addr buf 128))))
+                  (t
+                   (setf err (format nil "unsupported DNS family: ~a" family)))))))
+    (values addr family err)))
 
