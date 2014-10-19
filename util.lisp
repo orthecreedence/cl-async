@@ -266,11 +266,11 @@
   (cond
     ((or (null address)
          (ipv4-address-p address))
-     (let ((sockaddr (cffi:foreign-alloc '(:pointer (:struct uv:sockaddr-in)))))
-       (uv:uv-ip-4-addr address port sockaddr)
+     (let ((sockaddr (cffi:foreign-alloc '(:struct uv:sockaddr-in))))
+       (uv:uv-ip-4-addr (or address "0.0.0.0") port sockaddr)
        sockaddr))
     ((ipv6-address-p address)
-     (let ((sockaddr (cffi:foreign-alloc '(:pointer (:struct uv:sockaddr-in-6)))))
+     (let ((sockaddr (cffi:foreign-alloc '(:struct uv:sockaddr-in-6))))
        (uv:uv-ip-6-addr address port sockaddr)
        sockaddr))
     (t
@@ -284,6 +284,7 @@
        (progn ,@body)
        (cffi:foreign-free ,bind))))
 
+;; TODO: see uv-ip4-name (http://nikhilm.github.io/uvbook/networking.html)
 (defun addrinfo-to-string (addrinfo)
   "Given a (horrible) addrinfo C object pointer, grab either an IP4 or IP6
    address and return is as a string."

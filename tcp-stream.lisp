@@ -80,7 +80,7 @@
 (defmethod stream-clear-input ((stream async-input-stream))
   "Attempt to clear the input buffer of an input stream."
   (when (open-stream-p stream)
-    (setf (stream-buffer stream) (make-empty-buffer))))
+    (setf (stream-buffer stream) (make-buffer))))
 
 (defmethod stream-read-byte ((stream async-input-stream))
   "Read one byte from the underlying socket."

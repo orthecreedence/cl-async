@@ -32,23 +32,23 @@
 (defconstant +sigusr1+ 30)
 (defconstant +sigusr2+ 31)
 
-(defun signal-sym (signo)
-  "Does nothing. Can be used in the future to prevent collissions in the data/
-   callback space if needed."
+(defun signal-pointer (signo)
+  "Creates a pointer from a signal number. Not that this doesn't need to be
+   freed since we're not allocating anything...just creating a pointer object
+   with a specific address (which can be GCed)."
   (cffi:make-pointer signo))
 
 (defun free-signal-handler (signo)
   "Clear a signal handler and unbind it."
   (when (find signo (event-base-signal-handlers *event-base*))
-    (let* ((signo-sym (signal-sym signo))
-           (data-pointer (deref-data-from-pointer signo-sym))
-           (sig-data (deref-data-from-pointer data-pointer))
-           (ev (getf sig-data :ev))
+    (let* ((signo-pt (signal-pointer signo))
+           (watcher (deref-data-from-pointer signo-pt))
+           (sig-data (deref-data-from-pointer watcher))
            (original-lisp-signal-handler (getf sig-data :original-handler)))
-      (le:event-del ev)
+      (free-pointer-data watcher :preserve-pointer t)
+      (uv:free-handle watcher)
       (cffi:foreign-funcall "signal" :int signo :pointer original-lisp-signal-handler :pointer)
-      (free-pointer-data signo-sym :preserve-pointer t)  ; preserve since we created it manually
-      (free-pointer-data data-pointer))
+      (free-pointer-data signo-pt :preserve-pointer t))
     (setf (event-base-signal-handlers *event-base*) (remove signo (event-base-signal-handlers *event-base*)))))
 
 (defun clear-signal-handlers ()
@@ -59,15 +59,18 @@
 
 (define-c-callback lisp-signal-cb :void ((signo :int))
   "Generic callback for lisp signal handling."
-  (declare (ignore signo))
-  (let ((callback (car (get-callbacks (signal-sym signo)))))
+  (declare (optimize (speed 3)))
+  ;; grab the callback from set-lisp-signal-handler
+  (let* ((signo-pt (signal-pointer signo))
+         (callback (car (get-callbacks signo-pt))))
     (when (functionp callback)
-      (funcall callback))))
+      ;; trigger the callback to run async
+      (as:delay callback))))
      
 (defun set-lisp-signal-handler (signo fn)
   "Replace the current handler for the signal number under signo, and return a
    pointer to the handler that is being replaced."
-  (save-callbacks (signal-sym signo) fn)
+  (save-callbacks (signal-pointer signo) (list fn))
   (cffi:foreign-funcall "signal" :int signo :pointer (cffi:callback lisp-signal-cb) :pointer))
 
 (define-c-callback signal-cb :void ((watcher :pointer) (signo :int))
@@ -89,13 +92,22 @@
   ;; un-bind this signal handler if it is already bound. this ensures we don't
   ;; lose the original lisp signal handler when we overwrite it.
   (free-signal-handler signo)
-  (let* ((event (le:event-new (event-base-c *event-base*) signo (logior le:+ev-signal+ le:+ev-persist+) (cffi:callback signal-cb) data-pointer))
-         (signo-sym (signal-sym signo)))
-    (le:event-add ev (cffi:null-pointer))
-    (save-callbacks data-pointer (list :signal-cb signal-cb :event-cb event-cb))
-    (attach-data-to-pointer data-pointer (list :ev ev :original-handler lisp-signal-handler))
+  (let* ((watcher (uv:alloc-handle :signal)) 
+         (lisp-signal-handler (set-lisp-signal-handler signo (lambda () (signal-cb watcher signo))))
+         (signo-pt (signal-pointer signo)))
+    (let ((res (uv:uv-signal-init (event-base-c *event-base*) watcher)))
+      (unless (zerop res)
+        (uv:free-handle watcher)
+        (return-from signal-handler (event-handler res event-cb))))
+    (let ((res (uv:uv-signal-start watcher (cffi:callback signal-cb) signo)))
+      (unless (zerop res)
+        (uv:free-handle watcher)
+        (return-from signal-handler (event-handler res event-cb))))
+    (save-callbacks watcher (list :signal-cb signal-cb
+                                  :event-cb event-cb))
+    (attach-data-to-pointer watcher (list :original-handler lisp-signal-handler))
     ;; make sure we can find the event/original handler from just the signo
-    (attach-data-to-pointer signo-sym data-pointer)
+    (attach-data-to-pointer signo-pt watcher)
     ;; add this signal to the list of active signals
     (push signo (event-base-signal-handlers *event-base*))
     (add-event-loop-exit-callback (lambda () (free-signal-handler signo)))))

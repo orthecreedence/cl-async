@@ -23,7 +23,9 @@
                               (make-instance 'dns-error
                                              :code -1
                                              :msg err))))
-          (event-handler status event-cb)))))
+          (event-handler status event-cb))
+      (uv:free-req req)
+      (uv:uv-freeaddrinfo addrinfo))))
       
 (defun dns-lookup (host resolve-cb event-cb &key (family *default-lookup-type*))
   "Asynchronously lookup a DNS address. Note that if an IP address is passed,
@@ -33,7 +35,7 @@
    async)."
   (check-event-loop-running)
   (assert (member family (list +af-inet+ +af-inet6+ +af-unspec+)))
-  (let ((lookup-c (cffi:foreign-alloc '(:pointer (:struct uv:uv-getaddrinfo-s))))
+  (let ((lookup-c (uv:alloc-req :getaddrinfo))
         (loop-c (event-base-c *event-base*)))
     (make-foreign-type (hints uv:addrinfo :initial #x0 :type-size +addrinfo-size+)
                        (('uv::ai-family family)

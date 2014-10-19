@@ -91,14 +91,20 @@
 (defmethod close-socket ((socket socket))
   "Close and free a socket and all of it's underlying structures."
   (check-socket-open socket)
-  (let* ((uvstream (socket-c socket)))
+  (let* ((uvstream (socket-c socket))
+         (data (deref-data-from-pointer uvstream))
+         (read-timeout (getf (getf data :read-timeout) :event))
+         (write-timeout (getf (getf data :write-timeout) :event)))
+    (format t "timeouts: ~s~%" (list read-timeout write-timeout))
+    (when read-timeout (free-event read-timeout))
+    (when write-timeout (free-event write-timeout))
     (if (eq (socket-direction socket) :in)
         (decf (event-base-num-connections-in *event-base*))
         (decf (event-base-num-connections-out *event-base*)))
     (uv:uv-close uvstream (cffi:null-pointer))
     (setf (socket-closed socket) t)
     (free-pointer-data uvstream :preserve-pointer t)
-    (cffi:foreign-free uvstream)))
+    (uv:free-handle uvstream)))
 
 (defgeneric close-tcp-server (socket)
   (:documentation
@@ -106,8 +112,11 @@
 
 (defmethod close-tcp-server ((tcp-server tcp-server))
   (unless (tcp-server-closed tcp-server)
-    (uv:uv-close (tcp-server-c tcp-server))
-    (setf (tcp-server-closed tcp-server) t)))
+    (let ((server-c (tcp-server-c tcp-server)))
+      (uv:uv-close server-c (cffi:null-pointer))
+      (free-pointer-data server-c :preserve-pointer t)
+      (uv:free-handle server-c)
+      (setf (tcp-server-closed tcp-server) t))))
 
 (defun set-socket-timeouts (socket read-sec write-sec &key socket-is-uvstream)
   "Set the read/write timeouts on a socket."
@@ -115,6 +124,8 @@
   (let* ((uvstream (if socket-is-uvstream
                        socket
                        (socket-c socket)))
+         (read-sec (and (< 0 read-sec) read-sec))
+         (write-sec (and (< 0 write-sec) write-sec))
          (socket-data (deref-data-from-pointer uvstream))
          (event-cb (getf (get-callbacks uvstream) :event-cb))
          (socket (getf socket-data :socket))
@@ -145,6 +156,7 @@
   (error "not implemented"))
 
 (defun write-to-uvstream (uvstream data)
+  "Util function to write data directly to a uv stream object."
   (let* ((data (if (stringp data)
                    (babel:string-to-octets data :encoding :utf-8)
                    data))
@@ -157,9 +169,12 @@
         (dotimes (i bufsize)
           (setf (cffi:mem-aref buffer-c :unsigned-char i) (aref data data-index))
           (incf data-index))
-        (cffi:with-foreign-object (req '(:pointer (:struct uv:uv-write-s)))
-          (let ((buf (uv:uv-buf-init *socket-buffer-c* bufsize)))
-            (uv:uv-write req uvstream buf 1 (cffi:callback tcp-write-cb))))
+        (let ((req (uv:alloc-req :write))
+              (buf (uv:uv-buf-init buffer-c bufsize)))
+          (attach-data-to-pointer req (list uvstream))
+          (uv:uv-write req uvstream buf 1 (cffi:callback tcp-write-cb))
+          (format t "- uv wroote!~%")
+          (cffi:foreign-free buf))
         (decf data-length bufsize)))))
 
 (defun write-socket-data (socket data &key read-cb write-cb event-cb)
@@ -173,8 +188,9 @@
          (timeout (getf write-timeout :event))
          (do-send (lambda ()
                     (write-to-uvstream uvstream data))))
-    (remove-event timeout)
-    (add-event timeout :timeout (getf write-timeout :timeout))
+    (when write-timeout
+      (remove-event timeout)
+      (add-event timeout :timeout (getf write-timeout :timeout)))
     (if (or read-cb write-cb event-cb)
         ;; we're specifying callbacks. since we're most likely calling this from
         ;; inside a socket callback and we don't necessarily want to overwrite
@@ -194,10 +210,12 @@
         (funcall do-send))))
 
 (define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int))
+  "Called when we want to allocate data to be filled for stream reading."
   (declare (ignore handle))
   (uv:uv-buf-init (cffi:foreign-alloc :char :count size) size))
 
 (define-c-callback tcp-read-cb :void ((uvstream :pointer) (nread :int) (buf :pointer))
+  "Called when a stream has been read into a buffer returned by alloc-cb."
   (let* ((stream-data (deref-data-from-pointer uvstream))
          (read-timeout (getf stream-data :read-timeout))
          (timeout (getf read-timeout :event))
@@ -241,25 +259,32 @@
 
 (define-c-callback tcp-connect-cb :void ((req :pointer) (status :int))
   "Called when an outgoing TCP socket connects."
-  (let* ((uvstream (uv-a:uv-connect-s-handle req))
+  (let* ((uvstream (car (deref-data-from-pointer req)))
          (stream-data (deref-data-from-pointer uvstream))
          (socket (getf stream-data :socket))
          (stream (getf stream-data :stream))
          (callbacks (get-callbacks uvstream))
+         (event-cb (getf callbacks :event-cb))
          (connect-cb (getf callbacks :connect-cb)))
-    (when connect-cb
-      (funcall connect-cb (or stream socket)))
-    ;; start reading on the socket
-    (uv:uv-read-start uvstream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb))))
+    (catch-app-errors event-cb
+      (free-pointer-data req :preserve-pointer t)
+      (uv:free-req req)
+      ;; start reading on the socket
+      (uv:uv-read-start uvstream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb))
+      (when connect-cb
+        (funcall connect-cb (or stream socket))))))
 
 (define-c-callback tcp-write-cb :void ((req :pointer) (status :int))
   "Called when data is finished being written to a socket."
-  (let* ((uvstream (uv-a:uv-write-s-handle req))
+  (format t "- write cb~%")
+  (let* ((uvstream (car (deref-data-from-pointer req)))
          (socket (getf (deref-data-from-pointer req) :socket))
          (callbacks (get-callbacks req))
          (write-cb (getf callbacks :write-cb))
          (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
+      (free-pointer-data req :preserve-pointer t)
+      (uv:free-req req)
       (if (zerop status)
           (when write-cb
             (funcall write-cb socket))
@@ -277,7 +302,7 @@
     (if (< status 0)
         (event-handler status event-cb)
         (let* ((stream-data-p (tcp-server-stream server-class))
-               (uvstream (let ((s (cffi:foreign-alloc '(:pointer (:struct uv:uv-tcp-s)))))
+               (uvstream (let ((s (uv:alloc-handle :tcp)))
                            (uv:uv-tcp-init (event-base-c *event-base*) s)
                            s))
                (socket (make-instance 'socket :c uvstream :direction :in :drain-read-buffer (not stream-data-p)))
@@ -301,7 +326,7 @@
   "Initialize an async socket, but do not connect it."
   (check-event-loop-running)
 
-  (let* ((uvstream (cffi:foreign-alloc '(:pointer (:struct uv:uv-tcp-s))))
+  (let* ((uvstream (uv:alloc-handle :tcp))
          ;; assume dont-drain-read-buffer if unspecified and requesting a stream
          (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
                                      t
@@ -316,9 +341,11 @@
     (when data
       (let* ((old-connect-cb connect-cb)
              (new-connect-cb (lambda (sock)
-                               (write-socket-data sock data)
-                               (funcall old-connect-cb sock))))
+                               (funcall old-connect-cb sock)
+                               (write-socket-data sock data))))
         (setf connect-cb new-connect-cb)))
+    ;(when data
+      ;(write-to-uvstream uvstream data))
     (save-callbacks uvstream (list :read-cb read-cb
                                    :event-cb event-cb
                                    :write-cb write-cb
@@ -337,19 +364,15 @@
   (let* ((socket (if (subtypep (type-of socket/stream) 'async-stream)
                      (stream-socket socket/stream)
                      socket/stream))
-         ;; since libevent doesn't use Windows' /etc/hosts, we have to basically
-         ;; go behind its back here.
-         (host (if (and (hash-table-p *windows-local-hosts*)
-                        (gethash host *windows-local-hosts*))
-                   (gethash host *windows-local-hosts*)
-                   host))
          (uvstream (socket-c socket)))
     ;; track the connection
     (incf (event-base-num-connections-out *event-base*))
     ;; only connect if we didn't get an existing fd passed in
     (flet ((do-connect (ip port)
              (with-ip-to-sockaddr ((sockaddr) ip port)
-               (cffi:with-foreign-object (req '(:pointer (:struct uv:uv-connect-s)))
+               (let ((req (uv:alloc-req :connect)))
+                 ;; make sure we can grab the original uvstream form the req
+                 (attach-data-to-pointer req (list uvstream))
                  (uv:uv-tcp-connect req uvstream sockaddr (cffi:callback tcp-connect-cb))))))
       (if (ip-address-p host)
           ;; got an IP so just connect directly
@@ -384,25 +407,25 @@
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (check-event-loop-running)
-  (cffi:with-foreign-object (server '(:pointer (:struct uv:uv-tcp-s)))
+  (let ((server-c (uv:alloc-handle :tcp)))
     (with-ip-to-sockaddr ((sockaddr) bind-address port)
       (uv:uv-tcp-init (event-base-c *event-base*) server)
-      (let* ((r-bind (uv:uv-tcp-bind server sockaddr 0))
+      (let* ((r-bind (uv:uv-tcp-bind server-c sockaddr 0))
              (server-class (make-instance 'tcp-server
-                                          :c server
+                                          :c server-c
                                           :stream stream))
-             (r-listen (uv:uv-listen server backlog (cffi:callback tcp-accept-cb))))
+             (r-listen (uv:uv-listen server-c backlog (cffi:callback tcp-accept-cb))))
         ;; check that our listener instantiated properly
         (when (or (< r-bind 0)
                   (< r-listen 0))
-          (uv:uv-close server)
+          (uv:uv-close server-c)
           (error (make-instance 'tcp-server-bind-error :addr bind-address :port port)))
         ;; make sure the server is closed/freed on exit
         (add-event-loop-exit-callback (lambda ()
                                         (close-tcp-server server-class)))
-        (attach-data-to-pointer server server-class)
+        (attach-data-to-pointer server-c server-class)
         ;; setup an accept error cb
-        (save-callbacks server (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
+        (save-callbacks server-c (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
         ;; return the listener, which can be closed by the app if needed
         server-class))))
 

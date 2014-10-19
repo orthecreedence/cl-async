@@ -7,7 +7,6 @@
 
 (defclass event ()
   ((c :accessor event-c :initarg :c :initform (cffi:null-pointer))
-   (free-callback :accessor event-free-callback :initarg :free-callback :initform nil)
    (freed :accessor event-freed :reader event-freed-p :initform nil))
   (:documentation "Wraps a C libevent event object."))
 
@@ -17,16 +16,11 @@
     (error 'event-freed :event event)))
 
 (defun free-event (event)
-  "Free a cl-async event object and any resources it uses. It *is* safe to free
-   a pending/active event."
+  "Free a cl-async event object and any resources it uses."
   (check-event-unfreed event)
-  ;; run the free-callback (if any)
-  (let ((free-cb (event-free-callback event)))
-    (when free-cb (funcall free-cb event)))
-  ;; free the event (also makes it inactive/non-pending before freeing)
   (let ((timer-c (event-c event)))
     (uv:uv-timer-stop timer-c)
-    (cffi:foreign-free timer-c))
+    (uv:free-handle timer-c))
   (setf (event-freed event) t))
 
 (defun remove-event (event)
@@ -44,7 +38,7 @@
    and its callback(s) will be fired."
   (check-event-unfreed event)
   (let ((timer-c (event-c event)))
-    (uv:uv-timer-start timer-c (cffi:callback timer-cb) (* (or timeout 0) 1000))))
+    (uv:uv-timer-start timer-c (cffi:callback timer-cb) (round (* (or timeout 0) 1000)) 0)))
 
 (define-c-callback timer-cb :void ((timer-c :pointer))
   "Callback used by the async timer system to find and run user-specified
@@ -88,7 +82,7 @@
    If time is nil, callback is still called asynchronously, but is queued in the
    event loop with no delay."
   (check-event-loop-running)
-  (let* ((timer-c (cffi:foreign-alloc '(:pointer (:struct uv:uv-timer-s))))
+  (let* ((timer-c (uv:alloc-handle :timer))
          (event (make-instance 'event :c timer-c)))
     (uv:uv-timer-init (event-base-c *event-base*) timer-c)
     (save-callbacks timer-c (list :callback callback :event-cb event-cb))
