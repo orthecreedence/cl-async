@@ -8,15 +8,17 @@
       (unwind-protect
         (cond
           ((= errno uv:+uv--etimedout+)
-           (setf event (make-instance 'tcp-timeout :socket socket :code errno)))
+           (setf event (make-instance 'tcp-timeout :socket socket :code errno :msg "connection timed out")))
           ((= errno uv:+uv--econnreset+)
-           (setf event (make-instance 'tcp-reset :socket socket :code errno)))
+           (setf event (make-instance 'tcp-reset :socket socket :code errno :msg "connection reset")))
           ((= errno uv:+uv--econnrefused+)
-           (setf event (make-instance 'tcp-refused :socket socket :code errno)))
+           (setf event (make-instance 'tcp-refused :socket socket :code errno :msg "connection refused")))
           ((= errno uv:+uv--eof+)
-           (setf event (make-instance 'tcp-eof :socket socket :code errno)))
+           (setf event (make-instance 'tcp-eof :socket socket)))
+          ((= errno uv:+uv--efault+)
+           (setf event (make-instance 'event-error :code errno :msg "bad address in system call argument")))
           (t
-           (setf event (make-instance 'tcp-error :socket socket :code errno :msg errstr))))
+           (setf event (make-instance 'event-error :code errno :msg errstr))))
         (when event
           (unwind-protect
             (when event-cb (run-event-cb event-cb event))

@@ -86,22 +86,21 @@
 
 (defgeneric close-socket (socket)
   (:documentation
-    "Free a socket (bufferevent) and clear out all associated data."))
+    "Free a socket (uvstream) and clear out all associated data."))
 
 (defmethod close-socket ((socket socket))
   "Close and free a socket and all of it's underlying structures."
   (check-socket-open socket)
   (let* ((uvstream (socket-c socket))
          (data (deref-data-from-pointer uvstream))
-         (read-timeout (getf (getf data :read-timeout) :event))
-         (write-timeout (getf (getf data :write-timeout) :event)))
-    (format t "timeouts: ~s~%" (list read-timeout write-timeout))
+         (read-timeout (car (getf data :read-timeout)))
+         (write-timeout (car (getf data :write-timeout))))
     (when read-timeout (free-event read-timeout))
     (when write-timeout (free-event write-timeout))
     (if (eq (socket-direction socket) :in)
         (decf (event-base-num-connections-in *event-base*))
         (decf (event-base-num-connections-out *event-base*)))
-    (uv:uv-close uvstream (cffi:null-pointer))
+    (uv:uv-close uvstream (cffi:callback tcp-close-cb))
     (setf (socket-closed socket) t)
     (free-pointer-data uvstream :preserve-pointer t)
     (uv:free-handle uvstream)))
@@ -124,8 +123,8 @@
   (let* ((uvstream (if socket-is-uvstream
                        socket
                        (socket-c socket)))
-         (read-sec (and (< 0 read-sec) read-sec))
-         (write-sec (and (< 0 write-sec) write-sec))
+         (read-sec (and read-sec (< 0 read-sec) read-sec))
+         (write-sec (and write-sec (< 0 write-sec) write-sec))
          (socket-data (deref-data-from-pointer uvstream))
          (event-cb (getf (get-callbacks uvstream) :event-cb))
          (socket (getf socket-data :socket))
@@ -142,8 +141,11 @@
       (free-event cur-read-timeout))
     (when (and cur-write-timeout (not write-sec))
       (free-event cur-write-timeout))
-    (setf (getf socket-data :read-timeout) (list :event read-timeout :timeout read-sec)
-          (getf socket-data :write-timeout) (list :event write-timeout :timeout write-sec))))
+    (when read-timeout
+      (setf (getf socket-data :read-timeout) (cons read-timeout read-sec)))
+    (when write-timeout
+      (setf (getf socket-data :write-timeout) (cons write-timeout write-sec)))
+    (attach-data-to-pointer uvstream socket-data)))
 
 (defun enable-socket (socket &key read write)
   "Enable read/write monitoring on a socket. If :read or :write are nil, they
@@ -163,19 +165,23 @@
          (data-length (length data))
          (data-index 0)
          (buffer-c *socket-buffer-c*))
-    ;; copy into evbuffer using existing c buffer
     (loop while (< 0 data-length) do
       (let ((bufsize (min data-length *buffer-size*)))
         (dotimes (i bufsize)
           (setf (cffi:mem-aref buffer-c :unsigned-char i) (aref data data-index))
           (incf data-index))
         (let ((req (uv:alloc-req :write))
-              (buf (uv:uv-buf-init buffer-c bufsize)))
+              (buf (uv:alloc-uv-buf buffer-c bufsize)))
           (attach-data-to-pointer req (list uvstream))
-          (uv:uv-write req uvstream buf 1 (cffi:callback tcp-write-cb))
-          (format t "- uv wroote!~%")
-          (cffi:foreign-free buf))
-        (decf data-length bufsize)))))
+          (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback tcp-write-cb))))
+            (cffi:foreign-free buf)
+            (if (zerop res)
+                (decf data-length bufsize)
+                (let ((socket (getf (deref-data-from-pointer uvstream) :socket))
+                      (event-cb (getf (get-callbacks uvstream) :event-cb)))
+                  (uv:free-req req)
+                  (event-handler res event-cb :socket socket)
+                  (return-from write-to-uvstream)))))))))
 
 (defun write-socket-data (socket data &key read-cb write-cb event-cb)
   "Write data into a cl-async socket. Allows specifying read/write/event
@@ -185,12 +191,12 @@
   (check-socket-open socket)
   (let* ((uvstream (socket-c socket))
          (write-timeout (getf (deref-data-from-pointer uvstream) :write-timeout))
-         (timeout (getf write-timeout :event))
+         (timeout (car write-timeout))
          (do-send (lambda ()
                     (write-to-uvstream uvstream data))))
     (when write-timeout
       (remove-event timeout)
-      (add-event timeout :timeout (getf write-timeout :timeout)))
+      (add-event timeout :timeout (cdr write-timeout)))
     (if (or read-cb write-cb event-cb)
         ;; we're specifying callbacks. since we're most likely calling this from
         ;; inside a socket callback and we don't necessarily want to overwrite
@@ -209,36 +215,43 @@
         ;; data
         (funcall do-send))))
 
-(define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int))
+(define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int) (buf :pointer))
   "Called when we want to allocate data to be filled for stream reading."
   (declare (ignore handle))
-  (uv:uv-buf-init (cffi:foreign-alloc :char :count size) size))
+  ;; TODO: use a static buffer here instead of dynamic allocation
+  ;; TODO: make sure not to free the buffer in tcp-read-cb once conveted
+  (uv:alloc-uv-buf (cffi:foreign-alloc :char :count size) size buf))
 
 (define-c-callback tcp-read-cb :void ((uvstream :pointer) (nread :int) (buf :pointer))
   "Called when a stream has been read into a buffer returned by alloc-cb."
   (let* ((stream-data (deref-data-from-pointer uvstream))
          (read-timeout (getf stream-data :read-timeout))
-         (timeout (getf read-timeout :event))
+         (timeout (car read-timeout))
          (socket (getf stream-data :socket))
          (stream (getf stream-data :stream))
          (drain-read (socket-drain-read-buffer socket))
          (callbacks (get-callbacks uvstream))
          (read-cb (getf callbacks :read-cb))
          (event-cb (getf callbacks :event-cb))
-         (buf-ptr (uv-a:uv-buf-t-base buf))
-         (buf-len (uv-a:uv-buf-t-len buf)))
+         (read-buf (multiple-value-list (uv:uv-buf-read buf)))
+         (buf-ptr (car read-buf))
+         (buf-len (cadr read-buf)))
     (catch-app-errors event-cb
       (when (< nread 0)
         ;; we got an error
         (unless (cffi:null-pointer-p buf-ptr)
           (cffi:foreign-free buf-ptr))
-        (uv:uv-close uvstream (cffi:null-pointer))
         (event-handler nread event-cb :socket socket)
         (return-from tcp-read-cb))
 
+      ;; reset the read timeout
+      (when timeout
+        (remove-event timeout)
+        (add-event timeout :timeout (cdr read-timeout)))
+      
       ;; read the buffer
-      (let ((bytes (make-array buf-len :element-type '(unsigned-byte 8))))
-        (dotimes (i buf-len)
+      (let ((bytes (make-array nread :element-type '(unsigned-byte 8))))
+        (dotimes (i nread)
           (setf (aref bytes i) (cffi:mem-aref buf-ptr :unsigned-char i)))
         (cond ((and read-cb drain-read)
                ;; we're draining here, so call our read callback
@@ -246,14 +259,10 @@
               (read-cb
                ;; we're not draining and we have a read CB, so stream
                (stream-append-bytes stream bytes)
-               (funcall read-cb socket stream)))
-        (funcall read-cb socket bytes))
+               (funcall read-cb socket stream))))
 
-      ;; reset the read timeout
-      (remove-event timeout)
-      (add-event timeout :timeout (getf read-timeout :timeout))
-      
       ;; free the buffer
+      ;; TODO: don't free once using static buffer (pre-allocated)
       (unless (cffi:null-pointer-p buf-ptr)
         (cffi:foreign-free buf-ptr)))))
 
@@ -270,16 +279,17 @@
       (free-pointer-data req :preserve-pointer t)
       (uv:free-req req)
       ;; start reading on the socket
-      (uv:uv-read-start uvstream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb))
-      (when connect-cb
-        (funcall connect-cb (or stream socket))))))
+      (let ((res (uv:uv-read-start uvstream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb))))
+        (if (zerop res)
+            (when connect-cb
+              (funcall connect-cb (or stream socket)))
+            (event-handler res event-cb :socket socket))))))
 
 (define-c-callback tcp-write-cb :void ((req :pointer) (status :int))
   "Called when data is finished being written to a socket."
-  (format t "- write cb~%")
   (let* ((uvstream (car (deref-data-from-pointer req)))
-         (socket (getf (deref-data-from-pointer req) :socket))
-         (callbacks (get-callbacks req))
+         (socket (getf (deref-data-from-pointer uvstream) :socket))
+         (callbacks (get-callbacks uvstream))
          (write-cb (getf callbacks :write-cb))
          (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
@@ -289,6 +299,9 @@
           (when write-cb
             (funcall write-cb socket))
           (event-handler status event-cb :socket socket)))))
+
+(define-c-callback tcp-close-cb :void ((uvstream :pointer))
+  "Called when a tcp socket closes.")
 
 (defun init-incoming-socket (server status)
   "Called by the tcp-accept-cb when an incoming connection is detected. Sets up
@@ -344,17 +357,15 @@
                                (funcall old-connect-cb sock)
                                (write-socket-data sock data))))
         (setf connect-cb new-connect-cb)))
-    ;(when data
-      ;(write-to-uvstream uvstream data))
     (save-callbacks uvstream (list :read-cb read-cb
                                    :event-cb event-cb
                                    :write-cb write-cb
                                    :connect-cb connect-cb))
-    (set-socket-timeouts uvstream read-timeout write-timeout :socket-is-uvstream t)
-
     ;; allow the socket/stream class to be referenced directly by the uvstream
     (attach-data-to-pointer uvstream (list :socket socket
                                            :stream tcp-stream))
+    ;; call this AFTER attach-data-to-pointer because this appends to the data
+    (set-socket-timeouts uvstream read-timeout write-timeout :socket-is-uvstream t)
     (if stream
         tcp-stream
         socket)))
