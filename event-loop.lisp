@@ -110,13 +110,16 @@
         :incoming-tcp-connections (event-base-num-connections-in *event-base*)
         :outgoing-tcp-connections (event-base-num-connections-out *event-base*)))
 
-(defun dump-event-loop-status (file &key (return-as-string t))
-  "Dump the status of the event loop to a file. Good for debugging.
-   
-   If return-as-string is T, the file is read/deleted and the contents returned
-   as a string. Note that this is the default behavior."
-  ;; TODO: see uv:uv-walk
-  (error "Not implemented"))
+(define-c-callback walk-cb :void ((handle :pointer) (arg :pointer))
+  "Called when we're walking the loop."
+  (format t "handle: ~s: ~a~%" (uv:handle-type handle) handle)
+  (force-output))
+
+(defun dump-event-loop-status ()
+  "Return the status of the event loop. Really a debug function more than
+   anything else."
+  (check-event-loop-running)
+  (uv:uv-walk (event-base-c *event-base*) (cffi:callback walk-cb) (cffi:null-pointer)))
 
 (defvar *event-base-registry* (make-hash-table :test 'eq)
   "Holds ID -> event-base lookups for every active event loop. Mainly used when

@@ -18,10 +18,9 @@
 (defun free-event (event)
   "Free a cl-async event object and any resources it uses."
   (check-event-unfreed event)
+  (setf (event-freed event) t)
   (let ((timer-c (event-c event)))
-    (uv:uv-timer-stop timer-c)
-    (uv:free-handle timer-c))
-  (setf (event-freed event) t))
+    (uv:uv-close timer-c (cffi:callback timer-close-cb))))
 
 (defun remove-event (event)
   "Remove a pending event from the event loop."
@@ -52,6 +51,11 @@
       (unwind-protect
         (when cb (funcall cb))
         (free-event event)))))
+
+(define-c-callback timer-close-cb :void ((timer-c :pointer))
+  "Called when a timer closes."
+  (uv:uv-timer-stop timer-c)
+  (uv:free-handle timer-c))
 
 #|
 (define-c-callback fd-cb :void ((poller :int) (status :int) (events :int))

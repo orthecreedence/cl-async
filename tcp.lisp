@@ -84,26 +84,30 @@
   "Return whether a socket is closed or not."
   (socket-closed socket))
 
-(defgeneric close-socket (socket)
+(defgeneric close-socket (socket &key &allow-other-keys)
   (:documentation
     "Free a socket (uvstream) and clear out all associated data."))
 
-(defmethod close-socket ((socket socket))
+(defmethod close-socket ((socket socket) &key force)
   "Close and free a socket and all of it's underlying structures."
   (check-socket-open socket)
   (let* ((uvstream (socket-c socket))
          (data (deref-data-from-pointer uvstream))
          (read-timeout (car (getf data :read-timeout)))
-         (write-timeout (car (getf data :write-timeout))))
+         (write-timeout (car (getf data :write-timeout)))
+         (shutdown-req (uv:alloc-req :shutdown)))
     (when read-timeout (free-event read-timeout))
     (when write-timeout (free-event write-timeout))
     (if (eq (socket-direction socket) :in)
         (decf (event-base-num-connections-in *event-base*))
         (decf (event-base-num-connections-out *event-base*)))
-    (uv:uv-close uvstream (cffi:callback tcp-close-cb))
     (setf (socket-closed socket) t)
-    (free-pointer-data uvstream :preserve-pointer t)
-    (uv:free-handle uvstream)))
+    (uv:uv-read-stop uvstream)
+    (cond (force
+            (uv:uv-close uvstream (cffi:callback tcp-close-cb)))
+          (t
+           (attach-data-to-pointer shutdown-req (list uvstream))
+           (uv:uv-shutdown shutdown-req uvstream (cffi:callback tcp-shutdown-cb))))))
 
 (defgeneric close-tcp-server (socket)
   (:documentation
@@ -300,8 +304,16 @@
             (funcall write-cb socket))
           (event-handler status event-cb :socket socket)))))
 
+(define-c-callback tcp-shutdown-cb :void ((req :pointer) (status :int))
+  "Called when a tcp socket shuts down."
+  (uv:free-req req)
+  (let ((uvstream (car (deref-data-from-pointer req))))
+    (uv:uv-close uvstream (cffi:callback tcp-close-cb))))
+
 (define-c-callback tcp-close-cb :void ((uvstream :pointer))
-  "Called when a tcp socket closes.")
+  "Called when a tcp socket closes."
+  (free-pointer-data uvstream :preserve-pointer t)
+  (uv:free-handle uvstream))
 
 (defun init-incoming-socket (server status)
   "Called by the tcp-accept-cb when an incoming connection is detected. Sets up
