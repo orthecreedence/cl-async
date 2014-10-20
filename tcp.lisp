@@ -94,8 +94,7 @@
   (let* ((uvstream (socket-c socket))
          (data (deref-data-from-pointer uvstream))
          (read-timeout (car (getf data :read-timeout)))
-         (write-timeout (car (getf data :write-timeout)))
-         (shutdown-req (uv:alloc-req :shutdown)))
+         (write-timeout (car (getf data :write-timeout))))
     (when read-timeout (free-event read-timeout))
     (when write-timeout (free-event write-timeout))
     (if (eq (socket-direction socket) :in)
@@ -106,8 +105,9 @@
     (cond (force
             (uv:uv-close uvstream (cffi:callback tcp-close-cb)))
           (t
-           (attach-data-to-pointer shutdown-req (list uvstream))
-           (uv:uv-shutdown shutdown-req uvstream (cffi:callback tcp-shutdown-cb))))))
+           (let ((shutdown-req (uv:alloc-req :shutdown)))
+             (attach-data-to-pointer shutdown-req (list uvstream))
+             (uv:uv-shutdown shutdown-req uvstream (cffi:callback tcp-shutdown-cb)))))))
 
 (defgeneric close-tcp-server (socket)
   (:documentation
@@ -178,7 +178,7 @@
               (buf (uv:alloc-uv-buf buffer-c bufsize)))
           (attach-data-to-pointer req (list uvstream))
           (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback tcp-write-cb))))
-            (cffi:foreign-free buf)
+            (uv:free-uv-buf buf)
             (if (zerop res)
                 (decf data-length bufsize)
                 (let ((socket (getf (deref-data-from-pointer uvstream) :socket))
