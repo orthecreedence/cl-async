@@ -144,7 +144,7 @@
   ;; note the binding of these variable via (let), which means they are thread-
   ;; local... so this function can be called in different threads, and the bound
   ;; variables won't interfere with each other.
-  (cffi:with-foreign-object (loop '(:pointer (:struct uv:uv-loop-s)))
+  (cffi:with-foreign-object (loop '(:struct uv:uv-loop-s))
     (uv:uv-loop-init loop)
     (let ((*event-base* (apply #'make-instance
                                (append
