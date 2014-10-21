@@ -3,7 +3,7 @@
 (defun event-handler (errno event-cb &key socket)
   "Called when an event (error, mainly) occurs."
   (let* ((event nil)
-         (errstr "TODO: grab error strings from libuv"))
+         (errstr (error-str errno)))
     (catch-app-errors event-cb
       (unwind-protect
         (cond

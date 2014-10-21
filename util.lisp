@@ -48,6 +48,8 @@
            #:*ipv4-scanner*
            #:*ipv6-scanner*
 
+           #:error-str
+           
            #:ipv4-address-p
            #:ipv6-address-p
            #:ip-address-p
@@ -234,7 +236,11 @@
       (replace arr arr1 :start1 0)
       (replace arr arr2 :start1 arr1-length)
       arr)))
-      
+
+(defun error-str (uv-errno)
+  "Given a libuv error number, return the error string."
+  (uv:uv-err-name uv-errno))
+
 (defparameter *ipv4-scanner*
   (cl-ppcre:create-scanner
     "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{2}|[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{2}|[0-9])$"
