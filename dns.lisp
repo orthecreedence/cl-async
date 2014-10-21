@@ -37,7 +37,7 @@
   (assert (member family (list +af-inet+ +af-inet6+ +af-unspec+)))
   (let ((lookup-c (uv:alloc-req :getaddrinfo))
         (loop-c (event-base-c *event-base*)))
-    (make-foreign-type (hints uv:addrinfo :initial #x0 :type-size +addrinfo-size+)
+    (make-foreign-type (hints uv:addrinfo :initial #x0)
                        (('uv::ai-family family)
                         ('uv::ai-flags 0)    ;#x2000 AI_CANONNAME
                         ('uv::ai-socktype uv:+sock-stream+)

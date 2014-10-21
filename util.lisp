@@ -139,16 +139,16 @@
        (cffi:defcallback ,name ,return-val ,args
          (,name ,@arg-names)))))
 
-(defmacro make-foreign-type ((var type &key initial type-size) bindings &body body)
+(defmacro make-foreign-type ((var type &key initial) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."
   (let ((type (if (eq type 'uv:addrinfo)
                   (progn
                     #+windows 'uv:addrinfo-w
                     #-windows 'uv:addrinfo)
-                  type)))
-    (format t "using type: ~s~%" type)
-    `(cffi:with-foreign-object (,var '(:struct ,type))
+                  type))
+        (type-size (cffi:foreign-type-size type)))
+    `(cffi:with-foreign-object (,var :unsigned-char ,type-size)
        ,(when initial
           `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size '(:struct ,type)))))
        ,@(loop for binding in bindings collect
@@ -296,13 +296,11 @@
        (progn ,@body)
        (cffi:foreign-free ,bind))))
 
-;; TODO: see uv-ip4-name (http://nikhilm.github.io/uvbook/networking.html)
 (defun addrinfo-to-string (addrinfo)
   "Given a (horrible) addrinfo C object pointer, grab either an IP4 or IP6
    address and return is as a string."
   (let* ((type (progn #+windows 'uv:addrinfo-w #-windows 'uv:addrinfo))
          (family (cffi:foreign-slot-value addrinfo (list :struct type) 'uv::ai-family))
-         (addr nil)
          (err nil))
     (cffi:with-foreign-object (buf :unsigned-char 128)
       ;; note here, we use the OS-dependent addrinfo-ai-addr macro
