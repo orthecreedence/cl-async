@@ -142,12 +142,18 @@
 (defmacro make-foreign-type ((var type &key initial type-size) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."
-  `(cffi:with-foreign-object (,var '(:pointer (:struct ,type)))
-     ,(when initial
-        `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size '(:struct ,type)))))
-     ,@(loop for binding in bindings collect
-         `(setf (cffi:foreign-slot-value ,var '(:struct ,type) ,(car binding)) ,(cadr binding)))
-     ,@body))
+  (let ((type (if (eq type 'uv:addrinfo)
+                  (progn
+                    #+windows 'uv:addrinfo-w
+                    #-windows 'uv:addrinfo)
+                  type)))
+    (format t "using type: ~s~%" type)
+    `(cffi:with-foreign-object (,var '(:struct ,type))
+       ,(when initial
+          `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size '(:struct ,type)))))
+       ,@(loop for binding in bindings collect
+           `(setf (cffi:foreign-slot-value ,var '(:struct ,type) ,(car binding)) ,(cadr binding)))
+       ,@body)))
 
 (defmacro with-lock (&body body)
   "If threading is enabled, locks the current event loop before processing body
@@ -294,22 +300,23 @@
 (defun addrinfo-to-string (addrinfo)
   "Given a (horrible) addrinfo C object pointer, grab either an IP4 or IP6
    address and return is as a string."
-  (let ((family (cffi:foreign-slot-value addrinfo '(:struct uv:addrinfo) 'uv::ai-family))
-        (addr nil)
-        (err nil))
+  (let* ((type (progn #+windows 'uv:addrinfo-w #-windows 'uv:addrinfo))
+         (family (cffi:foreign-slot-value addrinfo (list :struct type) 'uv::ai-family))
+         (addr nil)
+         (err nil))
     (cffi:with-foreign-object (buf :unsigned-char 128)
       ;; note here, we use the OS-dependent addrinfo-ai-addr macro
       ;; defined in util.lisp
-      (let ((ai-addr (uv-a:addrinfo-ai-addr addrinfo)))
+      (let ((ai-addr (cffi:foreign-slot-value addrinfo (list :struct type) 'uv::ai-addr)))
         (if (cffi:null-pointer-p ai-addr)
             (setf err "the addrinfo->ai_addr object was null (stinks of a memory alignment issue)")
             (cond ((eq family +af-inet+)
                    (let ((sin-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in) 'uv::sin-addr)))
-                     (setf addr (uv:uv-inet-ntop family sin-addr buf 128))))
+                     (uv:uv-inet-ntop family sin-addr buf 128)))
                   ((eq family +af-inet6+)
                    (let ((sin6-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in-6) 'uv::sin-6-addr-0)))
-                     (setf addr (uv:uv-inet-ntop family sin6-addr buf 128))))
+                     (uv:uv-inet-ntop family sin6-addr buf 128)))
                   (t
-                   (setf err (format nil "unsupported DNS family: ~a" family)))))))
-    (values addr family err)))
+                   (setf err (format nil "unsupported DNS family: ~a" family))))))
+      (values (cffi:foreign-string-to-lisp buf) family err))))
 

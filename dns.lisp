@@ -39,10 +39,9 @@
         (loop-c (event-base-c *event-base*)))
     (make-foreign-type (hints uv:addrinfo :initial #x0 :type-size +addrinfo-size+)
                        (('uv::ai-family family)
-                        ;('le::ai-flags le:+evutil-ai-canonname+)
-                        ;('le::ai-socktype le:+sock-stream+)
-                        ;('le::ai-protocol le:+ipproto-tcp+)
-                        )
+                        ('uv::ai-flags 0)    ;#x2000 AI_CANONNAME
+                        ('uv::ai-socktype uv:+sock-stream+)
+                        ('uv::ai-protocol uv:+ipproto-tcp+))
       (save-callbacks lookup-c (list :resolve-cb resolve-cb
                                      :event-cb event-cb))
       (let ((res (uv:uv-getaddrinfo loop-c lookup-c (cffi:callback dns-cb) host (cffi:null-pointer) hints)))
