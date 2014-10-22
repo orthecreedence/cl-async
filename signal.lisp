@@ -42,13 +42,9 @@
   "Clear a signal handler and unbind it."
   (when (find signo (event-base-signal-handlers *event-base*))
     (let* ((signo-pt (signal-pointer signo))
-           (watcher (deref-data-from-pointer signo-pt))
-           (sig-data (deref-data-from-pointer watcher))
-           (original-lisp-signal-handler (getf sig-data :original-handler)))
-      (free-pointer-data watcher :preserve-pointer t)
-      (uv:free-handle watcher)
-      (cffi:foreign-funcall "signal" :int signo :pointer original-lisp-signal-handler :pointer)
-      (free-pointer-data signo-pt :preserve-pointer t))
+           (watcher (deref-data-from-pointer signo-pt)))
+      (uv:uv-signal-stop watcher)
+      (uv:uv-close watcher (cffi:callback signal-close-cb)))
     (setf (event-base-signal-handlers *event-base*) (remove signo (event-base-signal-handlers *event-base*)))))
 
 (defun clear-signal-handlers ()
@@ -56,6 +52,27 @@
   (dolist (signo (copy-list (event-base-signal-handlers *event-base*)))
     (free-signal-handler signo))
   (setf (event-base-signal-handlers *event-base*) nil))
+
+(define-c-callback signal-close-cb :void ((watcher :pointer))
+  "Called when a signal handler closes."
+  (let* ((sig-data (deref-data-from-pointer watcher))
+         (signo (getf sig-data :signo))
+         (signo-pt (signal-pointer signo))
+         (original-lisp-signal-handler (getf sig-data :original-handler)))
+    (free-pointer-data watcher :preserve-pointer t)
+    (uv:free-handle watcher)
+    (cffi:foreign-funcall "signal" :int signo :pointer original-lisp-signal-handler :pointer)
+    (free-pointer-data signo-pt :preserve-pointer t)))
+
+(define-c-callback signal-cb :void ((watcher :pointer) (signo :int))
+  "All signals come through here."
+  (let* ((callbacks (get-callbacks watcher))
+         (signal-cb (getf callbacks :signal-cb))
+         (event-cb (getf callbacks :event-cb))
+         (sig-data (deref-data-from-pointer watcher))
+         (ev (getf sig-data :ev)))
+    (catch-app-errors event-cb
+      (funcall signal-cb signo))))
 
 (define-c-callback lisp-signal-cb :void ((signo :int))
   "Generic callback for lisp signal handling."
@@ -72,16 +89,6 @@
    pointer to the handler that is being replaced."
   (save-callbacks (signal-pointer signo) (list fn))
   (cffi:foreign-funcall "signal" :int signo :pointer (cffi:callback lisp-signal-cb) :pointer))
-
-(define-c-callback signal-cb :void ((watcher :pointer) (signo :int))
-  "All signals come through here."
-  (let* ((callbacks (get-callbacks watcher))
-         (signal-cb (getf callbacks :signal-cb))
-         (event-cb (getf callbacks :event-cb))
-         (sig-data (deref-data-from-pointer watcher))
-         (ev (getf sig-data :ev)))
-    (catch-app-errors event-cb
-      (funcall signal-cb signo))))
 
 (defun signal-handler (signo signal-cb &key event-cb)
   "Setup a one-time signal handler for the given signo. This also sets up a
@@ -105,7 +112,7 @@
         (return-from signal-handler (event-handler res event-cb))))
     (save-callbacks watcher (list :signal-cb signal-cb
                                   :event-cb event-cb))
-    (attach-data-to-pointer watcher (list :original-handler lisp-signal-handler))
+    (attach-data-to-pointer watcher (list :signo signo :original-handler lisp-signal-handler))
     ;; make sure we can find the event/original handler from just the signo
     (attach-data-to-pointer signo-pt watcher)
     ;; add this signal to the list of active signals
