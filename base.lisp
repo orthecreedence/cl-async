@@ -30,12 +30,17 @@
 (in-package :cl-async-base)
 
 (define-condition event-info () ()
+  (:report (lambda (c s)
+             (print-unreadable-object (c s :type t :identity t)
+               (format s ""))))
   (:documentation "Describes the base event for any action in cl-async."))
 
 (define-condition event-error (event-info error)
   ((code :initarg :code :reader event-errcode :initform 0)
    (msg :initarg :msg :reader event-errmsg :initform nil))
-  (:report (lambda (c s) (format s "Error event: ~a: ~a" (event-errcode c) (event-errmsg c))))
+  (:report (lambda (c s)
+             (print-unreadable-object (c s :type t :identity t)
+               (format s "~a: ~a" (event-errcode c) (event-errmsg c)))))
   (:documentation "Describes a general error event."))
 
 (defvar *event-base* nil

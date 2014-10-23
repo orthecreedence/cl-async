@@ -1,31 +1,39 @@
 (in-package :cl-async)
 
-(defun event-handler (errno event-cb &key socket)
+(defun event-handler (errno event-cb &key socket catch-errors)
   "Called when an event (error, mainly) occurs."
   (let* ((event nil)
          (errstr (error-str errno)))
-    (catch-app-errors event-cb
-      (unwind-protect
-        (cond
-          ((= errno uv:+uv--etimedout+)
-           (setf event (make-instance 'tcp-timeout :socket socket :code errno :msg "connection timed out")))
-          ((= errno uv:+uv--econnreset+)
-           (setf event (make-instance 'tcp-reset :socket socket :code errno :msg "connection reset")))
-          ((= errno uv:+uv--econnrefused+)
-           (setf event (make-instance 'tcp-refused :socket socket :code errno :msg "connection refused")))
-          ((= errno uv:+uv--eof+)
-           (setf event (make-instance 'tcp-eof :socket socket)))
-          ((= errno uv:+uv--efault+)
-           (setf event (make-instance 'event-error :code errno :msg "bad address in system call argument")))
-          (t
-           (setf event (make-instance 'event-error :code errno :msg errstr))))
-        (when event
-          (unwind-protect
-            (when event-cb (run-event-cb event-cb event))
-            ;; if the app closed the socket in the event cb (perfectly fine),
-            ;; make sure we don't trigger an error trying to close it again.
-            (handler-case (and socket (close-socket socket))
-              (socket-closed () nil))))))))
+    (flet ((do-handle ()
+             (unwind-protect
+               (cond
+                 ((= errno (uv:errval :etimedout))
+                  (setf event (make-instance 'tcp-timeout :socket socket :code errno :msg "connection timed out")))
+                 ((= errno (uv:errval :econnreset))
+                  (setf event (make-instance 'tcp-reset :socket socket :code errno :msg "connection reset")))
+                 ((= errno (uv:errval :econnrefused))
+                  (setf event (make-instance 'tcp-refused :socket socket :code errno :msg "connection refused")))
+                 ((= errno (uv:errval :eof))
+                  (setf event (make-instance 'tcp-eof :socket socket)))
+                 ((= errno (uv:errval :eai-noname))
+                  (setf event (make-instance 'dns-error :code errno :msg "DNS lookup fail")))
+                 ((= errno (uv:errval :efault))
+                  (setf event (make-instance 'event-error :code errno :msg "bad address in system call argument")))
+                 (t
+                  (setf event (make-instance 'event-error :code errno :msg errstr))))
+               (when event
+                 (unwind-protect
+                   (when event-cb
+                     (if catch-errors
+                         (run-event-cb event-cb event)
+                         (funcall event-cb event)))
+                   ;; if the app closed the socket in the event cb (perfectly fine),
+                   ;; make sure we don't trigger an error trying to close it again.
+                   (handler-case (and socket (close-socket socket))
+                     (socket-closed () nil)))))))
+      (if catch-errors
+          (catch-app-errors event-cb (do-handle))
+          (do-handle)))))
 
 (defun enable-threading-support ()
   "Enable threading support in libevent. This attempts to guess which threading

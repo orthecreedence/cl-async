@@ -2,7 +2,6 @@
 
 (define-condition event-freed (event-error)
   ((event :initarg :event :accessor event-freed-event :initform nil))
-  (:report (lambda (c s) (format s "Freed event being operated on: ~a~%" c)))
   (:documentation "Thrown when a freed event is operated on."))
 
 (defclass event ()
@@ -13,7 +12,7 @@
 (defun check-event-unfreed (event)
   "Checks that an event being operated on is not freed."
   (when (event-freed event)
-    (error 'event-freed :event event)))
+    (error 'event-freed :event event :msg "Freed event being operated on: ~a~%")))
 
 (defun free-event (event)
   "Free a cl-async event object and any resources it uses."

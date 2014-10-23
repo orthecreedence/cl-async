@@ -2,26 +2,27 @@
 
 (define-condition tcp-info (event-info)
   ((socket :initarg :socket :accessor tcp-socket :initform nil))
+  (:report (lambda (c s)
+             (print-unreadable-object (c s :type t :identity t)
+               (format s "~a" (tcp-socket c)))))
   (:documentation "Base TCP condition. Holds the socket object."))
 
 (define-condition tcp-error (event-error tcp-info) ()
-  (:report (lambda (c s) (format s "TCP connection error: ~a: ~a" (event-errcode c) (event-errmsg c))))
+  (:report (lambda (c s)
+             (print-unreadable-object (c s :type t :identity t)
+               (format s "~a: ~a: ~a" (tcp-socket c) (event-errcode c) (event-errmsg c)))))
   (:documentation "Describes a general TCP connection error."))
 
 (define-condition tcp-eof (tcp-info) ()
-  (:report (lambda (c s) (format s "TCP connection EOF: ~a" (tcp-socket c))))
   (:documentation "Passed to an event callback when a peer closes a TCP connection."))
 
 (define-condition tcp-reset (tcp-error) ()
-  (:report (lambda (c s) (format s "TCP connection reset ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to an event callback when a TCP connection times out."))
 
 (define-condition tcp-timeout (tcp-error) ()
-  (:report (lambda (c s) (format s "TCP connection timeout: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to an event callback when a TCP connection times out."))
 
 (define-condition tcp-refused (tcp-error) ()
-  (:report (lambda (c s) (format s "TCP connection refused: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to an event callback when a TCP connection is refused."))
 
 (define-condition tcp-accept-error (tcp-error)
@@ -133,10 +134,10 @@
          (cur-read-timeout (getf (getf socket-data :read-timeout) :event))
          (cur-write-timeout (getf (getf socket-data :write-timeout) :event))
          (read-timeout (when read-sec
-                         (delay (lambda () (event-handler uv:+uv--etimedout+ event-cb :socket socket))
+                         (delay (lambda () (event-handler (uv:errval :etimedout) event-cb :socket socket))
                                 :time read-sec)))
          (write-timeout (when write-sec
-                          (delay (lambda () (event-handler uv:+uv--etimedout+ event-cb :socket socket))
+                          (delay (lambda () (event-handler (uv:errval :etimedout) event-cb :socket socket))
                                  :time write-sec))))
     ;; clear the timeouts
     (when (and cur-read-timeout (not read-sec))
@@ -221,7 +222,7 @@
   "Called when we want to allocate data to be filled for stream reading."
   (declare (ignore handle))
   ;; TODO: use a static buffer here instead of dynamic allocation
-  ;; TODO: make sure not to free the buffer in tcp-read-cb once conveted
+  ;; TODO: make sure not to free the buffer in tcp-read-cb once converted
   (uv:alloc-uv-buf (cffi:foreign-alloc :char :count size) size buf))
 
 (define-c-callback tcp-read-cb :void ((uvstream :pointer) (nread :int) (buf :pointer))
@@ -243,7 +244,7 @@
         ;; we got an error
         (unless (cffi:null-pointer-p buf-ptr)
           (cffi:foreign-free buf-ptr))
-        (event-handler nread event-cb :socket socket)
+        (run-event-cb 'event-handler nread event-cb :socket socket)
         (return-from tcp-read-cb))
 
       ;; reset the read timeout
@@ -285,7 +286,7 @@
         (if (zerop res)
             (when connect-cb
               (funcall connect-cb (or stream socket)))
-            (event-handler res event-cb :socket socket))))))
+            (run-event-cb 'event-handler res event-cb :socket socket))))))
 
 (define-c-callback tcp-write-cb :void ((req :pointer) (status :int))
   "Called when data is finished being written to a socket."
@@ -300,7 +301,7 @@
       (if (zerop status)
           (when write-cb
             (funcall write-cb socket))
-          (event-handler status event-cb :socket socket)))))
+          (run-event-cb 'event-handler status event-cb :socket socket)))))
 
 (define-c-callback tcp-shutdown-cb :void ((req :pointer) (status :int))
   "Called when a tcp socket shuts down."
@@ -324,23 +325,24 @@
          (read-cb (getf callbacks :read-cb))
          (event-cb (getf callbacks :event-cb))
          (connect-cb (getf callbacks :connect-cb)))
-    (if (< status 0)
-        ;; error! call the handler
-        (event-handler status event-cb)
-        ;; great, keep going
-        (let* ((stream-data-p (tcp-server-stream server-class))
-               (uvstream (let ((s (uv:alloc-handle :tcp)))
-                           (uv:uv-tcp-init (event-base-c *event-base*) s)
-                           s))
-               (socket (make-instance 'socket :c uvstream :direction :in :drain-read-buffer (not stream-data-p)))
-               (stream (when stream-data-p (make-instance 'async-io-stream :socket socket))))
-          (if (zerop (uv:uv-accept server uvstream))
-              (progn
-                (attach-data-to-pointer uvstream (list :socket socket :stream stream))
-                (save-callbacks uvstream (list :read-cb read-cb :event-cb event-cb))
-                (funcall connect-cb socket)
-                (uv:uv-read-start uvstream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb)))
-              (uv:uv-close uvstream (cffi:null-pointer)))))))
+    (catch-app-errors event-cb
+      (if (< status 0)
+          ;; error! call the handler
+          (run-event-cb 'event-handler status event-cb)
+          ;; great, keep going
+          (let* ((stream-data-p (tcp-server-stream server-class))
+                 (uvstream (let ((s (uv:alloc-handle :tcp)))
+                             (uv:uv-tcp-init (event-base-c *event-base*) s)
+                             s))
+                 (socket (make-instance 'socket :c uvstream :direction :in :drain-read-buffer (not stream-data-p)))
+                 (stream (when stream-data-p (make-instance 'async-io-stream :socket socket))))
+            (if (zerop (uv:uv-accept server uvstream))
+                (progn
+                  (attach-data-to-pointer uvstream (list :socket socket :stream stream))
+                  (save-callbacks uvstream (list :read-cb read-cb :event-cb event-cb))
+                  (funcall connect-cb socket)
+                  (uv:uv-read-start uvstream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb)))
+                (uv:uv-close uvstream (cffi:null-pointer))))))))
 
 (define-c-callback tcp-accept-cb :void ((server :pointer) (status :int))
   "Called by a listener when an incoming connection is detected. Thin wrapper
@@ -443,7 +445,8 @@
         (when (or (< r-bind 0)
                   (< r-listen 0))
           (uv:uv-close server-c)
-          (error (make-instance 'tcp-server-bind-error :addr bind-address :port port)))
+          (event-handler (min r-bind r-listen) event-cb :catch-errors t)
+          (return-from tcp-server))
         ;; make sure the server is closed/freed on exit
         (add-event-loop-exit-callback (lambda ()
                                         (close-tcp-server server-class)))

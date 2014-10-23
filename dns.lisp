@@ -1,7 +1,6 @@
 (in-package :cl-async)
 
 (define-condition dns-error (event-error) ()
-  (:report (lambda (c s) (format s "DNS error: ~a, ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
 
 (define-c-callback dns-cb :void ((req :pointer) (status :int) (addrinfo :pointer))
@@ -23,10 +22,11 @@
                               (make-instance 'dns-error
                                              :code -1
                                              :msg err))))
-          (event-handler status event-cb))
+          ;; error, signal
+          (run-event-cb 'event-handler status event-cb))
       (uv:free-req req)
       (uv:uv-freeaddrinfo addrinfo))))
-      
+
 (defun dns-lookup (host resolve-cb event-cb &key (family *default-lookup-type*))
   "Asynchronously lookup a DNS address. Note that if an IP address is passed,
    the lookup happens synchronously. If a lookup is synchronous (and instant)
@@ -46,6 +46,6 @@
                                      :event-cb event-cb))
       (let ((res (uv:uv-getaddrinfo loop-c lookup-c (cffi:callback dns-cb) host (cffi:null-pointer) hints)))
         (if (< res 0)
-            (event-handler res event-cb)
+            (event-handler res event-cb :catch-errors t)
             t)))))
 
