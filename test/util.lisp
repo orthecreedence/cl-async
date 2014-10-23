@@ -36,7 +36,7 @@
                          (when (and *event-base*
                                     (eql (event-base-id *event-base*) base-id)
                                     (not cancel))
-                           (le:event-base-loopexit event-base (cffi:null-pointer)))))
+                           (uv:uv-stop event-base))))
         (bt::bordeaux-mp-condition ()
           nil)))))
 
