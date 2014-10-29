@@ -49,7 +49,7 @@
   (let ((num-err 0))
     (signals as:tcp-timeout
       (async-let ()
-        (test-timeout 2)
+        ;(test-timeout 2)
         (as:tcp-connect "1.24.3.4" 3
           (lambda (sock data) (declare (ignore sock data)))
           (lambda (ev)
@@ -104,6 +104,28 @@
           (lambda (ev) (declare (ignore ev)))
           :data "HELLO!"))
     (is (string= server-data "HELLO!"))))
+
+(trace as:start-event-loop)
+(trace as:exit-event-loop)
+(trace uv:uv-run)
+(trace uv:uv-loop-close)
+(trace uv:uv-stop)
+(trace uv:alloc-handle)
+(trace uv:free-handle)
+(trace uv:uv-shutdown)
+(trace uv:uv-close)
+(trace as::event-handler)
+(trace as::timer-cb)
+(trace as::timer-close-cb)
+(trace as::tcp-connect-cb)
+(trace as::tcp-read-cb)
+(trace as::tcp-write-cb)
+(trace as::tcp-shutdown-cb)
+(trace as::tcp-close-cb)
+(trace as::close-socket)
+(trace as::close-tcp-server)
+(trace as::loop-exit-walk-cb)
+(run! 'tcp-server-stream)
                           
 (defun get-usocket-fd (connection)
   "Gets the fd from a usocket connection."

@@ -29,5 +29,6 @@
    (:file "dns" :depends-on ("package"))
    (:file "tcp" :depends-on ("dns"))
    (:file "tcp-stream" :depends-on ("tcp"))
-   (:file "signal" :depends-on ("package"))))
+   (:file "signal" :depends-on ("package"))
+   (:file "notify" :depends-on ("package"))))
 

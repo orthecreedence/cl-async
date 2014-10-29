@@ -35,63 +35,6 @@
           (catch-app-errors event-cb (do-handle))
           (do-handle)))))
 
-(defun enable-threading-support ()
-  "Enable threading support in libevent. This attempts to guess which threading
-   function of libevent's to use and call it.
-
-   Note that you MUST call this *before* starting your event loop."
-   (setf *enable-threading* t))
-
-(defmacro with-threading-context ((&key base-id (io t)) &body body)
-  "Use this to wrap the top level of any non-event-loop thread that is meant to
-   access the event loop:
-   
-   (bt:make-thread
-     (lambda ()
-       (with-threading-context ()
-         (as:with-delay (3) (print 'hello-world)))))
-   
-   This macro sets up buffers as well as binds the cl-async-base:*event-base*
-   variable so any calls to event loop functions from your thread will have
-   access to the event loop.
-
-   If you have more than one event loop running, the ID of the event base you
-   wish to operate on should be passed in:
-   
-   (defvar *base-id* nil)
-   (with-event-loop ()
-     (setf *base-id* (cl-async-base:event-base-id cl-async-base:*event-base*))
-     (bt:make-thread
-       (lambda ()
-         (with-threading-context (*base-id*)
-           ...))))
-   
-   You *MUST* call (enable-threading-support) before starting your event loop."
-  (let ((base-id-bind (gensym "base-id"))
-        (base (gensym "base")))
-    `(let* ((,base-id-bind ,base-id)
-            (,base (bt:with-lock-held (*event-base-registry-lock*) 
-                     (if ,base-id-bind
-                         ;; grab our event base by id
-                         (gethash ,base-id-bind *event-base-registry*)
-                         ;; grab the first event base
-                         (let ((base nil))
-                           (loop for val being the hash-values of *event-base-registry* do
-                             (setf base val)
-                             (return))
-                           base))))
-            (cl-async-base:*event-base* ,base)
-            ;; recreate our buffers because it would be a sin to let them
-            ;; intermingle with the event loop's
-            (*socket-buffer-c* ,(when io `(cffi:foreign-alloc :unsigned-char :count *buffer-size*)))
-            (*socket-buffer-lisp* ,(when io `(make-array *buffer-size* :element-type '(unsigned-byte 8)))))
-       (unwind-protect
-         (progn ,@body)
-         ,(when io
-            `(progn
-               (cffi:foreign-free *socket-buffer-c*)
-               (setf *socket-buffer-lisp* nil)))))))
-
 (defun add-event-loop-exit-callback (fn)
   "Add a function to be run when the event loop exits."
   (push fn (event-base-exit-functions *event-base*)))
@@ -105,6 +48,14 @@
 (defun check-event-loop-running ()
   (unless (and *event-base* (event-base-c *event-base*))
     (error "Event loop not running. Start with function start-event-loop.")))
+
+(defgeneric ref (handle)
+  (:documentation
+    "Reference a libuv handle object (uv_ref)"))
+
+(defgeneric unref (handle)
+  (:documentation
+    "Unreference a libuv handle object (uv_unref)"))
 
 (defun stats ()
   "Return statistics about the current event loop."
@@ -120,7 +71,7 @@
 
 (define-c-callback walk-cb :void ((handle :pointer) (arg :pointer))
   "Called when we're walking the loop."
-  (format t "handle: ~s: ~a~%" (uv:handle-type handle) handle)
+  (format t "handle: ~s (~a)~%" (uv:handle-type handle) handle)
   (force-output))
 
 (defun dump-event-loop-status ()
@@ -136,6 +87,40 @@
 (defvar *event-base-registry-lock* (bt:make-lock)
   "Locks the event-base registry.")
 
+(define-c-callback loop-exit-walk-cb :void ((handle :pointer) (arg :pointer))
+  "Called when we want to close the loop AND IT WONT CLOSE. So we walk each
+   handle and close them."
+  ;(when (uv:uv-is-closing handle)
+    ;(return-from loop-exit-walk-cb))
+  (case (uv:handle-type handle)
+    (:tcp (let* ((data (deref-data-from-pointer handle))
+                 (socket/server (if (listp data)
+                                    (getf data :socket)
+                                    data)))
+            (if (typep socket/server 'tcp-server)
+                (unless (tcp-server-closed socket/server)
+                  (close-tcp-server socket/server))
+                (unless (socket-closed-p socket/server)
+                  (close-socket socket/server :force t)))))
+    (:timer (let ((event (deref-data-from-pointer handle)))
+              (unless (event-freed-p event)
+                (free-event event))))
+    (:async (let ((notifier (deref-data-from-pointer handle)))
+              (unless (notifier-freed-p notifier)
+                (free-notifier notifier))))))
+
+(defun do-close-loop (evloop &optional (loops 0))
+  "Close an event loop by looping over its open handles, closing them, rinsing
+   and repeating until uv-loop-close returns 0."
+  (let ((res (uv:uv-loop-close evloop)))
+    (unless (zerop res)
+      (uv:uv-stop evloop)
+      (process-event-loop-exit-callbacks)
+      (uv:uv-walk evloop (cffi:callback loop-exit-walk-cb) (cffi:null-pointer))
+      (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+))
+      (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+))
+      (do-close-loop evloop (1+ loops)))))
+
 (defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
   "Simple wrapper function that starts an event loop which runs the given
    callback, most likely to init your server/client.
@@ -149,11 +134,11 @@
    lead to strange bugs and problems. Don't do it."
   (when *event-base*
     (error "Event loop already started. Please wait for it to exit."))
-  ;; note the binding of these variable via (let), which means they are thread-
-  ;; local... so this function can be called in different threads, and the bound
-  ;; variables won't interfere with each other.
-  (cffi:with-foreign-object (loop '(:struct uv:uv-loop-s))
+  (cffi:with-foreign-object (loop :unsigned-char (uv:uv-loop-size))
     (uv:uv-loop-init loop)
+    ;; note the binding of these variable via (let), which means they are thread-
+    ;; local... so this function can be called in different threads, and the bound
+    ;; variables won't interfere with each other.
     (let ((*event-base* (apply #'make-instance
                                (append
                                  (list 'event-base
@@ -179,8 +164,7 @@
           ;; this will block until all events are processed
           (uv:uv-run (event-base-c *event-base*) (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+)))
         ;; cleanup
-        (uv:uv-loop-close (event-base-c *event-base*))
-        (process-event-loop-exit-callbacks)
+        (do-close-loop (event-base-c *event-base*))
         (cffi:foreign-free *socket-buffer-c*)
         (free-pointer-data (event-base-c *event-base*) :preserve-pointer t)
         (bt:with-lock-held (*event-base-registry-lock*)
@@ -203,12 +187,10 @@
        :default-event-cb ,default-event-cb)
     (when catch-app-errors-supplied-p
       `(:catch-app-errors ,catch-app-errors))))
-       
 
 (defun exit-event-loop ()
   "Exit the event loop if running."
-  (if (event-base-c *event-base*)
-      (uv:uv-stop (event-base-c *event-base*))
-      nil))
-
+  (let ((evloop (event-base-c *event-base*)))
+    (when evloop
+      (uv:uv-stop evloop))))
 

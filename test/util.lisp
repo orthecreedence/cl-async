@@ -7,38 +7,35 @@
 
 ;; TODO: test all functions in util package
 
-(as:enable-threading-support)
-
 (defmacro async-let ((&rest bindings) &body body)
   "Wrap an async op inside of a let/start-event-loop block to mimick a blocking
    action. Bindings must be set from withing the block via setf."
   `(let ,bindings
-     (as:start-event-loop
-       (lambda ()
-         ,@body)
-       :catch-app-errors t)
+     (as:with-event-loop (:catch-app-errors t)
+       ,@body)
      (values ,@(loop for (binding . nil) in bindings collect binding))))
 
 (defun test-timeout (seconds)
   "Make sure a test times out after the given num seconds. An event loop can't
    do this itself without skewing results. Uses event base IDs to make sure it
    doesn't cancel an event loop that test-timeout wasn't called inside of."
-  (let ((event-base (event-base-c *event-base*))
-        (base-id (event-base-id *event-base*)))
-    (let ((cancel nil))
-      ;; if the event loop exits naturally, cancel the break
-      (as:add-event-loop-exit-callback
-        (lambda () (setf cancel t)))
-      ;; spawn the thread to kill the event loop
-      (handler-case
-        (bt:make-thread (lambda ()
-                         (sleep seconds)
-                         (when (and *event-base*
-                                    (eql (event-base-id *event-base*) base-id)
-                                    (not cancel))
-                           (uv:uv-stop event-base))))
-        (bt::bordeaux-mp-condition ()
-          nil)))))
+  (let ((cancel nil)
+        (notifier (as:make-notifier 'as:exit-event-loop)))
+    (as:unref notifier)
+    ;; if the event loop exits naturally, cancel the break
+    (as:add-event-loop-exit-callback
+      (lambda ()
+        (unless (as:notifier-freed-p notifier)
+          (as:free-notifier notifier))
+        (setf cancel t)))
+    ;; spawn the thread to kill the event loop
+    (handler-case
+      (bt:make-thread (lambda ()
+                        (sleep seconds)
+                        (when (not cancel)
+                          (as:trigger-notifier notifier))))
+      (bt::bordeaux-mp-condition ()
+        nil))))
 
 (defun concat (&rest args)
   "Shortens string concatenation because I'm lazy and really who the hell wants

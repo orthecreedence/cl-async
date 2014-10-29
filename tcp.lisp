@@ -47,6 +47,7 @@
   ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
    (data :accessor socket-data :initarg data :initform nil)
    (closed :accessor socket-closed :initarg :closed :initform nil)
+   (closing :accessor socket-closing :initform nil)
    (direction :accessor socket-direction :initarg :direction :initform nil)
    (drain-read-buffer :accessor socket-drain-read-buffer :initarg :drain-read-buffer :initform t))
   (:documentation "Wraps around a libevent bufferevent socket."))
@@ -78,7 +79,8 @@
 (defun check-socket-open (socket)
   "Throw a socket-closed condition if given a socket that's closed."
   (when (typep socket 'socket)
-    (when (socket-closed socket)
+    (when (or (socket-closed socket)
+              (socket-closing socket))
       (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket" :socket socket))))
 
 (defun socket-closed-p (socket)
@@ -89,26 +91,36 @@
   (:documentation
     "Free a socket (uvstream) and clear out all associated data."))
 
+(defun do-close-tcp (uvstream &key force)
+  "Close a tcp UV stream."
+  (uv:uv-read-stop uvstream)
+  (cond ((or force (zerop (uv:uv-is-writable uvstream)))
+         (uv:uv-close uvstream (cffi:callback tcp-close-cb)))
+        (t
+         (let* ((shutdown-req (uv:alloc-req :shutdown))
+                (r (uv:uv-shutdown shutdown-req uvstream (cffi:callback tcp-shutdown-cb))))
+           (if (zerop r)
+               (attach-data-to-pointer shutdown-req (list uvstream))
+               (uv:uv-close uvstream (cffi:callback tcp-close-cb)))))))
+
 (defmethod close-socket ((socket socket) &key force)
   "Close and free a socket and all of it's underlying structures."
   (check-socket-open socket)
+  (setf (socket-closing socket) t)
   (let* ((uvstream (socket-c socket))
          (data (deref-data-from-pointer uvstream))
          (read-timeout (car (getf data :read-timeout)))
          (write-timeout (car (getf data :write-timeout))))
-    (when read-timeout (free-event read-timeout))
-    (when write-timeout (free-event write-timeout))
+    (dolist (timeout (list read-timeout
+                           write-timeout))
+      (when (and timeout
+                 (not (event-freed-p timeout)))
+        (free-event timeout)))
     (if (eq (socket-direction socket) :in)
         (decf (event-base-num-connections-in *event-base*))
         (decf (event-base-num-connections-out *event-base*)))
     (setf (socket-closed socket) t)
-    (uv:uv-read-stop uvstream)
-    (cond (force
-            (uv:uv-close uvstream (cffi:callback tcp-close-cb)))
-          (t
-           (let ((shutdown-req (uv:alloc-req :shutdown)))
-             (attach-data-to-pointer shutdown-req (list uvstream))
-             (uv:uv-shutdown shutdown-req uvstream (cffi:callback tcp-shutdown-cb)))))))
+    (do-close-tcp uvstream)))
 
 (defgeneric close-tcp-server (socket)
   (:documentation
@@ -118,7 +130,8 @@
   (unless (tcp-server-closed tcp-server)
     (setf (tcp-server-closed tcp-server) t)
     (let ((server-c (tcp-server-c tcp-server)))
-      (uv:uv-close server-c (cffi:callback tcp-close-cb)))))
+      ;; force so we don't do shutdown (can't shutdown a server)
+      (do-close-tcp server-c :force t))))
 
 (defun set-socket-timeouts (socket read-sec write-sec &key socket-is-uvstream)
   "Set the read/write timeouts on a socket."
@@ -140,9 +153,9 @@
                           (delay (lambda () (event-handler (uv:errval :etimedout) event-cb :socket socket))
                                  :time write-sec))))
     ;; clear the timeouts
-    (when (and cur-read-timeout (not read-sec))
+    (when (and cur-read-timeout (not read-sec) (not (event-freed-p cur-read-timeout)))
       (free-event cur-read-timeout))
-    (when (and cur-write-timeout (not write-sec))
+    (when (and cur-write-timeout (not write-sec) (not (event-freed-p cur-write-timeout)))
       (free-event cur-write-timeout))
     (when read-timeout
       (setf (getf socket-data :read-timeout) (cons read-timeout read-sec)))
@@ -239,6 +252,7 @@
          (read-buf (multiple-value-list (uv:uv-buf-read buf)))
          (buf-ptr (car read-buf))
          (buf-len (cadr read-buf)))
+    (format t "buf: ~s~%" read-buf)(force-output)
     (catch-app-errors event-cb
       (when (< nread 0)
         ;; we got an error
@@ -281,12 +295,13 @@
     (catch-app-errors event-cb
       (free-pointer-data req :preserve-pointer t)
       (uv:free-req req)
-      ;; start reading on the socket
-      (let ((res (uv:uv-read-start uvstream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb))))
-        (if (zerop res)
-            (when connect-cb
-              (funcall connect-cb (or stream socket)))
-            (run-event-cb 'event-handler res event-cb :socket socket))))))
+      (unless (socket-closed-p socket)
+        ;; start reading on the socket
+        (let ((res (uv:uv-read-start uvstream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb))))
+          (if (zerop res)
+              (when connect-cb
+                (funcall connect-cb (or stream socket)))
+              (run-event-cb 'event-handler res event-cb :socket socket)))))))
 
 (define-c-callback tcp-write-cb :void ((req :pointer) (status :int))
   "Called when data is finished being written to a socket."
@@ -307,7 +322,8 @@
   "Called when a tcp socket shuts down."
   (uv:free-req req)
   (let ((uvstream (car (deref-data-from-pointer req))))
-    (uv:uv-close uvstream (cffi:callback tcp-close-cb))))
+    (when (zerop (uv:uv-is-closing uvstream))
+      (uv:uv-close uvstream (cffi:callback tcp-close-cb)))))
 
 (define-c-callback tcp-close-cb :void ((uvstream :pointer))
   "Called when a tcp socket closes."

@@ -28,19 +28,7 @@
     cl-async-util::make-pointer-eql-able
     cl-async-util::append-array
     cl-async-util::get-free-timeval
-    cl-async-util::release-timeval
-    le::event-new
-    le::evbuffer-drain
-    le::bufferevent-get-output
-    le::bufferevent-socket-new
-    le::bufferevent-socket-connect
-    le::bufferevent-socket-connect-hostname
-    le::bufferevent-setcb
-    le::bufferevent-set-timeouts
-    le::bufferevent-enable
-    le::bufferevent-socket-get-dns-error
-    le::bufferevent-getfd
-    le:evutil-make-socket-nonblocking))
+    cl-async-util::release-timeval))
 
 (defparameter *http-response*
   (babel:string-to-octets

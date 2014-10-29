@@ -22,6 +22,8 @@
            #:with-threading-context
            #:dump-event-loop-status
            #:add-event-loop-exit-callback
+           #:ref
+           #:unref
            #:start-event-loop
            #:with-event-loop
            #:exit-event-loop
@@ -42,6 +44,15 @@
            #:make-event
            #:watch-fd
            #:fd-add
+
+           ;; notifier exports
+           #:notifier-freed
+           #:notifier
+           #:notifier-c
+           #:notifier-freed-p
+           #:free-notifier
+           #:make-notifier
+           #:trigger-notifier
 
            ;; signal numbers
            #:+sighup+

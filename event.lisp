@@ -12,14 +12,15 @@
 (defun check-event-unfreed (event)
   "Checks that an event being operated on is not freed."
   (when (event-freed event)
-    (error 'event-freed :event event :msg "Freed event being operated on: ~a~%")))
+    (error 'event-freed :event event :msg "Freed event being operated on")))
 
 (defun free-event (event)
   "Free a cl-async event object and any resources it uses."
   (check-event-unfreed event)
   (setf (event-freed event) t)
   (let ((timer-c (event-c event)))
-    (uv:uv-close timer-c (cffi:callback timer-close-cb))))
+    (when (zerop (uv:uv-is-closing timer-c))
+      (uv:uv-close timer-c (cffi:callback timer-close-cb)))))
 
 (defun remove-event (event)
   "Remove a pending event from the event loop."
@@ -27,6 +28,12 @@
   (let ((timer-c (event-c event)))
     (uv:uv-timer-stop timer-c))
   t)
+
+(defmethod ref ((handle event))
+  (uv:uv-ref (event-c handle)))
+
+(defmethod unref ((handle event))
+  (uv:uv-unref (event-c handle)))
 
 (defun add-event (event &key timeout activate)
   "Add an event to its specified event loop (make it pending). If given a
@@ -49,34 +56,13 @@
     (catch-app-errors event-cb
       (unwind-protect
         (when cb (funcall cb))
-        (free-event event)))))
+        (unless (event-freed-p event)
+          (free-event event))))))
 
 (define-c-callback timer-close-cb :void ((timer-c :pointer))
   "Called when a timer closes."
   (uv:uv-timer-stop timer-c)
   (uv:free-handle timer-c))
-
-#|
-(define-c-callback fd-cb :void ((poller :int) (status :int) (events :int))
-  "Called when an event watching a file descriptor is triggered."
-  (declare (ignore fd))
-  (let* (;(event (deref-data-from-pointer data-pointer))
-         (callbacks (get-callbacks data-pointer))
-         (timeout-cb (getf callbacks :timeout-cb))
-         (read-cb (getf callbacks :read-cb))
-         (write-cb (getf callbacks :write-cb))
-         (event-cb (getf callbacks :event-cb)))
-    (catch-app-errors event-cb
-      (when (and (< 0 (logand what le:+ev-read+))
-                 read-cb)
-         (funcall read-cb))
-      (when (and (< 0 (logand what le:+ev-write+))
-                 write-cb)
-        (funcall write-cb))
-      (when (and (< 0 (logand what le:+ev-timeout+))
-                 timeout-cb)
-         (funcall timeout-cb)))))
-|#
 
 (defun delay (callback &key time event-cb)
   "Run a function, asynchronously, after the specified amount of seconds. An
@@ -127,36 +113,4 @@
    This is useful for triggering arbitrary events, and can even be triggered
    from a thread outside the libevent loop."
   (delay callback :event-cb event-cb :time (* 100 31536000)))
-
-#|
-(defun watch-fd (fd &key event-cb read-cb write-cb timeout-cb timeout)
-  "Run a function, asynchronously, when the specified file descriptor is
-   ready for write or read operations. An event loop must be running for
-   this to work."
-  (check-event-loop-running)
-  ;; TODO: see uv_poll
-  (let* ((data-pointer (create-data-pointer))
-         (ev (le:event-new (event-base-c *event-base*)
-                           fd
-                           ;; listen to read/timeout events, and keep listening
-                           (logior
-                             (if timeout-cb le:+ev-timeout+ 0)
-                             (if read-cb le:+ev-read+ 0)
-                             (if write-cb le:+ev-write+ 0)
-                             le:+ev-persist+)
-                           (cffi:callback fd-cb)
-                           data-pointer))
-         (event (make-instance 'event
-                               :c ev
-                               :free-callback (lambda (event)
-                                                (declare (ignore event))
-                                                (free-pointer-data data-pointer)))))
-    (save-callbacks data-pointer (list :read-cb read-cb
-                                       :write-cb write-cb
-                                       :timeout-cb timeout-cb
-                                       :event-cb event-cb))
-    (attach-data-to-pointer data-pointer event)
-    (add-event event :timeout timeout)
-    event))
-|#
 
