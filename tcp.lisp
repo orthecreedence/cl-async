@@ -340,7 +340,7 @@
                 (progn
                   (attach-data-to-pointer uvstream (list :socket socket :stream stream))
                   (save-callbacks uvstream (list :read-cb read-cb :event-cb event-cb))
-                  (funcall connect-cb socket)
+                  (when connect-cb (funcall connect-cb socket))
                   (uv:uv-read-start uvstream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb)))
                 (uv:uv-close uvstream (cffi:null-pointer))))))))
 
