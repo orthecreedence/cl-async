@@ -110,21 +110,6 @@
                                (babel:string-to-octets arr2)))))
       (is (string= str "well i hope you leave enough room for my fist, because i'm going to RAM IT INTO YOUR STOMACH!!! i will, bye.")))))
 
-(test usec-time
-  "Test correct splitting of a decimal second value in seconds and useconds"
-  (let ((seconds1 6.3)
-        (seconds2 10)
-        (seconds3 .0002))
-    (let ((res1 (multiple-value-list (split-usec-time seconds1)))
-          (res2 (multiple-value-list (split-usec-time seconds2)))
-          (res3 (multiple-value-list (split-usec-time seconds3))))
-      (is (= (car res1) 6))
-      (is (= (cadr res1) 300000))
-      (is (= (car res2) 10))
-      (is (= (cadr res2) 0))
-      (is (= (car res3) 0))
-      (is (= (cadr res3) 200)))))
-
 (test pointer-callbacks
   "Test that pointer callbacks are assigned and also cleared correctly"
   (let* ((*event-base* (make-instance 'event-base))
