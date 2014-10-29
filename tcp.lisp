@@ -369,7 +369,7 @@
     (when data
       (let* ((old-connect-cb connect-cb)
              (new-connect-cb (lambda (sock)
-                               (funcall old-connect-cb sock)
+                               (when old-connect-cb (funcall old-connect-cb sock))
                                (write-socket-data sock data))))
         (setf connect-cb new-connect-cb)))
     (save-callbacks uvstream (list :read-cb read-cb
