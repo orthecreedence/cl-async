@@ -63,16 +63,26 @@
   "Really, since we're async, same as force-output."
   (stream-force-output stream))
 
-(defmethod stream-write-byte ((stream async-output-stream) byte)
-  "Write one byte to the underlying socket."
-  (when (open-stream-p stream)
-    (write-socket-data (stream-socket stream) (vector byte))))
-  
 (defmethod stream-write-sequence ((stream async-output-stream) sequence start end &key)
   "Write a sequence of bytes to the underlying socket."
   (when (open-stream-p stream)
     (let ((seq (subseq sequence start end)))
-      (write-socket-data (stream-socket stream) seq))))
+      ;; if the socket isn't connected, we have to buffer our output until it's
+      ;; connected
+      (if (socket-connected (stream-socket stream))
+          (write-socket-data (stream-socket stream) seq)
+          (setf (stream-buffer stream) (append-array (stream-buffer stream) seq))))))
+
+(defmethod stream-write-byte ((stream async-output-stream) byte)
+  "Write one byte to the underlying socket."
+  (stream-write-sequence (stream (vector byte) 0 1)))
+  
+(defmethod send-buffered-data ((stream async-output-stream))
+  "Take data we've buffered between initial sending and actual socket connection
+   and send it out."
+  (write-socket-data (stream-socket stream) (stream-buffer stream))
+  (setf (stream-buffer stream) (make-buffer))
+  nil)
 
 ;; -----------------------------------------------------------------------------
 ;; input stream
@@ -92,8 +102,8 @@
 
 (defmethod stream-read-sequence ((stream async-input-stream) sequence start end &key)
   "Attempt to read a sequence of bytes from the underlying socket."
-  (let* ((numbytes (- end start))
-         (buffer (stream-buffer stream))
+  (let* ((buffer (stream-buffer stream))
+         (numbytes (min (length buffer) (- end start)))
          (bytes (subseq buffer start (min (length buffer) numbytes))))
     (setf (stream-buffer stream) (make-buffer (subseq buffer numbytes)))
     (replace sequence bytes)

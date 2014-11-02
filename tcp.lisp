@@ -45,7 +45,7 @@
 
 (defclass socket ()
   ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
-   (data :accessor socket-data :initarg data :initform nil)
+   (connected :accessor socket-connected :initarg :connected :initform nil)
    (closed :accessor socket-closed :initarg :closed :initform nil)
    (closing :accessor socket-closing :initform nil)
    (direction :accessor socket-direction :initarg :direction :initform nil)
@@ -188,7 +188,7 @@
           (incf data-index))
         (let ((req (uv:alloc-req :write))
               (buf (uv:alloc-uv-buf buffer-c bufsize)))
-          (attach-data-to-pointer req (list uvstream))
+          (attach-data-to-pointer req uvstream)
           (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback tcp-write-cb))))
             (uv:free-uv-buf buf)
             (if (zerop res)
@@ -252,7 +252,6 @@
          (read-buf (multiple-value-list (uv:uv-buf-read buf)))
          (buf-ptr (car read-buf))
          (buf-len (cadr read-buf)))
-    (format t "buf: ~s~%" read-buf)(force-output)
     (catch-app-errors event-cb
       (when (< nread 0)
         ;; we got an error
@@ -295,17 +294,21 @@
     (catch-app-errors event-cb
       (free-pointer-data req :preserve-pointer t)
       (uv:free-req req)
+      (setf (socket-connected socket) t)
       (unless (socket-closed-p socket)
         ;; start reading on the socket
         (let ((res (uv:uv-read-start uvstream (cffi:callback tcp-alloc-cb) (cffi:callback tcp-read-cb))))
           (if (zerop res)
-              (when connect-cb
-                (funcall connect-cb (or stream socket)))
+              (progn
+                (when connect-cb
+                  (funcall connect-cb (or stream socket)))
+                (when stream
+                  (send-buffered-data stream)))
               (run-event-cb 'event-handler res event-cb :socket socket)))))))
 
 (define-c-callback tcp-write-cb :void ((req :pointer) (status :int))
   "Called when data is finished being written to a socket."
-  (let* ((uvstream (car (deref-data-from-pointer req)))
+  (let* ((uvstream (deref-data-from-pointer req))
          (socket (getf (deref-data-from-pointer uvstream) :socket))
          (callbacks (get-callbacks uvstream))
          (write-cb (getf callbacks :write-cb))
@@ -350,7 +353,10 @@
                  (uvstream (let ((s (uv:alloc-handle :tcp)))
                              (uv:uv-tcp-init (event-base-c *event-base*) s)
                              s))
-                 (socket (make-instance 'socket :c uvstream :direction :in :drain-read-buffer (not stream-data-p)))
+                 (socket (make-instance 'socket :c uvstream
+                                                :direction :in
+                                                :connected t
+                                                :drain-read-buffer (not stream-data-p)))
                  (stream (when stream-data-p (make-instance 'async-io-stream :socket socket))))
             (if (zerop (uv:uv-accept server uvstream))
                 (progn
@@ -382,11 +388,14 @@
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
     (uv:uv-tcp-init (event-base-c *event-base*) uvstream)
     (when fd (uv:uv-tcp-open uvstream fd))
-    (when data
+    (when (or data tcp-stream)
       (let* ((old-connect-cb connect-cb)
              (new-connect-cb (lambda (sock)
                                (when old-connect-cb (funcall old-connect-cb sock))
-                               (write-socket-data sock data))))
+                               (cond ((and data (typep sock 'async-output-stream))
+                                      (write-sequence data sock))
+                                     (data
+                                      (write-socket-data sock data))))))
         (setf connect-cb new-connect-cb)))
     (save-callbacks uvstream (list :read-cb read-cb
                                    :event-cb event-cb
