@@ -439,7 +439,7 @@
     (flet ((do-connect (ip port)
              (with-ip-to-sockaddr ((sockaddr) ip port)
                (let ((req (uv:alloc-req :connect)))
-                 ;; make sure we can grab the original uvstream form the req
+                 ;; make sure we can grab the original uvstream from the req
                  (attach-data-to-pointer req (list uvstream))
                  (uv:uv-tcp-connect req uvstream sockaddr (cffi:callback tcp-connect-cb))))))
       (if (ip-address-p host)
@@ -452,7 +452,8 @@
             (lambda (ip family)
               (declare (ignore family))
               (do-connect ip port))
-            event-cb))))
+            event-cb
+            :family +af-inet+))))
   socket/stream)
 
 (defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
