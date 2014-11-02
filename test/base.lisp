@@ -54,3 +54,4 @@
             (setf yes-ran :omglolwtf)))
         (as:delay (lambda () nil) :time .2))
     (is (eq yes-ran :omglolwtf))))
+

@@ -112,10 +112,10 @@
 (defun do-close-loop (evloop &optional (loops 0))
   "Close an event loop by looping over its open handles, closing them, rinsing
    and repeating until uv-loop-close returns 0."
+  (process-event-loop-exit-callbacks)
   (let ((res (uv:uv-loop-close evloop)))
     (unless (zerop res)
       (uv:uv-stop evloop)
-      (process-event-loop-exit-callbacks)
       (uv:uv-walk evloop (cffi:callback loop-exit-walk-cb) (cffi:null-pointer))
       (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+))
       (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+))
