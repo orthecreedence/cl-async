@@ -45,6 +45,8 @@
 
 (defclass socket ()
   ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
+   (buffer :accessor socket-buffer :initarg :buffer :initform (make-buffer)
+     :documentation "Holds data sent on the socket before it's connected.")
    (connected :accessor socket-connected :initarg :connected :initform nil)
    (closed :accessor socket-closed :initarg :closed :initform nil)
    (closing :accessor socket-closing :initform nil)
@@ -203,13 +205,25 @@
   "Write data into a cl-async socket. Allows specifying read/write/event
    callbacks. Any callback left nil will use that current callback from the
    socket (so they only override when specified, otherwise keep the current
-   callback)"
+   callback).
+   
+   Note that libuv doesn't buffer output for non-connected sockets, so we have
+   to do it ourselves by checking if the socket is connected and buffering
+   accordingly."
   (check-socket-open socket)
   (let* ((uvstream (socket-c socket))
          (write-timeout (getf (deref-data-from-pointer uvstream) :write-timeout))
          (timeout (car write-timeout))
          (do-send (lambda ()
-                    (write-to-uvstream uvstream data))))
+                    ;; if the socket is connected, just send the data out as
+                    ;; usual. if not connected, buffer the write in the socket's
+                    ;; write buffer until connected
+                    (if (socket-connected socket)
+                        (write-to-uvstream uvstream data)
+                        (let ((bytes (if (stringp data)
+                                         (babel:string-to-octets data :encoding :utf-8)
+                                         data)))
+                          (setf (socket-buffer socket) (append-array (socket-buffer socket) bytes)))))))
     (when write-timeout
       (remove-event timeout)
       (add-event timeout :timeout (cdr write-timeout)))
@@ -230,6 +244,10 @@
         ;; we're not setting callbacks, so just enable the socket and send the
         ;; data
         (funcall do-send))))
+
+(defun write-pending-socket-data (socket)
+  "Write any pending data on the given socket to its underlying stream."
+  (write-socket-data socket (socket-buffer socket)))
 
 (define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int) (buf :pointer))
   "Called when we want to allocate data to be filled for stream reading."
@@ -302,8 +320,7 @@
               (progn
                 (when connect-cb
                   (funcall connect-cb (or stream socket)))
-                (when stream
-                  (send-buffered-data stream)))
+                (write-pending-socket-data socket))
               (run-event-cb 'event-handler res event-cb :socket socket)))))))
 
 (define-c-callback tcp-write-cb :void ((req :pointer) (status :int))

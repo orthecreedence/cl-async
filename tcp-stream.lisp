@@ -1,8 +1,5 @@
 (in-package :cl-async)
 
-(defun make-buffer (&optional data)
-  (make-array 0 :element-type 'octet :initial-contents data))
-
 (defclass async-stream (trivial-gray-stream-mixin)
   ((socket :accessor stream-socket :initarg :socket :initform nil)
    (buffer :accessor stream-buffer :initform (make-buffer)))
@@ -67,15 +64,11 @@
   "Write a sequence of bytes to the underlying socket."
   (when (open-stream-p stream)
     (let ((seq (subseq sequence start end)))
-      ;; if the socket isn't connected, we have to buffer our output until it's
-      ;; connected
-      (if (socket-connected (stream-socket stream))
-          (write-socket-data (stream-socket stream) seq)
-          (setf (stream-buffer stream) (append-array (stream-buffer stream) seq))))))
+      (write-socket-data (stream-socket stream) seq))))
 
 (defmethod stream-write-byte ((stream async-output-stream) byte)
   "Write one byte to the underlying socket."
-  (stream-write-sequence (stream (vector byte) 0 1)))
+  (stream-write-sequence stream (vector byte) 0 1))
   
 (defmethod send-buffered-data ((stream async-output-stream))
   "Take data we've buffered between initial sending and actual socket connection

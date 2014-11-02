@@ -10,6 +10,7 @@
            #:callback
 
            #:bytes
+           #:make-buffer
            
            #:+af-inet+
            #:+af-inet6+
@@ -67,6 +68,10 @@
   "Convert any vector/string into a byte array. Useful for sending direct byte
    data into write-socket-data."
   (coerce vector '(vector octet)))
+
+(defun make-buffer (&optional data)
+  "Create an octet buffer, optoinally filled with the given data."
+  (make-array 0 :element-type 'octet :initial-contents data))
 
 (defconstant +af-inet+ uv:+af-inet+)
 (defconstant +af-inet6+ uv:+af-inet-6+)
