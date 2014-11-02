@@ -79,7 +79,7 @@
     (add-event event :timeout time :activate t)
     event))
 
-(defmacro with-delay ((seconds) &body body)
+(defmacro with-delay ((&optional (seconds 0)) &body body)
   "Nicer syntax for delay function."
   `(delay (lambda () ,@body) :time ,seconds))
 
