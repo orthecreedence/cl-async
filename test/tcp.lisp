@@ -49,8 +49,8 @@
   (let ((num-err 0))
     (signals as:tcp-timeout
       (async-let ()
-        ;(test-timeout 2)
-        (as:tcp-connect "1.24.3.4" 3
+        (test-timeout 2)
+        (as:tcp-connect "1.24.3.4" 9090
           (lambda (sock data) (declare (ignore sock data)))
           (lambda (ev)
             (incf num-err)
@@ -123,7 +123,8 @@
         (ext:stream-handles stream))))
 
 (test wrap-existing-fd
-  "Make sure wrapping an existing file descriptor works"
+  "Make sure wrapping an existing file descriptor works. This now fails on
+   windows because libuv doesn't wrap pre-connected FDs on windows."
   (multiple-value-bind (response)
       (async-let ((response nil))
         (test-timeout 3)
@@ -140,7 +141,7 @@
                                (as:close-socket sock)
                                (as:close-tcp-server server))
                              (lambda (ev)
-                               (format t "EV: ~a~%" ev))
+                               (error ev))
                              :fd (get-usocket-fd conn))))
                 (as:write-socket-data sock "omg")))
             :time .2)))

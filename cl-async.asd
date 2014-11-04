@@ -21,7 +21,16 @@
   :license "MIT"
   :version "0.5.3"
   :description "Asynchronous operations for Common Lisp."
-  :depends-on (#:cffi #:trivial-features #:cl-libuv #:cl-async-base #:cl-async-util #:cl-async-future #:babel #:cl-ppcre #:trivial-gray-streams #:puri)
+  :depends-on (#:cffi
+               #:trivial-features
+               #:static-vectors
+               #:cl-libuv
+               #:cl-async-base
+               #:cl-async-util
+               #:cl-async-future
+               #:babel
+               #:cl-ppcre
+               #:trivial-gray-streams)
   :components
   ((:file "package")
    (:file "event-loop" :depends-on ("package"))

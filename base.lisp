@@ -24,8 +24,8 @@
            #:event-base-num-connections-out
 
            #:*buffer-size*
-           #:*socket-buffer-c*
-           #:*socket-buffer-lisp*))
+           #:*output-buffer*
+           #:*input-buffer*))
 
 (in-package :cl-async-base)
 
@@ -91,12 +91,14 @@
      One object to rule them all, one object to find them.
      One object to bring them in and in the darkness bind them."))
   
-(defparameter *buffer-size* 16384
+(defparameter *buffer-size* 65535
   "The amount of data we'll pull from the evbuffers when doing reading/writing.")
-(defvar *socket-buffer-c* nil
-  "A pointer to the buffer in C land that reads from sockets.")
-(defvar *socket-buffer-lisp* nil
-  "An array in lisp land that holds data copied from a socket.")
+(defvar *output-buffer* nil
+  "A buffer that lives in both C and lisp worlds (static-vector) that lets us
+   write to sockets.")
+(defvar *input-buffer* nil
+  "A buffer that lives in both C and lisp worlds (static-vector) that lets us
+   read from sockets.")
 
 ;; threading/locking state. i had an internal debate whether or note to include
 ;; these inside the event-base class itself, but i'd honestly rather not muddy

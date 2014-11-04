@@ -16,7 +16,6 @@
            #:+af-inet6+
            #:+af-unspec+
            #:+af-unix+
-           #:*default-lookup-type*
 
            #:+sockaddr-size+
            #:+sockaddr6-size+
@@ -56,7 +55,10 @@
            #:ip-address-p
            #:ip-str-to-sockaddr
            #:with-ip-to-sockaddr
-           #:addrinfo-to-string))
+           #:addrinfo-to-string
+           
+           #:set-socket-nonblocking
+           #:fd-connected-p))
 (in-package :cl-async-util)
 
 (deftype octet () '(unsigned-byte 8))
@@ -77,12 +79,6 @@
 (defconstant +af-inet6+ uv:+af-inet-6+)
 (defconstant +af-unspec+ uv:+af-unspec+)
 (defconstant +af-unix+ uv:+af-unix+)
-
-(defvar *default-lookup-type*
-  (progn
-    #+(or :bsd :freebsd :darwin) +af-inet+
-    #-(or :bsd :freebsd :darwin) +af-unspec+)
-  "Holds the best default lookup type for a given platform.")
 
 ;; define some cached values to save CFFI calls. believe it or not, this does
 ;; make a performance difference
@@ -322,4 +318,46 @@
                   (t
                    (setf err (format nil "unsupported DNS family: ~a" family))))))
       (values (cffi:foreign-string-to-lisp buf) family err))))
+
+(defun set-socket-nonblocking (fd)
+  "Sets an FD into non-blocking mode."
+  (let ((FIONBIO -2147195266)
+        (F_GETFL 3)
+        (F_SETFL 4)
+        (O_NONBLOCK 2048))
+    (cond ((cffi:foreign-symbol-pointer "ioctlsocket")
+           (cffi:with-foreign-object (nonblocking :unsigned-long)
+             (setf (cffi:mem-aref nonblocking :unsigned-long) 1)
+             (cffi:foreign-funcall "ioctlsocket"
+                                   :int fd
+                                   :long FIONBIO
+                                   :pointer nonblocking
+                                   :int)))
+          ((cffi:foreign-symbol-pointer "fcntl")
+           (let ((flags (cffi:foreign-funcall "fcntl"
+                                              :int fd
+                                              :int F_GETFL
+                                              :pointer (cffi:null-pointer)
+                                              :int)))
+             (cffi:foreign-funcall "fcntl"
+                                   :int fd
+                                   :int F_SETFL
+                                   :int (logior flags O_NONBLOCK)
+                                   :int))))))
+
+(defun fd-connected-p (fd)
+  "Check if an FD is connected."
+  (cffi:with-foreign-objects ((error :int)
+                              (len :int))
+    (setf (cffi:mem-aref len :int) (cffi:foreign-type-size :int))
+    (let* ((SOL_SOCKET #+windows 65535 #-windows 1)
+           (SO_ERROR #+windows 4103 #-windows 4)
+           (res (cffi:foreign-funcall "getsockopt"
+                                      :int fd
+                                      :int SOL_SOCKET
+                                      :int SO_ERROR
+                                      :pointer error
+                                      :pointer len
+                                      :int)))
+      (zerop res))))
 

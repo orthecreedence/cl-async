@@ -27,7 +27,7 @@
       (uv:free-req req)
       (uv:uv-freeaddrinfo addrinfo))))
 
-(defun dns-lookup (host resolve-cb event-cb &key (family *default-lookup-type*))
+(defun dns-lookup (host resolve-cb event-cb &key (family +af-inet+))
   "Asynchronously lookup a DNS address. Note that if an IP address is passed,
    the lookup happens synchronously. If a lookup is synchronous (and instant)
    this returns T, otherwise nil (lookup happening in background). Either way

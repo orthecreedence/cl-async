@@ -122,7 +122,7 @@
         (decf (event-base-num-connections-in *event-base*))
         (decf (event-base-num-connections-out *event-base*)))
     (setf (socket-closed socket) t)
-    (do-close-tcp uvstream)))
+    (do-close-tcp uvstream :force force)))
 
 (defgeneric close-tcp-server (socket)
   (:documentation
@@ -182,24 +182,23 @@
                    data))
          (data-length (length data))
          (data-index 0)
-         (buffer-c *socket-buffer-c*))
+         (buffer-c *output-buffer*)
+         (buffer-length (length buffer-c)))
     (loop while (< 0 data-length) do
-      (let ((bufsize (min data-length *buffer-size*)))
-        (dotimes (i bufsize)
-          (setf (cffi:mem-aref buffer-c :unsigned-char i) (aref data data-index))
-          (incf data-index))
+      (let ((bufsize (min data-length buffer-length)))
+        (replace buffer-c data :start2 data-index)
         (let ((req (uv:alloc-req :write))
-              (buf (uv:alloc-uv-buf buffer-c bufsize)))
-          (attach-data-to-pointer req uvstream)
+              (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer buffer-c) bufsize)))
           (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback tcp-write-cb))))
             (uv:free-uv-buf buf)
-            (if (zerop res)
-                (decf data-length bufsize)
-                (let ((socket (getf (deref-data-from-pointer uvstream) :socket))
-                      (event-cb (getf (get-callbacks uvstream) :event-cb)))
-                  (uv:free-req req)
-                  (event-handler res event-cb :socket socket)
-                  (return-from write-to-uvstream)))))))))
+            (unless (zerop res)
+              (let ((socket (getf (deref-data-from-pointer uvstream) :socket))
+                    (event-cb (getf (get-callbacks uvstream) :event-cb)))
+                (uv:free-req req)
+                (event-handler res event-cb :socket socket)
+                (return-from write-to-uvstream)))
+            (attach-data-to-pointer req uvstream)
+            (decf data-length bufsize)))))))
 
 (defun write-socket-data (socket data &key read-cb write-cb event-cb)
   "Write data into a cl-async socket. Allows specifying read/write/event
@@ -252,9 +251,7 @@
 (define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int) (buf :pointer))
   "Called when we want to allocate data to be filled for stream reading."
   (declare (ignore handle))
-  ;; TODO: use a static buffer here instead of dynamic allocation
-  ;; TODO: make sure not to free the buffer in tcp-read-cb once converted
-  (uv:alloc-uv-buf (cffi:foreign-alloc :char :count size) size buf))
+  (uv:alloc-uv-buf (static-vectors:static-vector-pointer *input-buffer*) (min *buffer-size* size) buf))
 
 (define-c-callback tcp-read-cb :void ((uvstream :pointer) (nread :int) (buf :pointer))
   "Called when a stream has been read into a buffer returned by alloc-cb."
@@ -273,8 +270,6 @@
     (catch-app-errors event-cb
       (when (< nread 0)
         ;; we got an error
-        (unless (cffi:null-pointer-p buf-ptr)
-          (cffi:foreign-free buf-ptr))
         (run-event-cb 'event-handler nread event-cb :socket socket)
         (return-from tcp-read-cb))
 
@@ -293,16 +288,11 @@
               (read-cb
                ;; we're not draining and we have a read CB, so stream
                (stream-append-bytes stream bytes)
-               (funcall read-cb socket stream))))
-
-      ;; free the buffer
-      ;; TODO: don't free once using static buffer (pre-allocated)
-      (unless (cffi:null-pointer-p buf-ptr)
-        (cffi:foreign-free buf-ptr)))))
+               (funcall read-cb socket stream)))))))
 
 (define-c-callback tcp-connect-cb :void ((req :pointer) (status :int))
   "Called when an outgoing TCP socket connects."
-  (let* ((uvstream (car (deref-data-from-pointer req)))
+  (let* ((uvstream (deref-data-from-pointer req))
          (stream-data (deref-data-from-pointer uvstream))
          (socket (getf stream-data :socket))
          (stream (getf stream-data :stream))
@@ -310,6 +300,10 @@
          (event-cb (getf callbacks :event-cb))
          (connect-cb (getf callbacks :connect-cb)))
     (catch-app-errors event-cb
+      (unless (zerop status)
+        (unless (socket-closed-p socket)
+          (run-event-cb 'event-handler status event-cb :socket socket))
+        (return-from tcp-connect-cb))
       (free-pointer-data req :preserve-pointer t)
       (uv:free-req req)
       (setf (socket-connected socket) t)
@@ -404,7 +398,6 @@
                                         :drain-read-buffer (not dont-drain-read-buffer)))
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
     (uv:uv-tcp-init (event-base-c *event-base*) uvstream)
-    (when fd (uv:uv-tcp-open uvstream fd))
     (when (or data tcp-stream)
       (let* ((old-connect-cb connect-cb)
              (new-connect-cb (lambda (sock)
@@ -423,6 +416,20 @@
                                            :stream tcp-stream))
     ;; call this AFTER attach-data-to-pointer because this appends to the data
     (set-socket-timeouts uvstream read-timeout write-timeout :socket-is-uvstream t)
+    ;; wrap existing fd
+    (when fd
+      (let ((r (uv:uv-tcp-open uvstream fd)))
+        (unless (zerop r)
+          (event-handler r event-cb :catch-errors t)
+          (return-from init-tcp-socket nil))
+        (set-socket-nonblocking fd)
+        (when (fd-connected-p fd)
+          ;; wrapping a pre-connected FD is not allowed in windows =[
+          (when (progn #+windows t)
+            (error "FD wrapping no longer supported in windows. Please use a poller instead or bug libuv maintainers to support windows wrapping of connected FDs."))
+          (let ((req (uv:alloc-req :connect)))
+            (attach-data-to-pointer req uvstream)
+            (tcp-connect-cb req 0)))))
     (if stream
         tcp-stream
         socket)))
@@ -440,7 +447,7 @@
              (with-ip-to-sockaddr ((sockaddr) ip port)
                (let ((req (uv:alloc-req :connect)))
                  ;; make sure we can grab the original uvstream from the req
-                 (attach-data-to-pointer req (list uvstream))
+                 (attach-data-to-pointer req uvstream)
                  (uv:uv-tcp-connect req uvstream sockaddr (cffi:callback tcp-connect-cb))))))
       (if (ip-address-p host)
           ;; got an IP so just connect directly

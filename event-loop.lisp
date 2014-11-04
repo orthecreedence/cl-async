@@ -29,7 +29,7 @@
                          (funcall event-cb event)))
                    ;; if the app closed the socket in the event cb (perfectly fine),
                    ;; make sure we don't trigger an error trying to close it again.
-                   (handler-case (and socket (close-socket socket))
+                   (handler-case (and socket (close-socket socket :force t))
                      (socket-closed () nil)))))))
       (if catch-errors
           (catch-app-errors event-cb (do-handle))
@@ -90,8 +90,7 @@
 (define-c-callback loop-exit-walk-cb :void ((handle :pointer) (arg :pointer))
   "Called when we want to close the loop AND IT WONT CLOSE. So we walk each
    handle and close them."
-  ;(when (uv:uv-is-closing handle)
-    ;(return-from loop-exit-walk-cb))
+  (declare (ignore arg))
   (case (uv:handle-type handle)
     (:tcp (let* ((data (deref-data-from-pointer handle))
                  (socket/server (if (listp data)
@@ -148,8 +147,8 @@
                                    (list :catch-app-errors catch-app-errors))
                                  (when (functionp default-event-cb)
                                    (list :default-event-handler default-event-cb)))))
-          (*socket-buffer-c* (cffi:foreign-alloc :unsigned-char :count *buffer-size*))
-          (*socket-buffer-lisp* (make-array *buffer-size* :element-type '(unsigned-byte 8)))
+          (*output-buffer* (static-vectors:make-static-vector *buffer-size* :element-type 'octet))
+          (*input-buffer* (static-vectors:make-static-vector *buffer-size* :element-type 'octet))
           (callbacks nil))
       (incf *event-base-next-id*)
       (delay start-fn)
@@ -165,7 +164,8 @@
           (uv:uv-run (event-base-c *event-base*) (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+)))
         ;; cleanup
         (do-close-loop (event-base-c *event-base*))
-        (cffi:foreign-free *socket-buffer-c*)
+        (static-vectors:free-static-vector *output-buffer*)
+        (static-vectors:free-static-vector *input-buffer*)
         (free-pointer-data (event-base-c *event-base*) :preserve-pointer t)
         (bt:with-lock-held (*event-base-registry-lock*)
           (remhash (event-base-id *event-base*) *event-base-registry*))
