@@ -492,7 +492,11 @@
              (server-class (make-instance 'tcp-server
                                           :c server-c
                                           :stream stream))
-             (r-listen (uv:uv-listen server-c (or backlog 128) (cffi:callback tcp-accept-cb))))
+             (backlog (if (or (null backlog)
+                              (< backlog 0))
+                          128
+                          backlog))
+             (r-listen (uv:uv-listen server-c backlog (cffi:callback tcp-accept-cb))))
         ;; check that our listener instantiated properly
         (when (or (< r-bind 0)
                   (< r-listen 0))
