@@ -45,6 +45,8 @@
 
 (defclass socket ()
   ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
+   (data :accessor socket-data :initarg data :initform nil
+     :documentation "Used to store arbitrary (app-defined) data with a socket.")
    (buffer :accessor socket-buffer :initarg :buffer :initform (make-buffer)
      :documentation "Holds data sent on the socket before it's connected.")
    (connected :accessor socket-connected :initarg :connected :initform nil)
