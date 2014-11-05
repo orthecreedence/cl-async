@@ -200,15 +200,18 @@
             (attach-data-to-pointer req uvstream)
             (decf data-length bufsize)))))))
 
-(defun write-socket-data (socket data &key read-cb write-cb event-cb)
-  "Write data into a cl-async socket. Allows specifying read/write/event
-   callbacks. Any callback left nil will use that current callback from the
-   socket (so they only override when specified, otherwise keep the current
-   callback).
-   
-   Note that libuv doesn't buffer output for non-connected sockets, so we have
-   to do it ourselves by checking if the socket is connected and buffering
-   accordingly."
+(defgeneric write-socket-data (socket data &key read-cb write-cb event-cb)
+  (:documentation
+    "Write data into a cl-async socket. Allows specifying read/write/event
+     callbacks. Any callback left nil will use that current callback from the
+     socket (so they only override when specified, otherwise keep the current
+     callback).
+     
+     Note that libuv doesn't buffer output for non-connected sockets, so we have
+     to do it ourselves by checking if the socket is connected and buffering
+     accordingly."))
+
+(defmethod write-socket-data ((socket socket) data &key read-cb write-cb event-cb)
   (check-socket-open socket)
   (let* ((uvstream (socket-c socket))
          (write-timeout (getf (deref-data-from-pointer uvstream) :write-timeout))
