@@ -8,21 +8,10 @@
            ;#:wrap-in-ssl
            #:init-tcp-ssl-socket
            #:tcp-ssl-connect
-           #:tcp-ssl-server)
-  (:import-from :cl-async
-                #:check-event-loop-running
-                #:socket-drain-read-buffer
-                #:write-to-evbuffer
-                #:tcp-read-cb
-                #:tcp-write-cb
-                #:tcp-event-cb
-                #:init-incoming-socket
-                #:tcp-server-c
-                #:tcp-server-data-pointer))
+           #:tcp-ssl-server))
 (in-package :cl-async-ssl)
 
 (define-condition tcp-ssl-error (tcp-error) ()
-  (:report (lambda (c s) (format s "SSL connection error: ~a: ~a" (event-errcode c) (event-errmsg c))))
   (:documentation "Describes a general SSL connection error."))
 
 ;; cl+ssl doesn't wrap these (bummer) so we have to do it manually...
@@ -356,4 +345,45 @@
                               (list :server server
                                     :ctx ssl-ctx))
       ssl-server)))
+
+
+
+
+
+
+
+
+
+;;; ----------------------------------------------------------------------------
+;;; ----------------------------------------------------------------------------
+
+
+(defun wrap-in-ssl (socket/stream &key (ssl-ctx cl+ssl::*ssl-global-context*))
+  "Given a cl-async:socket object, wrap it in an SSL layer."
+  (cl+ssl:ensure-initialized :method 'cl+ssl::ssl-v23-client-method)
+  (let* ((global-ctx cl+ssl::*ssl-global-context*)
+         (socket (if (typep socket/stream 'as:async-stream)
+                     (as:stream-socket socket/stream)
+                     socket/stream))
+         (uvstream (socket-c socket))
+         (ssl-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-client-method))
+         
+
+(defun tcp-ssl-connect (host port read-cb event-cb
+                        &key data stream ssl-ctx
+                        connect-cb write-cb
+                        (read-timeout -1) (write-timeout -1)
+                        (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+  "Just like cl-async:tcp-connect, but wraps the socket in SSL."
+  (let ((sock (apply 'as:tcp-connect
+                     (append (list host port read-cb event-cb
+                                   :data data
+                                   :stream stream
+                                   :connect-cb connect-cb
+                                   :write-cb write-cb
+                                   :read-timeout read-timeout
+                                   :write-timeout write-timeout)
+                             (when dont-drain-read-buffer-supplied-p
+                               (list :dont-drain-read-buffer dont-drain-read-buffer))))))
+    (wrap-in-ssl sock :ssl-ctx ssl-ctx)))
 
