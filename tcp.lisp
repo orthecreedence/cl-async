@@ -481,7 +481,7 @@
     (connect-tcp-socket socket/stream host port :event-cb event-cb)
     socket/stream))
 
-(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog 128) stream)
+(defun tcp-server (bind-address port read-cb event-cb &key connect-cb backlog stream)
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (check-event-loop-running)
@@ -492,7 +492,7 @@
              (server-class (make-instance 'tcp-server
                                           :c server-c
                                           :stream stream))
-             (r-listen (uv:uv-listen server-c backlog (cffi:callback tcp-accept-cb))))
+             (r-listen (uv:uv-listen server-c (or backlog 128) (cffi:callback tcp-accept-cb))))
         ;; check that our listener instantiated properly
         (when (or (< r-bind 0)
                   (< r-listen 0))
