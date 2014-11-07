@@ -25,7 +25,9 @@
 
            #:*buffer-size*
            #:*output-buffer*
-           #:*input-buffer*))
+           #:*input-buffer*
+           #:*data-registry*
+           #:*function-registry*))
 
 (in-package :cl-async-base)
 
@@ -52,9 +54,9 @@
      :documentation "Holds the C object pointing to the libevent event base.")
    (id :accessor event-base-id :initarg :id :initform nil
      :documentation "Holds this event loop's numeric id.")
-   (function-registry :accessor event-base-function-registry :initarg :function-registry :initform nil
+   (function-registry :accessor event-base-function-registry :initarg :function-registry :initform (make-hash-table :test #'eql)
      :documentation "Holds all callbacks attached to this event loop.")
-   (data-registry :accessor event-base-data-registry :initarg :data-registry :initform nil
+   (data-registry :accessor event-base-data-registry :initarg :data-registry :initform (make-hash-table :test #'eql)
      :documentation "Holds all callback data attached to this event loop.")
    (exit-functions :accessor event-base-exit-functions :initarg :exit-functions :initform nil
      :documentation "Holds functions to be run when the event loop exist (cleanly or otherwise).")
@@ -99,6 +101,11 @@
 (defvar *input-buffer* nil
   "A buffer that lives in both C and lisp worlds (static-vector) that lets us
    read from sockets.")
+
+(defvar *data-registry* nil
+  "A hash table holding C pointer -> lisp data mappings.")
+(defvar *function-registry* nil
+  "A hash table holding C pointer -> lisp function(s) mappings.")
 
 ;; threading/locking state. i had an internal debate whether or note to include
 ;; these inside the event-base class itself, but i'd honestly rather not muddy

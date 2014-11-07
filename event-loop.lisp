@@ -60,12 +60,8 @@
 (defun stats ()
   "Return statistics about the current event loop."
   (list :open-dns-queries (event-base-dns-ref-count *event-base*)
-        :fn-registry-count (if (hash-table-p (event-base-function-registry *event-base*))
-                               (hash-table-count (event-base-function-registry *event-base*))
-                               0)
-        :data-registry-count (if (hash-table-p (event-base-data-registry *event-base*))
-                                 (hash-table-count (event-base-data-registry *event-base*))
-                                 0)
+        :fn-registry-count (hash-table-count *function-registry*)
+        :data-registry-count (hash-table-count *data-registry*)
         :incoming-tcp-connections (event-base-num-connections-in *event-base*)
         :outgoing-tcp-connections (event-base-num-connections-out *event-base*)))
 
@@ -138,18 +134,20 @@
     ;; note the binding of these variable via (let), which means they are thread-
     ;; local... so this function can be called in different threads, and the bound
     ;; variables won't interfere with each other.
-    (let ((*event-base* (apply #'make-instance
-                               (append
-                                 (list 'event-base
-                                       :c loop
-                                       :id *event-base-next-id*)
-                                 (when catch-app-errors-supplied-p
-                                   (list :catch-app-errors catch-app-errors))
-                                 (when (functionp default-event-cb)
-                                   (list :default-event-handler default-event-cb)))))
-          (*output-buffer* (static-vectors:make-static-vector *buffer-size* :element-type 'octet))
-          (*input-buffer* (static-vectors:make-static-vector *buffer-size* :element-type 'octet))
-          (callbacks nil))
+    (let* ((*event-base* (apply #'make-instance
+                                (append
+                                  (list 'event-base
+                                        :c loop
+                                        :id *event-base-next-id*)
+                                  (when catch-app-errors-supplied-p
+                                    (list :catch-app-errors catch-app-errors))
+                                  (when (functionp default-event-cb)
+                                    (list :default-event-handler default-event-cb)))))
+           (*output-buffer* (static-vectors:make-static-vector *buffer-size* :element-type 'octet))
+           (*input-buffer* (static-vectors:make-static-vector *buffer-size* :element-type 'octet))
+           (*data-registry* (event-base-data-registry *event-base*))
+           (*function-registry* (event-base-function-registry *event-base*))
+           (callbacks nil))
       (incf *event-base-next-id*)
       (delay start-fn)
       ;; this is the once instance where we assign callbacks to a libevent object

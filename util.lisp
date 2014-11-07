@@ -183,43 +183,39 @@
 (defun save-callbacks (pointer callbacks)
   "Save a set of callbacks, keyed by the given pointer."
   (with-lock
-    (unless (event-base-function-registry *event-base*)
-      (setf (event-base-function-registry *event-base*) (make-hash-table :test #'eql)))
     (let ((callbacks (if (listp callbacks)
                          callbacks
                          (list callbacks))))
-      (setf (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)) callbacks))))
+      (setf (gethash (make-pointer-eql-able pointer) *function-registry*) callbacks))))
 
 (defun get-callbacks (pointer)
   "Get all callbacks for the given pointer."
   (with-lock
-    (when (event-base-function-registry *event-base*)
-      (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)))))
+    (when *function-registry*
+      (gethash (make-pointer-eql-able pointer) *function-registry*))))
 
 (defun clear-callbacks (pointer)
   "Clear out all callbacks for the given pointer."
   (with-lock
-    (when (event-base-function-registry *event-base*)
-      (remhash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)))))
+    (when *function-registry*
+      (remhash (make-pointer-eql-able pointer) *function-registry*))))
 
 (defun attach-data-to-pointer (pointer data)
   "Attach a lisp object to a foreign pointer."
   (with-lock
-    (unless (event-base-data-registry *event-base*)
-      (setf (event-base-data-registry *event-base*) (make-hash-table :test #'eql)))
-    (setf (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)) data)))
+    (setf (gethash (make-pointer-eql-able pointer) *data-registry*) data)))
 
 (defun deref-data-from-pointer (pointer)
   "Grab data attached to a CFFI pointer."
   (with-lock
-    (when (and pointer (event-base-data-registry *event-base*))
-      (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)))))
+    (when (and pointer *data-registry*)
+      (gethash (make-pointer-eql-able pointer) *data-registry*))))
 
 (defun clear-pointer-data (pointer)
   "Clear the data attached to a CFFI pointer."
   (with-lock
-    (when (and pointer (event-base-data-registry *event-base*))
-      (remhash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)))))
+    (when (and pointer *data-registry*)
+      (remhash (make-pointer-eql-able pointer) *data-registry*))))
 
 (defun free-pointer-data (pointer &key preserve-pointer)
   "Clears out all data attached to a foreign pointer, and frees the pointer
