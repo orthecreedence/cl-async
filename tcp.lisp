@@ -244,10 +244,7 @@
          (drain-read (socket-drain-read-buffer socket))
          (callbacks (get-callbacks uvstream))
          (read-cb (getf callbacks :read-cb))
-         (event-cb (getf callbacks :event-cb))
-         (read-buf (multiple-value-list (uv:uv-buf-read buf)))
-         (buf-ptr (car read-buf))
-         (buf-len (cadr read-buf)))
+         (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
       (when (< nread 0)
         ;; we got an error
@@ -260,9 +257,10 @@
         (add-event timeout :timeout (cdr read-timeout)))
       
       ;; read the buffer
-      (let ((bytes (make-array nread :element-type '(unsigned-byte 8))))
-        (dotimes (i nread)
-          (setf (aref bytes i) (cffi:mem-aref buf-ptr :unsigned-char i)))
+      (let ((bytes (make-array nread :element-type 'octet)))
+        ;; input buffer was given to libuv in the alloc-cb, so we can just pull
+        ;; data directly out of it now
+        (replace bytes *input-buffer*)
         (cond ((and read-cb drain-read)
                ;; we're draining here, so call our read callback
                (funcall read-cb socket bytes))
