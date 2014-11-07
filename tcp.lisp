@@ -61,24 +61,6 @@
    (stream :accessor tcp-server-stream :initarg :stream :initform nil))
   (:documentation "Wraps around a libevent connection listener."))
 
-(defun get-last-tcp-err ()
-  "Since libevent provides a macro but not a function for getting the last error
-   code, we have to essentially rebuild that macro here.
-
-   NOTE: As libevent says, this function cannot be considered idempotent. In
-   other words, it can become hideously turgid whe...what's that? OH IDEMpotent,
-   that makes more sense. Yes, calling it more than once may result in different
-   values returned. So, call once and save the result until the next time an
-   error happens."
-  #+(or :windows :win32 :win64)
-    (let ((code (cffi:foreign-funcall "WSAGetLastError" :int)))
-      (values code
-              (cffi:foreign-funcall "evutil_socket_error_to_string" :int code :string)))
-  #-(or :windows :win32 :win64)
-    (let ((code (cffi:mem-aref (cffi:foreign-symbol-pointer "errno") :int)))
-      (values code
-              (cffi:foreign-funcall "strerror" :int code :string))))
-
 (defun check-socket-open (socket)
   "Throw a socket-closed condition if given a socket that's closed."
   (when (and (typep socket 'socket)
