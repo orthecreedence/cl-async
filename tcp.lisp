@@ -51,7 +51,6 @@
      :documentation "Holds data sent on the socket before it's connected.")
    (connected :accessor socket-connected :initarg :connected :initform nil)
    (closed :accessor socket-closed :initarg :closed :initform nil)
-   (closing :accessor socket-closing :initform nil)
    (direction :accessor socket-direction :initarg :direction :initform nil)
    (drain-read-buffer :accessor socket-drain-read-buffer :initarg :drain-read-buffer :initform t))
   (:documentation "Wraps around a libevent bufferevent socket."))
@@ -82,10 +81,9 @@
 
 (defun check-socket-open (socket)
   "Throw a socket-closed condition if given a socket that's closed."
-  (when (typep socket 'socket)
-    (when (or (socket-closed socket)
-              (socket-closing socket))
-      (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket" :socket socket))))
+  (when (and (typep socket 'socket)
+             (or (socket-closed socket)))
+    (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket" :socket socket)))
 
 (defun socket-closed-p (socket)
   "Return whether a socket is closed or not."
@@ -110,7 +108,6 @@
 (defmethod close-socket ((socket socket) &key force)
   "Close and free a socket and all of it's underlying structures."
   (check-socket-open socket)
-  (setf (socket-closing socket) t)
   (let* ((uvstream (socket-c socket))
          (data (deref-data-from-pointer uvstream))
          (read-timeout (car (getf data :read-timeout)))
