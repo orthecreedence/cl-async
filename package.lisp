@@ -103,6 +103,7 @@
            #:tcp-socket
            #:tcp-error
            #:tcp-eof
+           #:tcp-reset
            #:tcp-timeout
            #:tcp-refused
            #:tcp-accept-error
