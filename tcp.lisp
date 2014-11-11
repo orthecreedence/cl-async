@@ -48,7 +48,9 @@
    (data :accessor socket-data :initarg data :initform nil
      :documentation "Used to store arbitrary (app-defined) data with a socket.")
    (buffer :accessor socket-buffer :initarg :buffer :initform (make-buffer)
-     :documentation "Holds data sent on the socket before it's connected.")
+     :documentation "Holds data sent on the socket that hasn't been sent yet.")
+   (bufferingp :accessor socket-buffering-p :initform nil
+     :documentation "Lets us know if the socket is currently buffering output.")
    (connected :accessor socket-connected :initarg :connected :initform nil)
    (closed :accessor socket-closed :initarg :closed :initform nil)
    (direction :accessor socket-direction :initarg :direction :initform nil)
@@ -158,10 +160,7 @@
 
 (defun write-to-uvstream (uvstream data)
   "Util function to write data directly to a uv stream object."
-  (let* ((data (if (stringp data)
-                   (babel:string-to-octets data :encoding :utf-8)
-                   data))
-         (data-length (length data))
+  (let* ((data-length (length data))
          (data-index 0)
          (buffer-c *output-buffer*)
          (buffer-length (length buffer-c)))
@@ -199,7 +198,23 @@
                     ;; usual. if not connected, buffer the write in the socket's
                     ;; write buffer until connected
                     (if (socket-connected socket)
-                        (write-to-uvstream uvstream data)
+                        ;; buffer the socket data until the next event loop.
+                        ;; this avoids multiple (unneccesary) calls to uv_write,
+                        ;; which is fairly slow
+                        (let ((data (if (stringp data)
+                                        (babel:string-to-octets data :encoding :utf-8)
+                                        data)))
+                          (write-sequence data (socket-buffer socket))
+                          (unless (socket-buffering-p socket)
+                            (setf (socket-buffering-p socket) t)
+                            ;; flush the socket's buffer on the next loop
+                            (as:with-delay ()
+                              (setf (socket-buffering-p socket) nil)
+                              (write-to-uvstream uvstream (flexi-streams:get-output-stream-sequence (socket-buffer socket))))))
+                        ;; the socket isn't connected yet. libuv is suppoers to
+                        ;; queue the writes until it connects, but it doesn't
+                        ;; actually work, so we do our own buffering here. this
+                        ;; is all flushed out in the tcp-connect-cb.
                         (let ((bytes (if (stringp data)
                                          (babel:string-to-octets data :encoding :utf-8)
                                          data)))
@@ -293,6 +308,7 @@
               (progn
                 (when connect-cb
                   (funcall connect-cb (or stream socket)))
+                ;; write any buffered output we've stored up
                 (write-pending-socket-data socket))
               (run-event-cb 'event-handler res event-cb :socket socket)))))))
 
