@@ -393,15 +393,8 @@
                                         :drain-read-buffer (not dont-drain-read-buffer)))
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
     (uv:uv-tcp-init (event-base-c *event-base*) uvstream)
-    (when (or data tcp-stream)
-      (let* ((old-connect-cb connect-cb)
-             (new-connect-cb (lambda (sock)
-                               (when old-connect-cb (funcall old-connect-cb sock))
-                               (cond ((and data (typep sock 'async-output-stream))
-                                      (write-sequence data sock))
-                                     (data
-                                      (write-socket-data sock data))))))
-        (setf connect-cb new-connect-cb)))
+    (when data
+      (write-socket-data socket data))
     (save-callbacks uvstream (list :read-cb read-cb
                                    :event-cb event-cb
                                    :write-cb write-cb
