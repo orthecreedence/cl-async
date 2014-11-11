@@ -147,3 +147,43 @@
             :time .2)))
     (is (string= response "omg lol"))))
 
+(test no-overlap
+  "Make sure that requests/responses don't overlap."
+  (multiple-value-bind (res)
+      (async-let ((res (make-hash-table :test 'eq)))
+        (test-timeout 3)
+        
+        (let ((counter 1))
+          (as:tcp-server nil 31389
+            (lambda (sock data)
+              (dotimes (i (length data))
+                (assert (= (aref data 0) (aref data i))))
+              (incf (getf (as:socket-data sock) :bytes) (length data))
+              (when (<= 80000 (getf (as:socket-data sock) :bytes))
+                (let ((res (make-array 500000 :initial-element (getf (as:socket-data sock) :id)
+                                              :element-type 'as:octet)))
+                  (as:write-socket-data sock res))))
+            nil
+            :connect-cb (lambda (sock)
+                          (setf (as:socket-data sock) (list :id counter :bytes 0))
+                          (incf counter))))
+        (dotimes (i 4)
+          (let ((x i))
+            (as:tcp-connect "127.0.0.1" 31389
+              (lambda (sock data)
+                (push data (gethash x res)))
+              nil
+              :data (make-array 80000 :initial-element x)))))
+    (loop for k being the hash-keys of res
+          for v being the hash-values of res do
+      (let ((stream (flexi-streams:make-in-memory-output-stream :element-type '(unsigned-byte 8))))
+        (dolist (part v)
+          (write-sequence part stream))
+        (let ((bytes (flexi-streams:get-output-stream-sequence stream))
+              (is-eq t))
+          (dotimes (i (length bytes))
+            (unless (= (aref bytes 0) (aref bytes i))
+              (setf is-eq nil)
+              (return)))
+          (is (eq is-eq t)))))))
+
