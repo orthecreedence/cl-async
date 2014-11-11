@@ -178,7 +178,8 @@
                 (event-handler res event-cb :socket socket)
                 (return-from write-to-uvstream)))
             (attach-data-to-pointer req uvstream)
-            (decf data-length bufsize)))))))
+            (decf data-length bufsize)
+            (incf data-index bufsize)))))))
 
 (defun write-socket-data (socket data &key read-cb write-cb event-cb)
   "Write data into a cl-async socket. Allows specifying read/write/event
