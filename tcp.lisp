@@ -203,7 +203,7 @@
                         (let ((bytes (if (stringp data)
                                          (babel:string-to-octets data :encoding :utf-8)
                                          data)))
-                          (setf (socket-buffer socket) (append-array (socket-buffer socket) bytes)))))))
+                          (write-sequence bytes (socket-buffer socket)))))))
     (when write-timeout
       (remove-event timeout)
       (add-event timeout :timeout (cdr write-timeout)))
@@ -227,7 +227,7 @@
 
 (defun write-pending-socket-data (socket)
   "Write any pending data on the given socket to its underlying stream."
-  (write-socket-data socket (socket-buffer socket)))
+  (write-socket-data socket (flexi-streams:get-output-stream-sequence (socket-buffer socket))))
 
 (define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int) (buf :pointer))
   "Called when we want to allocate data to be filled for stream reading."

@@ -73,7 +73,10 @@
 
 (defun make-buffer (&optional data)
   "Create an octet buffer, optoinally filled with the given data."
-  (make-array 0 :element-type 'octet :initial-contents data))
+  (let ((buffer (flexi-streams:make-in-memory-output-stream :element-type 'octet)))
+    (when data
+      (write-sequence data buffer))
+    buffer))
 
 (defconstant +af-inet+ uv:+af-inet+)
 (defconstant +af-inet6+ uv:+af-inet-6+)

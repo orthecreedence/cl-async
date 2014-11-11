@@ -24,6 +24,7 @@
   :depends-on (#:cffi
                #:trivial-features
                #:static-vectors
+               #:flexi-streams
                #:cl-libuv
                #:cl-async-base
                #:cl-async-util
