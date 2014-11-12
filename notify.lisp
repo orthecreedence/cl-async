@@ -8,7 +8,9 @@
   ((c :accessor notifier-c :initarg :c :initform (cffi:null-pointer))
    (freed :accessor notifier-freed :reader notifier-freed-p :initform nil)
    (main-cb :accessor notifier-main-cb :initarg :main-cb :initform nil)
-   (event-cb :accessor notifier-event-cb :initarg :event-cb :initform nil))
+   (event-cb :accessor notifier-event-cb :initarg :event-cb :initform nil)
+   (single-shot :accessor notifier-single-shot :reader notifier-single-shot-p
+                :initarg :single-shot :initform t))
   (:documentation "Wraps a threading-enabled notifier."))
 
 (defun check-notifier-unfreed (notifier)
@@ -41,16 +43,19 @@
          (event-cb (notifier-event-cb notifier)))
     (catch-app-errors event-cb
       (unwind-protect
-        (when callback (funcall callback))
-        (unless (notifier-freed-p notifier)
+           (when callback (funcall callback))
+        (when (and (notifier-single-shot-p notifier)
+                   (not (notifier-freed-p notifier)))
           (free-notifier notifier))))))
 
-(defun make-notifier (callback &key event-cb)
+(defun make-notifier (callback &key event-cb (single-shot t))
   "Makes a notifier, an object that can trigger a callback from a thread other
-   than the event loop thread."
+   than the event loop thread. If single-shot is true (the default),
+   free the notifier after it's triggered."
   (check-event-loop-running)
   (let* ((async-c (uv:alloc-handle :async))
-         (notifier (make-instance 'notifier :c async-c :main-cb callback :event-cb event-cb)))
+         (notifier (make-instance 'notifier :c async-c :main-cb callback :event-cb event-cb
+                                            :single-shot single-shot)))
     (let ((r (uv:uv-async-init (event-base-c *event-base*) async-c (cffi:callback async-cb))))
       (if (< r 0)
           (event-handler r event-cb :catch-errors t)
@@ -62,4 +67,3 @@
   "Fires the callback attached to a notifier. Can be called from any thread."
   (let ((async-c (notifier-c notifier)))
     (uv:uv-async-send async-c)))
-
