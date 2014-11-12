@@ -75,7 +75,7 @@
 
 (defun make-buffer (&optional data)
   "Create an octet buffer, optoinally filled with the given data."
-  (declare (type octet-vector data))
+  (declare (type (or null octet-vector) data))
   (let ((buffer (fast-io:make-output-buffer)))
     (when data
       (fast-io:fast-write-sequence data buffer))
