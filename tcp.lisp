@@ -181,7 +181,7 @@
             (decf data-length bufsize)
             (incf data-index bufsize)))))))
 
-(defun write-socket-data (socket data &key read-cb write-cb event-cb)
+(defun write-socket-data (socket data &key read-cb write-cb event-cb force)
   "Write data into a cl-async socket. Allows specifying read/write/event
    callbacks. Any callback left nil will use that current callback from the
    socket (so they only override when specified, otherwise keep the current
@@ -208,7 +208,7 @@
                              ;; is all flushed out in the tcp-connect-cb.
                              (unless (socket-closed-p socket)
                                (write-to-buffer bytes (socket-buffer socket))))
-                            (*buffer-writes*
+                            ((and (not force) *buffer-writes*)
                              ;; buffer the socket data until the next event loop.
                              ;; this avoids multiple (unneccesary) calls to uv_write,
                              ;; which is fairly slow
@@ -247,13 +247,13 @@
 
 (defun write-pending-socket-data (socket)
   "Write any pending data on the given socket to its underlying stream."
-  (write-socket-data socket (buffer-output (socket-buffer socket)))
+  (write-socket-data socket (buffer-output (socket-buffer socket)) :force t)
   (setf (socket-buffer socket) (make-buffer)))
 
 (define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int) (buf :pointer))
   "Called when we want to allocate data to be filled for stream reading."
   (declare (ignore handle))
-  (uv:alloc-uv-buf (static-vectors:static-vector-pointer *input-buffer*) (min *buffer-size* size) buf))
+  (uv:alloc-uv-buf (static-vectors:static-vector-pointer *input-buffer*) *buffer-size* buf))
 
 (define-c-callback tcp-read-cb :void ((uvstream :pointer) (nread :int) (buf :pointer))
   "Called when a stream has been read into a buffer returned by alloc-cb."

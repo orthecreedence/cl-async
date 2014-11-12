@@ -159,7 +159,7 @@
               (dotimes (i (length data))
                 (assert (= (aref data 0) (aref data i))))
               (incf (getf (as:socket-data sock) :bytes) (length data))
-              (when (<= 80000 (getf (as:socket-data sock) :bytes))
+              (when (<= (+ as:*buffer-size* 20000) (getf (as:socket-data sock) :bytes))
                 (let ((res (make-array 500000 :initial-element (getf (as:socket-data sock) :id)
                                               :element-type 'as:octet)))
                   (as:write-socket-data sock res))))
@@ -171,11 +171,12 @@
           (let ((x i))
             (as:tcp-connect "127.0.0.1" 31389
               (lambda (sock data)
-                (declare (ignore sock))
+                (declare (ignorable sock))
                 (push data (gethash x res)))
               nil
-              :data (make-array 80000 :initial-element x)))))
-    (loop for v being the hash-values of res do
+              :data (make-array (+ as:*buffer-size* 20000) :initial-element x)))))
+    (loop ;for k being the hash-keys of res
+          for v being the hash-values of res do
       (let ((stream (flexi-streams:make-in-memory-output-stream :element-type '(unsigned-byte 8))))
         (dolist (part v)
           (write-sequence part stream))

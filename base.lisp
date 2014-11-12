@@ -99,7 +99,9 @@
   "If T, will buffer writes on the socket until the next loop. This is mainly to
    cut down on calls to uv_write, which is fairly slow.")
 
-(defvar *buffer-size* (* 1024 128)
+;; WARNING: don't change *buffer-size* unless you want weird data corruption
+;; problems (at least in libuv-1.0.0-rc2)
+(defvar *buffer-size* (* 1024 64)
   "The amount of data we'll pull from the evbuffers when doing reading/writing.")
 (defvar *output-buffer* nil
   "A buffer that lives in both C and lisp worlds (static-vector) that lets us
