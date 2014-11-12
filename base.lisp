@@ -93,7 +93,7 @@
      One object to rule them all, one object to find them.
      One object to bring them in and in the darkness bind them."))
   
-(defparameter *buffer-size* 65535
+(defparameter *buffer-size* (* 1024 128)
   "The amount of data we'll pull from the evbuffers when doing reading/writing.")
 (defvar *output-buffer* nil
   "A buffer that lives in both C and lisp worlds (static-vector) that lets us
