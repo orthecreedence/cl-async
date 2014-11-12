@@ -143,6 +143,7 @@
                                     (list :catch-app-errors catch-app-errors))
                                   (when (functionp default-event-cb)
                                     (list :default-event-handler default-event-cb)))))
+           (*buffer-writes* *buffer-writes*)
            (*output-buffer* (static-vectors:make-static-vector *buffer-size* :element-type 'octet))
            (*input-buffer* (static-vectors:make-static-vector *buffer-size* :element-type 'octet))
            (*data-registry* (event-base-data-registry *event-base*))

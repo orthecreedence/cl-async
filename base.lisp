@@ -23,6 +23,8 @@
            #:event-base-num-connections-in
            #:event-base-num-connections-out
 
+           #:*buffer-writes*
+
            #:*buffer-size*
            #:*output-buffer*
            #:*input-buffer*
@@ -93,7 +95,11 @@
      One object to rule them all, one object to find them.
      One object to bring them in and in the darkness bind them."))
   
-(defparameter *buffer-size* (* 1024 128)
+(defvar *buffer-writes* nil
+  "If T, will buffer writes on the socket until the next loop. This is mainly to
+   cut down on calls to uv_write, which is fairly slow.")
+
+(defvar *buffer-size* (* 1024 128)
   "The amount of data we'll pull from the evbuffers when doing reading/writing.")
 (defvar *output-buffer* nil
   "A buffer that lives in both C and lisp worlds (static-vector) that lets us

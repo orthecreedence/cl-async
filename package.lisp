@@ -11,7 +11,7 @@
            #:+af-unspec+
            #:+af-unix+
 
-           ;; create custom-sized buffers
+           #:*buffer-writes*
            #:*buffer-size*
            
            ;; common conditions/accessors

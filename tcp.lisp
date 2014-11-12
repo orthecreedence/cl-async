@@ -201,28 +201,29 @@
                     (let ((bytes (if (stringp data)
                                      (babel:string-to-octets data :encoding :utf-8)
                                      data)))
-                      (if (socket-connected socket)
-                          ;; write the data directly to the stream
-                          (unless (socket-closed-p socket)
-                            (write-to-uvstream uvstream bytes))
-                          ;; buffer the socket data until the next event loop.
-                          ;; this avoids multiple (unneccesary) calls to uv_write,
-                          ;; which is fairly slow
-                          ;(progn
-                          ;  (write-to-buffer bytes (socket-buffer socket))
-                          ;  (unless (socket-buffering-p socket)
-                          ;    (setf (socket-buffering-p socket) t)
-                          ;    ;; flush the socket's buffer on the next loop
-                          ;    (as:with-delay ()
-                          ;      (unless (socket-closed-p socket)
-                          ;        (setf (socket-buffering-p socket) nil)
-                          ;        (write-to-uvstream uvstream (buffer-output (socket-buffer socket)))
-                          ;        (setf (socket-buffer socket) (make-buffer))))))
-                          ;; the socket isn't connected yet. libuv is supposed to
-                          ;; queue the writes until it connects, but it doesn't
-                          ;; actually work, so we do our own buffering here. this
-                          ;; is all flushed out in the tcp-connect-cb.
-                          (write-to-buffer bytes (socket-buffer socket)))))))
+                      (cond ((not (socket-connected socket))
+                             ;; the socket isn't connected yet. libuv is supposed to
+                             ;; queue the writes until it connects, but it doesn't
+                             ;; actually work, so we do our own buffering here. this
+                             ;; is all flushed out in the tcp-connect-cb.
+                             (unless (socket-closed-p socket)
+                               (write-to-buffer bytes (socket-buffer socket))))
+                            (*buffer-writes*
+                             ;; buffer the socket data until the next event loop.
+                             ;; this avoids multiple (unneccesary) calls to uv_write,
+                             ;; which is fairly slow
+                             (write-to-buffer bytes (socket-buffer socket))
+                             (unless (socket-buffering-p socket)
+                               (setf (socket-buffering-p socket) t)
+                               ;; flush the socket's buffer on the next loop
+                               (as:with-delay ()
+                                 (unless (socket-closed-p socket)
+                                   (setf (socket-buffering-p socket) nil)
+                                   (write-to-uvstream uvstream (buffer-output (socket-buffer socket)))
+                                   (setf (socket-buffer socket) (make-buffer))))))
+                            (t
+                             (unless (socket-closed-p socket)
+                               (write-to-uvstream uvstream bytes))))))))
     (when write-timeout
       (remove-event timeout)
       (add-event timeout :timeout (cdr write-timeout)))
