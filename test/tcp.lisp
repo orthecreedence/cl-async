@@ -171,11 +171,11 @@
           (let ((x i))
             (as:tcp-connect "127.0.0.1" 31389
               (lambda (sock data)
+                (declare (ignore sock))
                 (push data (gethash x res)))
               nil
               :data (make-array 80000 :initial-element x)))))
-    (loop for k being the hash-keys of res
-          for v being the hash-values of res do
+    (loop for v being the hash-values of res do
       (let ((stream (flexi-streams:make-in-memory-output-stream :element-type '(unsigned-byte 8))))
         (dolist (part v)
           (write-sequence part stream))

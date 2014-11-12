@@ -11,6 +11,9 @@
            #:+af-unspec+
            #:+af-unix+
 
+           ;; create custom-sized buffers
+           #:*buffer-size*
+           
            ;; common conditions/accessors
            #:event-info
            #:event-error

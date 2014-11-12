@@ -12,7 +12,11 @@
   :license "MIT"
   :version "0.6.0"
   :description "Internal utilities for cl-async."
-  :depends-on (#:cffi #:cl-libuv #:cl-ppcre #:cl-async-base)
+  :depends-on (#:cffi
+               #:fast-io
+               #:cl-libuv
+               #:cl-ppcre
+               #:cl-async-base)
   :components
   ((:file "util")))
 
@@ -24,7 +28,6 @@
   :depends-on (#:cffi
                #:trivial-features
                #:static-vectors
-               #:flexi-streams
                #:cl-libuv
                #:cl-async-base
                #:cl-async-util

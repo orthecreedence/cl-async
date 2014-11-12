@@ -11,6 +11,8 @@
 
            #:bytes
            #:make-buffer
+           #:buffer-output
+           #:write-to-buffer
            
            #:+af-inet+
            #:+af-inet6+
@@ -73,10 +75,24 @@
 
 (defun make-buffer (&optional data)
   "Create an octet buffer, optoinally filled with the given data."
-  (let ((buffer (flexi-streams:make-in-memory-output-stream :element-type 'octet)))
+  (declare (type octet-vector data))
+  (let ((buffer (fast-io:make-output-buffer)))
     (when data
-      (write-sequence data buffer))
+      (fast-io:fast-write-sequence data buffer))
     buffer))
+
+(declaim (inline buffer-output))
+(defun buffer-output (buffer)
+  "Grab the output from a buffer created with (make-buffer)."
+  (declare (type fast-io::output-buffer buffer))
+  (fast-io:finish-output-buffer buffer))
+
+(declaim (inline write-to-buffer))
+(defun write-to-buffer (seq buffer)
+  "Write data to a buffer created with (make-buffer)."
+  (declare (type octet-vector seq)
+           (type fast-io::output-buffer buffer))
+  (fast-io:fast-write-sequence seq buffer))
 
 (defconstant +af-inet+ uv:+af-inet+)
 (defconstant +af-inet6+ uv:+af-inet-6+)
