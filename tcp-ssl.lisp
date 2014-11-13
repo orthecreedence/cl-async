@@ -11,6 +11,7 @@
            #:tcp-ssl-server))
 (in-package :cl-async-ssl)
 
+#|
 (define-condition tcp-ssl-error (tcp-error) ()
   (:documentation "Describes a general SSL connection error."))
 
@@ -353,7 +354,6 @@
 
 
 
-
 ;;; ----------------------------------------------------------------------------
 ;;; ----------------------------------------------------------------------------
 
@@ -386,4 +386,9 @@
                              (when dont-drain-read-buffer-supplied-p
                                (list :dont-drain-read-buffer dont-drain-read-buffer))))))
     (wrap-in-ssl sock :ssl-ctx ssl-ctx)))
+|#
+
+(defun tcp-ssl-server (bind-address port read-cb event-cb
+                       &key connect-cb (backlog -1) stream
+                            certificate key password))
 
