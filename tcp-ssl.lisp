@@ -8,7 +8,16 @@
            ;#:wrap-in-ssl
            #:init-tcp-ssl-socket
            #:tcp-ssl-connect
-           #:tcp-ssl-server))
+           #:tcp-ssl-server)
+  (:import-from :cl-async
+                #:check-event-loop-running
+                #:socket-drain-read-buffer
+                #:write-to-evbuffer
+                #:tcp-read-cb
+                #:tcp-write-cb
+                #:tcp-event-cb
+                #:init-incoming-socket
+                #:tcp-server-c))
 (in-package :cl-async-ssl)
 
 #|
@@ -308,7 +317,7 @@
                              :connect-cb connect-cb
                              :backlog backlog
                              :stream stream))
-         (data-pointer (tcp-server-data-pointer server)))
+         (data-pointer (tcp-server-c server)))
     ;; overwrite the accept callback from tcp-accept-cb -> tcp-ssl-accept-cb
     (le:evconnlistener-set-cb (tcp-server-c server)
                               (cffi:callback tcp-ssl-accept-cb)
