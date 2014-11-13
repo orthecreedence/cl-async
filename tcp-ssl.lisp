@@ -17,8 +17,7 @@
                 #:tcp-write-cb
                 #:tcp-event-cb
                 #:init-incoming-socket
-                #:tcp-server-c
-                #:tcp-server-data-pointer))
+                #:tcp-server-c))
 (in-package :cl-async-ssl)
 
 #|
@@ -319,7 +318,7 @@
                              :connect-cb connect-cb
                              :backlog backlog
                              :stream stream))
-         (data-pointer (tcp-server-data-pointer server)))
+         (data-pointer (tcp-server-c server)))
     ;; overwrite the accept callback from tcp-accept-cb -> tcp-ssl-accept-cb
     (le:evconnlistener-set-cb (tcp-server-c server)
                               (cffi:callback tcp-ssl-accept-cb)
