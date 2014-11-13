@@ -48,7 +48,6 @@
 (define-c-callback timer-cb :void ((timer-c :pointer))
   "Callback used by the async timer system to find and run user-specified
    callbacks on timer events."
-  (declare (ignore fd what))
   (let* ((event (deref-data-from-pointer timer-c))
          (callbacks (get-callbacks timer-c))
          (cb (getf callbacks :callback))
@@ -67,7 +66,7 @@
 (defun delay (callback &key time event-cb)
   "Run a function, asynchronously, after the specified amount of seconds. An
    event loop must be running for this to work.
-   
+
    If time is nil, callback is still called asynchronously, but is queued in the
    event loop with no delay."
   (check-event-loop-running)
@@ -113,4 +112,3 @@
    This is useful for triggering arbitrary events, and can even be triggered
    from a thread outside the libevent loop."
   (delay callback :event-cb event-cb :time (* 100 31536000)))
-
