@@ -11,6 +11,9 @@
            #:+af-unspec+
            #:+af-unix+
 
+           #:*buffer-writes*
+           #:*buffer-size*
+           
            ;; common conditions/accessors
            #:event-info
            #:event-error
@@ -103,6 +106,7 @@
            #:tcp-socket
            #:tcp-error
            #:tcp-eof
+           #:tcp-reset
            #:tcp-timeout
            #:tcp-refused
            #:tcp-accept-error

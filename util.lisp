@@ -11,7 +11,9 @@
 
            #:bytes
            #:make-buffer
-           
+           #:buffer-output
+           #:write-to-buffer
+
            #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
@@ -21,6 +23,7 @@
            #:+sockaddr6-size+
            #:+addrinfo-size+
 
+           #:call-with-callback-restarts
            #:catch-app-errors
            #:run-event-cb
 
@@ -29,7 +32,7 @@
            #:make-foreign-type
 
            #:with-lock
-           
+
            #:make-pointer-eql-able
            #:create-data-pointer
            #:save-callbacks
@@ -49,14 +52,14 @@
            #:*ipv6-scanner*
 
            #:error-str
-           
+
            #:ipv4-address-p
            #:ipv6-address-p
            #:ip-address-p
            #:ip-str-to-sockaddr
            #:with-ip-to-sockaddr
            #:addrinfo-to-string
-           
+
            #:set-socket-nonblocking
            #:fd-connected-p))
 (in-package :cl-async-util)
@@ -73,7 +76,24 @@
 
 (defun make-buffer (&optional data)
   "Create an octet buffer, optoinally filled with the given data."
-  (make-array 0 :element-type 'octet :initial-contents data))
+  (declare (type (or null octet-vector) data))
+  (let ((buffer (fast-io:make-output-buffer)))
+    (when data
+      (fast-io:fast-write-sequence data buffer))
+    buffer))
+
+(declaim (inline buffer-output))
+(defun buffer-output (buffer)
+  "Grab the output from a buffer created with (make-buffer)."
+  (declare (type fast-io::output-buffer buffer))
+  (fast-io:finish-output-buffer buffer))
+
+(declaim (inline write-to-buffer))
+(defun write-to-buffer (seq buffer)
+  "Write data to a buffer created with (make-buffer)."
+  (declare (type octet-vector seq)
+           (type fast-io::output-buffer buffer))
+  (fast-io:fast-write-sequence seq buffer))
 
 (defconstant +af-inet+ uv:+af-inet+)
 (defconstant +af-inet6+ uv:+af-inet-6+)
@@ -85,6 +105,38 @@
 (defconstant +sockaddr-size+ (cffi:foreign-type-size '(:struct uv:sockaddr-in)))
 (defconstant +sockaddr6-size+ (cffi:foreign-type-size '(:struct uv:sockaddr-in-6)))
 (defconstant +addrinfo-size+ (cffi:foreign-type-size '(:struct uv:addrinfo)))
+
+(defun call-with-callback-restarts (thunk &optional (abort-restart-description "Abort cl-async callback."))
+  "Call thunk with restarts that make it possible to ignore the callback
+  in case of an error or safely terminate the event loop.
+
+  If SWANK is active, set SLDB's quit restart to ABORT-CALLBACK restart
+  if *safe-sldb-quit-restart* is true or EXIT-EVENT-LOOP otherwise."
+  (restart-case
+      ;; have to use the ugly symbol-value hack instead of #+swank / #-swank
+      ;; in order to avoid compiling in SWANK (in)dependency
+      (let* ((swank-package (find-package :swank))
+             (quit-restart-sym (when swank-package
+                                 (find-symbol (symbol-name '#:*sldb-quit-restart*)
+                                              swank-package))))
+        (if quit-restart-sym
+            (let ((old-quit-restart (symbol-value quit-restart-sym)))
+              (setf (symbol-value quit-restart-sym)
+                    (if *safe-sldb-quit-restart*
+                        'abort-callback
+                        'exit-event-loop))
+              (unwind-protect
+                   (funcall thunk)
+                (setf (symbol-value quit-restart-sym) old-quit-restart)))
+            (funcall thunk)))
+    (abort-callback ()
+      :report (lambda (stream) (write-string abort-restart-description stream))
+      (format *debug-io* "~&;; callback aborted~%")
+      (values))
+    (exit-event-loop ()
+      :report "Exit the current event loop"
+      (format *debug-io* "~&;; exiting the event loop.~%")
+      (uv:uv-stop (event-base-c *event-base*)))))
 
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
@@ -112,7 +164,7 @@
                      (error err)
                      ;; what do you know, a new error. send to event-cb =]
                      (funcall ,evcb err)))))
-           (progn ,@body)))))
+           (call-with-callback-restarts #'(lambda () ,@body))))))
 
 (defmacro run-event-cb (event-cb &rest args)
   "Used inside of catch-app-errors, wraps the calling of an event-cb such that
@@ -183,43 +235,39 @@
 (defun save-callbacks (pointer callbacks)
   "Save a set of callbacks, keyed by the given pointer."
   (with-lock
-    (unless (event-base-function-registry *event-base*)
-      (setf (event-base-function-registry *event-base*) (make-hash-table :test #'eql)))
     (let ((callbacks (if (listp callbacks)
                          callbacks
                          (list callbacks))))
-      (setf (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)) callbacks))))
+      (setf (gethash (make-pointer-eql-able pointer) *function-registry*) callbacks))))
 
 (defun get-callbacks (pointer)
   "Get all callbacks for the given pointer."
   (with-lock
-    (when (event-base-function-registry *event-base*)
-      (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)))))
+    (when *function-registry*
+      (gethash (make-pointer-eql-able pointer) *function-registry*))))
 
 (defun clear-callbacks (pointer)
   "Clear out all callbacks for the given pointer."
   (with-lock
-    (when (event-base-function-registry *event-base*)
-      (remhash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)))))
+    (when *function-registry*
+      (remhash (make-pointer-eql-able pointer) *function-registry*))))
 
 (defun attach-data-to-pointer (pointer data)
   "Attach a lisp object to a foreign pointer."
   (with-lock
-    (unless (event-base-data-registry *event-base*)
-      (setf (event-base-data-registry *event-base*) (make-hash-table :test #'eql)))
-    (setf (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)) data)))
+    (setf (gethash (make-pointer-eql-able pointer) *data-registry*) data)))
 
 (defun deref-data-from-pointer (pointer)
   "Grab data attached to a CFFI pointer."
   (with-lock
-    (when (and pointer (event-base-data-registry *event-base*))
-      (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)))))
+    (when (and pointer *data-registry*)
+      (gethash (make-pointer-eql-able pointer) *data-registry*))))
 
 (defun clear-pointer-data (pointer)
   "Clear the data attached to a CFFI pointer."
   (with-lock
-    (when (and pointer (event-base-data-registry *event-base*))
-      (remhash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)))))
+    (when (and pointer *data-registry*)
+      (remhash (make-pointer-eql-able pointer) *data-registry*))))
 
 (defun free-pointer-data (pointer &key preserve-pointer)
   "Clears out all data attached to a foreign pointer, and frees the pointer
@@ -360,4 +408,3 @@
                                       :pointer len
                                       :int)))
       (zerop res))))
-

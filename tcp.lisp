@@ -45,11 +45,14 @@
 
 (defclass socket ()
   ((c :accessor socket-c :initarg :c :initform (cffi:null-pointer))
+   (data :accessor socket-data :initarg data :initform nil
+     :documentation "Used to store arbitrary (app-defined) data with a socket.")
    (buffer :accessor socket-buffer :initarg :buffer :initform (make-buffer)
-     :documentation "Holds data sent on the socket before it's connected.")
+     :documentation "Holds data sent on the socket that hasn't been sent yet.")
+   (bufferingp :accessor socket-buffering-p :initform nil
+     :documentation "Lets us know if the socket is currently buffering output.")
    (connected :accessor socket-connected :initarg :connected :initform nil)
    (closed :accessor socket-closed :initarg :closed :initform nil)
-   (closing :accessor socket-closing :initform nil)
    (direction :accessor socket-direction :initarg :direction :initform nil)
    (drain-read-buffer :accessor socket-drain-read-buffer :initarg :drain-read-buffer :initform t))
   (:documentation "Wraps around a libevent bufferevent socket."))
@@ -60,30 +63,11 @@
    (stream :accessor tcp-server-stream :initarg :stream :initform nil))
   (:documentation "Wraps around a libevent connection listener."))
 
-(defun get-last-tcp-err ()
-  "Since libevent provides a macro but not a function for getting the last error
-   code, we have to essentially rebuild that macro here.
-
-   NOTE: As libevent says, this function cannot be considered idempotent. In
-   other words, it can become hideously turgid whe...what's that? OH IDEMpotent,
-   that makes more sense. Yes, calling it more than once may result in different
-   values returned. So, call once and save the result until the next time an
-   error happens."
-  #+(or :windows :win32 :win64)
-    (let ((code (cffi:foreign-funcall "WSAGetLastError" :int)))
-      (values code
-              (cffi:foreign-funcall "evutil_socket_error_to_string" :int code :string)))
-  #-(or :windows :win32 :win64)
-    (let ((code (cffi:mem-aref (cffi:foreign-symbol-pointer "errno") :int)))
-      (values code
-              (cffi:foreign-funcall "strerror" :int code :string))))
-
 (defun check-socket-open (socket)
   "Throw a socket-closed condition if given a socket that's closed."
-  (when (typep socket 'socket)
-    (when (or (socket-closed socket)
-              (socket-closing socket))
-      (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket" :socket socket))))
+  (when (and (typep socket 'socket)
+             (or (socket-closed socket)))
+    (error 'socket-closed :code -1 :msg "Trying to operate on a closed socket" :socket socket)))
 
 (defun socket-closed-p (socket)
   "Return whether a socket is closed or not."
@@ -108,7 +92,6 @@
 (defmethod close-socket ((socket socket) &key force)
   "Close and free a socket and all of it's underlying structures."
   (check-socket-open socket)
-  (setf (socket-closing socket) t)
   (let* ((uvstream (socket-c socket))
          (data (deref-data-from-pointer uvstream))
          (read-timeout (car (getf data :read-timeout)))
@@ -177,10 +160,7 @@
 
 (defun write-to-uvstream (uvstream data)
   "Util function to write data directly to a uv stream object."
-  (let* ((data (if (stringp data)
-                   (babel:string-to-octets data :encoding :utf-8)
-                   data))
-         (data-length (length data))
+  (let* ((data-length (length data))
          (data-index 0)
          (buffer-c *output-buffer*)
          (buffer-length (length buffer-c)))
@@ -198,7 +178,8 @@
                 (event-handler res event-cb :socket socket)
                 (return-from write-to-uvstream)))
             (attach-data-to-pointer req uvstream)
-            (decf data-length bufsize)))))))
+            (decf data-length bufsize)
+            (incf data-index bufsize)))))))
 
 (defgeneric write-socket-data (socket data &key read-cb write-cb event-cb)
   (:documentation
@@ -220,12 +201,32 @@
                     ;; if the socket is connected, just send the data out as
                     ;; usual. if not connected, buffer the write in the socket's
                     ;; write buffer until connected
-                    (if (socket-connected socket)
-                        (write-to-uvstream uvstream data)
-                        (let ((bytes (if (stringp data)
-                                         (babel:string-to-octets data :encoding :utf-8)
-                                         data)))
-                          (setf (socket-buffer socket) (append-array (socket-buffer socket) bytes)))))))
+                    (let ((bytes (if (stringp data)
+                                     (babel:string-to-octets data :encoding :utf-8)
+                                     data)))
+                      (cond ((not (socket-connected socket))
+                             ;; the socket isn't connected yet. libuv is supposed to
+                             ;; queue the writes until it connects, but it doesn't
+                             ;; actually work, so we do our own buffering here. this
+                             ;; is all flushed out in the tcp-connect-cb.
+                             (unless (socket-closed-p socket)
+                               (write-to-buffer bytes (socket-buffer socket))))
+                            ((and (not force) *buffer-writes*)
+                             ;; buffer the socket data until the next event loop.
+                             ;; this avoids multiple (unneccesary) calls to uv_write,
+                             ;; which is fairly slow
+                             (write-to-buffer bytes (socket-buffer socket))
+                             (unless (socket-buffering-p socket)
+                               (setf (socket-buffering-p socket) t)
+                               ;; flush the socket's buffer on the next loop
+                               (as:with-delay ()
+                                 (unless (socket-closed-p socket)
+                                   (setf (socket-buffering-p socket) nil)
+                                   (write-to-uvstream uvstream (buffer-output (socket-buffer socket)))
+                                   (setf (socket-buffer socket) (make-buffer))))))
+                            (t
+                             (unless (socket-closed-p socket)
+                               (write-to-uvstream uvstream bytes))))))))
     (when write-timeout
       (remove-event timeout)
       (add-event timeout :timeout (cdr write-timeout)))
@@ -249,12 +250,13 @@
 
 (defun write-pending-socket-data (socket)
   "Write any pending data on the given socket to its underlying stream."
-  (write-socket-data socket (socket-buffer socket)))
+  (write-socket-data socket (buffer-output (socket-buffer socket)) :force t)
+  (setf (socket-buffer socket) (make-buffer)))
 
 (define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int) (buf :pointer))
   "Called when we want to allocate data to be filled for stream reading."
   (declare (ignore handle))
-  (uv:alloc-uv-buf (static-vectors:static-vector-pointer *input-buffer*) (min *buffer-size* size) buf))
+  (uv:alloc-uv-buf (static-vectors:static-vector-pointer *input-buffer*) *buffer-size* buf))
 
 (define-c-callback tcp-read-cb :void ((uvstream :pointer) (nread :int) (buf :pointer))
   "Called when a stream has been read into a buffer returned by alloc-cb."
@@ -266,10 +268,7 @@
          (drain-read (socket-drain-read-buffer socket))
          (callbacks (get-callbacks uvstream))
          (read-cb (getf callbacks :read-cb))
-         (event-cb (getf callbacks :event-cb))
-         (read-buf (multiple-value-list (uv:uv-buf-read buf)))
-         (buf-ptr (car read-buf))
-         (buf-len (cadr read-buf)))
+         (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
       (when (< nread 0)
         ;; we got an error
@@ -282,9 +281,10 @@
         (add-event timeout :timeout (cdr read-timeout)))
       
       ;; read the buffer
-      (let ((bytes (make-array nread :element-type '(unsigned-byte 8))))
-        (dotimes (i nread)
-          (setf (aref bytes i) (cffi:mem-aref buf-ptr :unsigned-char i)))
+      (let ((bytes (make-array nread :element-type 'octet)))
+        ;; input buffer was given to libuv in the alloc-cb, so we can just pull
+        ;; data directly out of it now
+        (replace bytes *input-buffer*)
         (cond ((and read-cb drain-read)
                ;; we're draining here, so call our read callback
                (funcall read-cb socket bytes))
@@ -317,6 +317,7 @@
               (progn
                 (when connect-cb
                   (funcall connect-cb (or stream socket)))
+                ;; write any buffered output we've stored up
                 (write-pending-socket-data socket))
               (run-event-cb 'event-handler res event-cb :socket socket)))))))
 
@@ -401,15 +402,8 @@
                                         :drain-read-buffer (not dont-drain-read-buffer)))
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
     (uv:uv-tcp-init (event-base-c *event-base*) uvstream)
-    (when (or data tcp-stream)
-      (let* ((old-connect-cb connect-cb)
-             (new-connect-cb (lambda (sock)
-                               (when old-connect-cb (funcall old-connect-cb sock))
-                               (cond ((and data (typep sock 'async-output-stream))
-                                      (write-sequence data sock))
-                                     (data
-                                      (write-socket-data sock data))))))
-        (setf connect-cb new-connect-cb)))
+    (when data
+      (write-socket-data socket data))
     (save-callbacks uvstream (list :read-cb read-cb
                                    :event-cb event-cb
                                    :write-cb write-cb
@@ -482,7 +476,7 @@
     (connect-tcp-socket socket/stream host port :event-cb event-cb)
     socket/stream))
 
-(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog 128) stream)
+(defun tcp-server (bind-address port read-cb event-cb &key connect-cb backlog stream)
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (check-event-loop-running)
@@ -493,6 +487,10 @@
              (server-class (make-instance 'tcp-server
                                           :c server-c
                                           :stream stream))
+             (backlog (if (or (null backlog)
+                              (< backlog 0))
+                          128
+                          backlog))
              (r-listen (uv:uv-listen server-c backlog (cffi:callback tcp-accept-cb))))
         ;; check that our listener instantiated properly
         (when (or (< r-bind 0)

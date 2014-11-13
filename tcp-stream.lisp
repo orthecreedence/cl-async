@@ -16,7 +16,7 @@
 ;; -----------------------------------------------------------------------------
 (defmethod stream-append-bytes ((stream async-stream) bytes)
   "Append some data to a stream's underlying buffer."
-  (setf (stream-buffer stream) (cl-async-util:append-array (stream-buffer stream) bytes)))
+  (write-to-buffer bytes (stream-buffer stream)))
 
 (defmethod stream-output-type ((stream async-stream))
   "This is always a binary stream."
@@ -73,8 +73,9 @@
 (defmethod send-buffered-data ((stream async-output-stream))
   "Take data we've buffered between initial sending and actual socket connection
    and send it out."
-  (write-socket-data (stream-socket stream) (stream-buffer stream))
-  (setf (stream-buffer stream) (make-buffer))
+  (let ((data (buffer-output (stream-buffer stream))))
+    (setf (stream-buffer stream) (make-buffer))
+    (write-socket-data (stream-socket stream) data))
   nil)
 
 ;; -----------------------------------------------------------------------------
@@ -95,7 +96,7 @@
 
 (defmethod stream-read-sequence ((stream async-input-stream) sequence start end &key)
   "Attempt to read a sequence of bytes from the underlying socket."
-  (let* ((buffer (stream-buffer stream))
+  (let* ((buffer (buffer-output (stream-buffer stream)))
          (numbytes (min (length buffer) (- end start)))
          (bytes (subseq buffer start (min (length buffer) numbytes))))
     (setf (stream-buffer stream) (make-buffer (subseq buffer numbytes)))

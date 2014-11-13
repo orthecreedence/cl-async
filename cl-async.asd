@@ -1,7 +1,7 @@
 (asdf:defsystem cl-async-base
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
-  :version "0.5.3"
+  :version "0.6.0"
   :description "Base system for cl-async."
   :depends-on (#:cffi #:cl-libuv #:bordeaux-threads)
   :components
@@ -10,16 +10,20 @@
 (asdf:defsystem cl-async-util
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
-  :version "0.5.3"
+  :version "0.6.0"
   :description "Internal utilities for cl-async."
-  :depends-on (#:cffi #:cl-libuv #:cl-ppcre #:cl-async-base)
+  :depends-on (#:cffi
+               #:fast-io
+               #:cl-libuv
+               #:cl-ppcre
+               #:cl-async-base)
   :components
   ((:file "util")))
 
 (asdf:defsystem cl-async
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
-  :version "0.5.3"
+  :version "0.6.0"
   :description "Asynchronous operations for Common Lisp."
   :depends-on (#:cffi
                #:trivial-features

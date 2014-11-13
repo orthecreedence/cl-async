@@ -110,6 +110,8 @@
 (test pointer-callbacks
   "Test that pointer callbacks are assigned and also cleared correctly"
   (let* ((*event-base* (make-instance 'event-base))
+         (*data-registry* (event-base-data-registry *event-base*))
+         (*function-registry* (event-base-function-registry *event-base*))
          (fn (lambda (x) (1+ x)))
          (fn-size (if (event-base-function-registry *event-base*)
                       (hash-table-count (event-base-function-registry *event-base*))
@@ -124,6 +126,8 @@
 (test pointer-data
   "Test that pointer data is assigned and also cleared correctly"
   (let* ((*event-base* (make-instance 'event-base))
+         (*data-registry* (event-base-data-registry *event-base*))
+         (*function-registry* (event-base-function-registry *event-base*))
          (my-data (make-hash-table :size 5))
          (data-size (if (event-base-data-registry *event-base*)
                         (hash-table-count (event-base-data-registry *event-base*))
