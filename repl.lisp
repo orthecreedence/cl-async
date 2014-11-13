@@ -31,19 +31,10 @@
   "Mutex used synchronous actions in the event thread.")
 
 (defun wrap-action (action)
-  "Wrap ACTION (a function) by establishing ABORT-ACTION and EXIT-EVENT-LOOP restarts."
+  "Wrap ACTION (a function) by establishing ABORT-CALLBACK and EXIT-EVENT-LOOP restarts."
   #'(lambda ()
-      (restart-case
-          #+swank (let ((swank:*sldb-quit-restart* (find-restart 'abort-action)))
-                    (funcall action))
-          #-swank (funcall action)
-          (abort-action ()
-            :report "Abort the current action."
-            (format *debug-io* "~&;; Evaluation aborted~%")
-            (values))
-          (exit-event-loop ()
-            :report "Exit the current event loop"
-            (as:exit-event-loop)))))
+      (cl-async-util:call-with-callback-restarts
+       action "Abort the current action.")))
 
 (defun schedule-action (action)
   "Asynchronously schedule the action to be executed in the
@@ -72,28 +63,29 @@
                (loop for var in *globals*
                      for value in global-values
                      do (setf (symbol-value var) value))
-               (as:with-event-loop ()
-                 (as:add-event-loop-exit-callback
-                  (lambda ()
-                    (when exit-callback
-                      (funcall exit-callback))
-                    (bt:with-lock-held (*lock*)
-                      (unless (as:notifier-freed-p *notifier*)
-                        (as:free-notifier *notifier*))
-                      (setf *event-thread* nil
-                            *notifier* nil
-                            *pending-actions* '()))))
-                 (format *debug-io* "~&;; event thread started.~%")
-                 (bt:with-lock-held (loop-ready-lock)
-                   (setf *notifier* (as:make-notifier
-                                     #'(lambda ()
-                                         (let ((actions
-                                                 (bt:with-lock-held (*lock*)
-                                                   (shiftf *pending-actions* '()))))
-                                           (mapc #'funcall actions)))
-                                     :single-shot nil))
-                   (bt:condition-notify loop-ready)))
-               (format *debug-io* "~&;; event loop exited.~%"))
+               (unwind-protect
+                    (as:with-event-loop ()
+                      (as:add-event-loop-exit-callback
+                       (lambda ()
+                         (when exit-callback
+                           (funcall exit-callback))
+                         (bt:with-lock-held (*lock*)
+                           (unless (as:notifier-freed-p *notifier*)
+                             (as:free-notifier *notifier*))
+                           (setf *event-thread* nil
+                                 *notifier* nil
+                                 *pending-actions* '()))))
+                      (format *debug-io* "~&;; event thread started.~%")
+                      (bt:with-lock-held (loop-ready-lock)
+                        (setf *notifier* (as:make-notifier
+                                          #'(lambda ()
+                                              (let ((actions
+                                                      (bt:with-lock-held (*lock*)
+                                                        (shiftf *pending-actions* '()))))
+                                                (mapc #'funcall actions)))
+                                          :single-shot nil))
+                        (bt:condition-notify loop-ready)))
+                 (format *debug-io* "~&;; event thread exited.~%")))
            :name "event-thread"))
     (bt:with-lock-held (loop-ready-lock)
       (loop until *notifier*
@@ -147,11 +139,16 @@
 (defun start-async-repl ()
   "Start event thread and install SLIME REPL hook so that everything is
   evaluated in that thread. Stopping the event loop via (as:stop-event-thread)
-  removes the hook."
+  removes the hook.
+
+  Sets *safe-sldb-quit-restart* to true."
   (start-event-thread :exit-callback #'(lambda () (uninstall-repl-hook 'sync-eval)))
   (install-repl-hook 'sync-eval)
+  (setf cl-async-base:*safe-sldb-quit-restart* t)
   (values))
 
 (defun stop-async-repl ()
-  "Stop event thread and uninstall SLIME REPL hook."
-  (stop-event-thread))
+  "Stop event thread and uninstall SLIME REPL hook.
+  Sets *safe-sldb-quit-restart* to false."
+  (stop-event-thread)
+  (setf cl-async-base:*safe-sldb-quit-restart* nil))

@@ -13,7 +13,7 @@
            #:make-buffer
            #:buffer-output
            #:write-to-buffer
-           
+
            #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
@@ -23,6 +23,7 @@
            #:+sockaddr6-size+
            #:+addrinfo-size+
 
+           #:call-with-callback-restarts
            #:catch-app-errors
            #:run-event-cb
 
@@ -31,7 +32,7 @@
            #:make-foreign-type
 
            #:with-lock
-           
+
            #:make-pointer-eql-able
            #:create-data-pointer
            #:save-callbacks
@@ -51,14 +52,14 @@
            #:*ipv6-scanner*
 
            #:error-str
-           
+
            #:ipv4-address-p
            #:ipv6-address-p
            #:ip-address-p
            #:ip-str-to-sockaddr
            #:with-ip-to-sockaddr
            #:addrinfo-to-string
-           
+
            #:set-socket-nonblocking
            #:fd-connected-p))
 (in-package :cl-async-util)
@@ -105,6 +106,38 @@
 (defconstant +sockaddr6-size+ (cffi:foreign-type-size '(:struct uv:sockaddr-in-6)))
 (defconstant +addrinfo-size+ (cffi:foreign-type-size '(:struct uv:addrinfo)))
 
+(defun call-with-callback-restarts (thunk &optional (abort-restart-description "Abort cl-async callback."))
+  "Call thunk with restarts that make it possible to ignore the callback
+  in case of an error or safely terminate the event loop.
+
+  If SWANK is active, set SLDB's quit restart to ABORT-CALLBACK restart
+  if *safe-sldb-quit-restart* is true or EXIT-EVENT-LOOP otherwise."
+  (restart-case
+      ;; have to use the ugly symbol-value hack instead of #+swank / #-swank
+      ;; in order to avoid compiling in SWANK (in)dependency
+      (let* ((swank-package (find-package :swank))
+             (quit-restart-sym (when swank-package
+                                 (find-symbol (symbol-name '#:*sldb-quit-restart*)
+                                              swank-package))))
+        (if quit-restart-sym
+            (let ((old-quit-restart (symbol-value quit-restart-sym)))
+              (setf (symbol-value quit-restart-sym)
+                    (if *safe-sldb-quit-restart*
+                        'abort-callback
+                        'exit-event-loop))
+              (unwind-protect
+                   (funcall thunk)
+                (setf (symbol-value quit-restart-sym) old-quit-restart)))
+            (funcall thunk)))
+    (abort-callback ()
+      :report (lambda (stream) (write-string abort-restart-description stream))
+      (format *debug-io* "~&;; callback aborted~%")
+      (values))
+    (exit-event-loop ()
+      :report "Exit the current event loop"
+      (format *debug-io* "~&;; exiting the event loop.~%")
+      (uv:uv-stop (event-base-c *event-base*)))))
+
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
    otherwise just runs the body with no error/event handling.
@@ -131,7 +164,7 @@
                      (error err)
                      ;; what do you know, a new error. send to event-cb =]
                      (funcall ,evcb err)))))
-           (progn ,@body)))))
+           (call-with-callback-restarts #'(lambda () ,@body))))))
 
 (defmacro run-event-cb (event-cb &rest args)
   "Used inside of catch-app-errors, wraps the calling of an event-cb such that
@@ -375,4 +408,3 @@
                                       :pointer len
                                       :int)))
       (zerop res))))
-
