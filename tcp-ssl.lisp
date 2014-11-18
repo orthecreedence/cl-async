@@ -12,7 +12,8 @@
   (:import-from :cl-async
                 #:check-event-loop-running
                 #:socket-drain-read-buffer
-                #:write-to-evbuffer
+                #:write-to-uvstream
+                #:write-socket-data
                 #:tcp-read-cb
                 #:tcp-write-cb
                 #:tcp-event-cb
@@ -20,7 +21,11 @@
                 #:tcp-server-c))
 (in-package :cl-async-ssl)
 
-#|
+(defconstant +ssl-verify-none+ #x00)
+(defconstant +ssl-verify-peer+ #x01)
+(defconstant +ssl-verify-fail-if-no-peer-cert+ #x02)
+(defconstant +ssl-verify-client-once+ #x04)
+
 (define-condition tcp-ssl-error (tcp-error) ()
   (:documentation "Describes a general SSL connection error."))
 
@@ -36,14 +41,18 @@
   "Wraps freeing an SSL context."
   (cl+ssl::ssl-ctx-free ssl-ctx))
 
+(defclass ssl-wrapper ()
+  ((ctx :accessor ssl-ctx :initarg :ctx :initform nil)
+   (bio-read :accessor ssl-bio-read :initarg :bio-read :initform nil)
+   (bio-write :accessor ssl-bio-write :initarg :bio-write :initform nil)
+   (ssl :accessor ssl-ssl :initarg :ssl :initform nil)))
+
 (defclass ssl-socket (socket)
-  ((ssl-ctx :accessor socket-ssl-ctx :initarg :ctx :initform nil)
-   (underlying :accessor socket-underlying :initarg :underlying :initform nil
-     :documentation "Stores the original socket that was wrapped in SSL."))
+  ((wrapper :accessor socket-ssl-wrapper :initarg :wrapper :initform nil))
   (:documentation "Wraps a libevent SSL socket."))
 
 (defclass tcp-ssl-server (tcp-server)
-  ((ssl-ctx :accessor tcp-server-ssl-ctx :initarg :ssl-ctx :initform nil))
+  ((wrapper :accessor tcp-server-ssl-ctx :initarg :ssl-ctx :initform nil))
   (:documentation "Wraps around a libevent SSL servre/listener"))
 
 (defmethod close-socket ((socket ssl-socket))
@@ -83,6 +92,121 @@
                             :string)
       errcode)))
 
+(defmethod write-socket-data ((socket ssl-socket) data &key read-cb write-cb event-cb)
+  (check-socket-open socket)
+  (let* ((uvstream (socket-c socket))
+         (write-timeout (getf (deref-data-from-pointer uvstream) :write-timeout))
+         (timeout (car write-timeout))
+         (do-send (lambda ()
+                    ;; if the socket is connected, just send the data out as
+                    ;; usual. if not connected, buffer the write in the socket's
+                    ;; write buffer until connected
+                    (let ((bytes (if (stringp data)
+                                     (babel:string-to-octets data :encoding :utf-8)
+                                     data)))
+                      (cond ((not (socket-connected socket))
+                             ;; the socket isn't connected yet. libuv is supposed to
+                             ;; queue the writes until it connects, but it doesn't
+                             ;; actually work, so we do our own buffering here. this
+                             ;; is all flushed out in the tcp-connect-cb.
+                             (unless (socket-closed-p socket)
+                               (write-to-buffer bytes (socket-buffer socket))))
+                            ((and (not force) *buffer-writes*)
+                             ;; buffer the socket data until the next event loop.
+                             ;; this avoids multiple (unneccesary) calls to uv_write,
+                             ;; which is fairly slow
+                             (write-to-buffer bytes (socket-buffer socket))
+                             (unless (socket-buffering-p socket)
+                               (setf (socket-buffering-p socket) t)
+                               ;; flush the socket's buffer on the next loop
+                               (as:with-delay ()
+                                 (unless (socket-closed-p socket)
+                                   (setf (socket-buffering-p socket) nil)
+                                   (write-to-uvstream uvstream (buffer-output (socket-buffer socket)))
+                                   (setf (socket-buffer socket) (make-buffer))))))
+                            (t
+                             (unless (socket-closed-p socket)
+                               (write-to-uvstream uvstream bytes))))))))
+    (when write-timeout
+      (remove-event timeout)
+      (add-event timeout :timeout (cdr write-timeout)))
+    (if (or read-cb write-cb event-cb)
+        ;; we're specifying callbacks. since we're most likely calling this from
+        ;; inside a socket callback and we don't necessarily want to overwrite
+        ;; that socket's callbacks until it finishes, we set a delay here so the
+        ;; callback binding happens after the caller returns to the event loop.
+        (as:delay
+          (lambda ()
+            (let ((callbacks (get-callbacks uvstream)))
+              (save-callbacks uvstream
+                              (list :read-cb (or read-cb (getf callbacks :read-cb))
+                                    :write-cb (or write-cb (getf callbacks :write-cb))
+                                    :event-cb (or event-cb (getf callbacks :event-cb))))
+              (funcall do-send))))
+
+        ;; we're not setting callbacks, so just enable the socket and send the
+        ;; data
+        (funcall do-send))))
+
+(defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+  "Create and return an SSL-activated socket."
+  (labels ((connect-cb (sock)
+             ;; do something with openssl
+             (when connect-cb
+               (funcall connect-cb sock)))
+           (read-cb (sock data)
+             (let ((data (if (typep data 'as:async-stream)
+                             (let ((buf (make-buffer))
+                                   (stream-buf (make-array 8096 :element-type 'as:octet)))
+                               (loop for n = (read-sequence stream-buf data)
+                                     while (< 0 n) do
+                                 (write-to-buffer stream-buf buf 0 n))
+                               (buffer-output buf))
+                             data)))
+               ;; send data into openssl
+               )))
+    (let* ((socket/stream (apply #'as:tcp-connect
+                                 (append (list host port
+                                               read-cb event-cb
+                                               :data data
+                                               :stream stream
+                                               :connect-cb connect-cb
+                                               :write-cb write-cb
+                                               :read-timeout read-timeout
+                                               :write-timeout write-timeout
+                                               :class 'ssl-socket)
+                                         (when dont-drain-read-buffer-supplied-p
+                                           (list :dont-drain-read-buffer dont-drain-read-buffer)))))
+           (socket (if (typep socket/stream 'as:async-stream)
+                       (as:stream-socket socket/stream)
+                       socket/stream))
+           (socket-c (as:socket-c socket))
+           (callbacks (get-callbacks socket-c))
+           (method (cffi:foreign-funcall "TLSv1_client_method" :int))
+           (ctx (cffi:foreign-funcall "SSL_CTX_new" :int method :pointer)))
+      (cffi:foreign-funcall "SSL_CTX_set_default_verify_paths" :pointer ctx :int)
+      (cffi:foreign-funcall "SSL_CTX_set_verify" :pointer ctx :int +ssl-verify-none+ :pointer (cffi:null-pointer))
+      (setf (getf callbacks :connect-cb) #'connect-cb)
+      (setf (getf callbacks :read-cb) #'read-cb)
+      (save-callbacks socket-c callbacks)
+      (let ((ssl (cffi:foreign-funcall "SSL_new" :pointer ctx :pointer))
+            (bio-read (cffi:foreign-funcall "BIO_new" :int (cffi:foreign-funcall "BIO_s_mem" :int) :pointer))
+            (bio-write (cffi:foreign-funcall "BIO_new" :int (cffi:foreign-funcall "BIO_s_mem" :int) :pointer)))
+        (cffi:foreign-funcall "SSL_set_cipher_list" :pointer ssl :string "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH")
+        (cffi:foreign-funcall "SSL_set_bio" :pointer ssl :pointer bio-read :pointer bio-write)
+        (cffi:foreign-funcall "SSL_set_connect_state" :pointer ssl)
+        (setf (socket-ssl-wrapper socket) (make-instance 'ssl-wrapper
+                                                         :ctx ctx
+                                                         :ssl ssl
+                                                         :bio-read bio-read
+                                                         :bio-write bio-write)))
+      socket/stream)))
+
+(eval-when (:compile-toplevel :load-toplevel)
+  (cffi:foreign-funcall "SSL_library_init" :void)
+  (cffi:foreign-funcall "SSL_load_error_strings" :void))
+
+#|
 (define-c-callback ssl-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
   "Called whenever anything happens on a TCP socket. Ties into the anonymous
    callback system to track failures/disconnects."

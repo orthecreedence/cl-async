@@ -387,7 +387,7 @@
    pointers and so forth."
   (init-incoming-socket server status))
 
-(defun init-tcp-socket (read-cb event-cb &key data stream (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun init-tcp-socket (read-cb event-cb &key data stream (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (class 'socket) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Initialize an async socket, but do not connect it."
   (check-event-loop-running)
 
@@ -397,9 +397,9 @@
                                      t
                                      dont-drain-read-buffer))
          (fd (when (<= 0 fd) fd))
-         (socket (make-instance 'socket :c uvstream
-                                        :direction :out
-                                        :drain-read-buffer (not dont-drain-read-buffer)))
+         (socket (make-instance class :c uvstream
+                                      :direction :out
+                                      :drain-read-buffer (not dont-drain-read-buffer)))
          (tcp-stream (when stream (make-instance 'async-io-stream :socket socket))))
     (uv:uv-tcp-init (event-base-c *event-base*) uvstream)
     (when data
@@ -460,7 +460,7 @@
             :family +af-inet+))))
   socket/stream)
 
-(defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (class 'socket) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
   (let ((socket/stream (apply #'init-tcp-socket
@@ -470,7 +470,8 @@
                                             :connect-cb connect-cb
                                             :write-cb write-cb
                                             :read-timeout read-timeout
-                                            :write-timeout write-timeout)
+                                            :write-timeout write-timeout
+                                            :class class)
                                       (when dont-drain-read-buffer-supplied-p
                                         (list :dont-drain-read-buffer dont-drain-read-buffer))))))
     (connect-tcp-socket socket/stream host port :event-cb event-cb)

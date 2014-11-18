@@ -89,11 +89,11 @@
   (fast-io:finish-output-buffer buffer))
 
 (declaim (inline write-to-buffer))
-(defun write-to-buffer (seq buffer)
+(defun write-to-buffer (seq buffer &optional start end)
   "Write data to a buffer created with (make-buffer)."
   (declare (type octet-vector seq)
            (type fast-io::output-buffer buffer))
-  (fast-io:fast-write-sequence seq buffer))
+  (fast-io:fast-write-sequence seq buffer start end))
 
 (defconstant +af-inet+ uv:+af-inet+)
 (defconstant +af-inet6+ uv:+af-inet-6+)
