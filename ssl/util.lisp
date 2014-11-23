@@ -35,6 +35,12 @@
   (mode :int))
 (cffi:defcfun ("SSL_shutdown" ssl-shutdown) :int
   (ssl :pointer))
+(cffi:defcfun ("SSL_CTX_free" ssl-ctx-free) :void
+  (ctx :pointer))
+(cffi:defcfun ("SSL_free" ssl-free) :void
+  (ssl :pointer))
+(cffi:defcfun ("BIO_free_all" ssl-bio-free-all) :void
+  (bio :pointer))
 (cffi:defcfun ("ERR_get_error" ssl-get-error) :int)
 (cffi:defcfun ("ERR_reason_error_string" ssl-error-string) :string
   (errcode :int))
@@ -78,6 +84,22 @@
   (arg :long)
   (parg :pointer))
 (cffi:defcfun ("BIO_s_mem" ssl-bio-s-mem) :int)
+(cffi:defcfun ("BIO_read" ssl-bio-read) :int
+  (bio :pointer)
+  (buf :pointer)
+  (len :int))
+(cffi:defcfun ("BIO_write" ssl-bio-write) :int
+  (bio :pointer)
+  (buf :pointer)
+  (len :int))
+(cffi:defcfun ("SSL_read" ssl-read) :int
+  (ssl :pointer)
+  (buf :pointer)
+  (len :pointer))
+(cffi:defcfun ("SSL_write" ssl-write) :int
+  (ssl :pointer)
+  (buf :pointer)
+  (len :int))
 
 (defun ssl-is-init-finished (ssl) (= (ssl-state ssl) +ssl-st-ok+))
 (defun ssl-in-init (ssl) (not (zerop (logand (ssl-state ssl) +ssl-st-init+))))
