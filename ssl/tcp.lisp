@@ -7,10 +7,12 @@
   ((ctx :accessor as-ssl-ctx :initarg :ctx :initform nil)
    (bio-read :accessor as-ssl-bio-read :initarg :bio-read :initform nil)
    (bio-write :accessor as-ssl-bio-write :initarg :bio-write :initform nil)
-   (ssl :accessor as-ssl-ssl :initarg :ssl :initform nil)))
+   (ssl :accessor as-ssl-ssl :initarg :ssl :initform nil)
+   (freed :accessor as-ssl-freed :initform nil)))
 
 (defclass ssl-socket (socket)
-  ((as-ssl :accessor socket-ssl-as-ssl :initarg :as-ssl :initform nil))
+  ((as-ssl :accessor socket-as-ssl :initarg :as-ssl :initform nil)
+   (ssl-closing :accessor socket-ssl-closing :initform nil))
   (:documentation "Wraps a libevent SSL socket."))
 
 (defclass tcp-ssl-server (tcp-server)
@@ -19,20 +21,20 @@
 
 (defun close-ssl (as-ssl)
   "Close up a cl-async SSL object."
+  (when (as-ssl-freed as-ssl)
+    (return-from close-ssl))
   (let* ((ctx (as-ssl-ctx as-ssl))
-         (ssl (as-ssl-ssl as-ssl))
-         (bio-read (as-ssl-bio-read as-ssl))
-         (bio-write (as-ssl-bio-write as-ssl)))
-    (and (cffi:pointerp bio-read) (ssl-bio-free-all bio-read))
-    (and (cffi:pointerp bio-write) (ssl-bio-free-all bio-write))
+         (ssl (as-ssl-ssl as-ssl)))
     (and (cffi:pointerp ctx) (ssl-ctx-free ctx))
-    (and (cffi:pointerp ssl) (ssl-free ssl))))
+    (and (cffi:pointerp ssl) (ssl-free ssl))
+    (setf (as-ssl-freed as-ssl) t)))
   
 (defmethod close-socket ((socket ssl-socket) &key force)
   (declare (ignore force))
-  (call-next-method)
-  ;; close the SSL context
-  (close-ssl (socket-ssl-as-ssl socket)))
+  (let* ((as-ssl (socket-as-ssl socket))
+         (res (ssl-shutdown (as-ssl-ssl as-ssl))))
+    (call-next-method)
+    (close-ssl as-ssl)))
 
 (defmethod close-tcp-server ((tcp-server tcp-ssl-server))
   ;; shut down the listener before freeing the SSL handles
@@ -40,11 +42,17 @@
   ;; free the SSL ctx (if it exists)
   (close-ssl (tcp-server-ssl-as-ssl tcp-server)))
 
-(defun write-to-ssl (as-ssl 
+(defun write-to-ssl (as-ssl data)
+  "Write data into SSL."
+  (let ((ssl (as-ssl-ssl as-ssl)))
+    (do-chunk-data data *output-buffer*
+      (lambda (buffer bufsize)
+        (ssl-write ssl buffer bufsize)))))
+
 (defmethod write-socket-data ((socket ssl-socket) data &key read-cb write-cb event-cb force)
   (let ((uvstream (socket-c socket))
         (do-send (lambda ()
-                   (write-to-ssl (socket-ssl-as-ssl socket) data))))
+                   (write-to-ssl (socket-as-ssl socket) data))))
     (if (or read-cb write-cb event-cb)
         ;; we're specifying callbacks. since we're most likely calling this from
         ;; inside a socket callback and we don't necessarily want to overwrite
@@ -80,7 +88,6 @@
              (when connect-cb
                (funcall connect-cb sock)))
            (read-cb (sock data)
-             (
              (let ((data (if (typep data 'as:async-stream)
                              (let ((buf (make-buffer))
                                    (stream-buf (make-array 8096 :element-type 'as:octet)))
@@ -127,11 +134,11 @@
         ;; TODO: cleanup: remove pointer on close
         (attach-data-to-pointer ssl (list :socket socket
                                           :stream stream))
-        (setf (socket-ssl-as-ssl socket) (make-instance 'ssl-as-ssl
-                                                        :ctx ctx
-                                                        :ssl ssl
-                                                        :bio-read bio-read
-                                                        :bio-write bio-write))
+        (setf (socket-as-ssl socket) (make-instance 'as-ssl
+                                                    :ctx ctx
+                                                    :ssl ssl
+                                                    :bio-read bio-read
+                                                    :bio-write bio-write))
         (ssl-connect ssl))
       socket/stream)))
 
