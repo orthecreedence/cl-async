@@ -158,22 +158,9 @@
    are not enabled, but rather just not disabled."
   (error "not implemented"))
 
-(defun do-chunk-writes (data buffer write-cb)
-  "Util function that splits data into the (length buffer) chunks and calls
-   write-cb for each chunk."
-  (let* ((data-length (length data))
-         (data-index 0)
-         (buffer-length (length buffer)))
-    (loop while (< 0 data-length) do
-      (let ((bufsize (min data-length buffer-length)))
-        (replace buffer data :start2 data-index)
-        (funcall write-cb buffer bufsize)
-        (decf data-length bufsize)
-        (incf data-index bufsize)))))
-
 (defun write-to-uvstream (uvstream data)
   "Util function to write data directly to a uv stream object."
-  (do-chunk-writes data *output-buffer*
+  (do-chunk-data data *output-buffer*
     (lambda (buffer-c bufsize)
       (let ((req (uv:alloc-req :write))
             (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer buffer-c) bufsize)))

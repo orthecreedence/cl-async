@@ -14,6 +14,8 @@
            #:buffer-output
            #:write-to-buffer
 
+           #:do-chunk-data
+
            #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
@@ -94,6 +96,19 @@
   (declare (type octet-vector seq)
            (type fast-io::output-buffer buffer))
   (fast-io:fast-write-sequence seq buffer))
+
+(defun do-chunk-data (data buffer write-cb)
+  "Util function that splits data into the (length buffer) chunks and calls
+   write-cb for each chunk."
+  (let* ((data-length (length data))
+         (data-index 0)
+         (buffer-length (length buffer)))
+    (loop while (< 0 data-length) do
+      (let ((bufsize (min data-length buffer-length)))
+        (replace buffer data :start2 data-index)
+        (funcall write-cb buffer bufsize)
+        (decf data-length bufsize)
+        (incf data-index bufsize)))))
 
 (defconstant +af-inet+ uv:+af-inet+)
 (defconstant +af-inet6+ uv:+af-inet-6+)
