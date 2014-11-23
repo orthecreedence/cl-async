@@ -158,28 +158,34 @@
    are not enabled, but rather just not disabled."
   (error "not implemented"))
 
-(defun write-to-uvstream (uvstream data)
-  "Util function to write data directly to a uv stream object."
+(defun do-chunk-writes (data buffer write-cb)
+  "Util function that splits data into the (length buffer) chunks and calls
+   write-cb for each chunk."
   (let* ((data-length (length data))
          (data-index 0)
-         (buffer-c *output-buffer*)
-         (buffer-length (length buffer-c)))
+         (buffer-length (length buffer)))
     (loop while (< 0 data-length) do
       (let ((bufsize (min data-length buffer-length)))
-        (replace buffer-c data :start2 data-index)
-        (let ((req (uv:alloc-req :write))
-              (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer buffer-c) bufsize)))
-          (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback tcp-write-cb))))
-            (uv:free-uv-buf buf)
-            (unless (zerop res)
-              (let ((socket (getf (deref-data-from-pointer uvstream) :socket))
-                    (event-cb (getf (get-callbacks uvstream) :event-cb)))
-                (uv:free-req req)
-                (event-handler res event-cb :socket socket)
-                (return-from write-to-uvstream)))
-            (attach-data-to-pointer req uvstream)
-            (decf data-length bufsize)
-            (incf data-index bufsize)))))))
+        (replace buffer data :start2 data-index)
+        (funcall write-cb buffer bufsize)
+        (decf data-length bufsize)
+        (incf data-index bufsize)))))
+
+(defun write-to-uvstream (uvstream data)
+  "Util function to write data directly to a uv stream object."
+  (do-chunk-writes data *output-buffer*
+    (lambda (buffer-c bufsize)
+      (let ((req (uv:alloc-req :write))
+            (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer buffer-c) bufsize)))
+        (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback tcp-write-cb))))
+          (uv:free-uv-buf buf)
+          (unless (zerop res)
+            (let ((socket (getf (deref-data-from-pointer uvstream) :socket))
+                  (event-cb (getf (get-callbacks uvstream) :event-cb)))
+              (uv:free-req req)
+              (event-handler res event-cb :socket socket)
+              (return-from write-to-uvstream)))
+          (attach-data-to-pointer req uvstream))))))
 
 (defun write-socket-data (socket data &key read-cb write-cb event-cb force)
   "Write data into a cl-async socket. Allows specifying read/write/event
