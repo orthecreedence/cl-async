@@ -1,45 +1,7 @@
-(defpackage :cl-async-ssl
-  (:use :cl :cl-async-base :cl-async :cl-async-util)
-  (:nicknames :as-ssl)
-  (:export #:ssl-socket
-           #:tcp-ssl-server
-           #:socket-underlying
-           #:tcp-ssl-error
-           ;#:wrap-in-ssl
-           #:init-tcp-ssl-socket
-           #:tcp-ssl-connect
-           #:tcp-ssl-server)
-  (:import-from :cl-async
-                #:check-event-loop-running
-                #:socket-drain-read-buffer
-                #:write-to-uvstream
-                #:write-socket-data
-                #:tcp-read-cb
-                #:tcp-write-cb
-                #:tcp-event-cb
-                #:init-incoming-socket
-                #:tcp-server-c))
 (in-package :cl-async-ssl)
-
-(defconstant +ssl-verify-none+ #x00)
-(defconstant +ssl-verify-peer+ #x01)
-(defconstant +ssl-verify-fail-if-no-peer-cert+ #x02)
-(defconstant +ssl-verify-client-once+ #x04)
 
 (define-condition tcp-ssl-error (tcp-error) ()
   (:documentation "Describes a general SSL connection error."))
-
-;; cl+ssl doesn't wrap these (bummer) so we have to do it manually...
-(defconstant +ssl-received-shutdown+ 2)  ; #define SSL_RECEIVED_SHUTDOWN   2
-(cffi:defcfun ("SSL_set_shutdown" ssl-set-shutdown) :void
-  (ssl :pointer)
-  (mode :int))
-(cffi:defcfun ("SSL_shutdown" ssl-shutdown) :int
-  (ssl :pointer))
-
-(defun free-ssl (ssl-ctx)
-  "Wraps freeing an SSL context."
-  (cl+ssl::ssl-ctx-free ssl-ctx))
 
 (defclass ssl-wrapper ()
   ((ctx :accessor ssl-ctx :initarg :ctx :initform nil)
@@ -55,7 +17,7 @@
   ((wrapper :accessor tcp-server-ssl-ctx :initarg :ssl-ctx :initform nil))
   (:documentation "Wraps around a libevent SSL servre/listener"))
 
-(defmethod close-socket ((socket ssl-socket))
+(defmethod close-socket ((socket ssl-socket) &key force)
   ;; close the SSL context
   (let ((ctx (socket-ssl-ctx socket)))
     (when (and (cffi:pointerp ctx)
@@ -81,16 +43,6 @@
                (not (cffi:null-pointer-p ctx)))
       (free-ssl ctx)
       (setf (tcp-server-ssl-ctx tcp-server) nil))))
-
-(defun last-ssl-error ()
-  "Returns the last error string (nil if none) and the last error code that
-   happened in SSL land."
-  (let ((errcode (cffi:foreign-funcall "ERR_get_error" :int)))
-    (values
-      (cffi:foreign-funcall "ERR_reason_error_string"
-                            :int errcode
-                            :string)
-      errcode)))
 
 (defmethod write-socket-data ((socket ssl-socket) data &key read-cb write-cb event-cb)
   (check-socket-open socket)
@@ -148,6 +100,15 @@
         ;; data
         (funcall do-send))))
 
+(define-c-callback tcp-ssl-info-cb :void ((ssl :pointer) (where :int) (ret :int))
+  "Called whenever *stuff* happens on an SSL object."
+  (format t "- ssl: info: ~a (where: ~a) (ret: ~a)~%" ssl where ret)
+  (let* ((data (deref-data-from-pointer ssl))
+         (socket (getf data :socket))
+         (stream (getf data :stream)))
+    )
+  )
+
 (defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Create and return an SSL-activated socket."
   (labels ((connect-cb (sock)
@@ -180,31 +141,35 @@
            (socket (if (typep socket/stream 'as:async-stream)
                        (as:stream-socket socket/stream)
                        socket/stream))
+           (stream (when (typep socket/stream 'as:async-stream) socket/stream))
            (socket-c (as:socket-c socket))
            (callbacks (get-callbacks socket-c))
-           (method (cffi:foreign-funcall "TLSv1_client_method" :int))
-           (ctx (cffi:foreign-funcall "SSL_CTX_new" :int method :pointer)))
-      (cffi:foreign-funcall "SSL_CTX_set_default_verify_paths" :pointer ctx :int)
-      (cffi:foreign-funcall "SSL_CTX_set_verify" :pointer ctx :int +ssl-verify-none+ :pointer (cffi:null-pointer))
+           (method (ssl-tls-v1-client-method))
+           (ctx (ssl-ctx-new method)))
+      (ssl-ctx-set-default-verify-paths ctx)
+      (ssl-ctx-set-verify ctx +ssl-verify-none+ (cffi:null-pointer))
       (setf (getf callbacks :connect-cb) #'connect-cb)
       (setf (getf callbacks :read-cb) #'read-cb)
       (save-callbacks socket-c callbacks)
-      (let ((ssl (cffi:foreign-funcall "SSL_new" :pointer ctx :pointer))
-            (bio-read (cffi:foreign-funcall "BIO_new" :int (cffi:foreign-funcall "BIO_s_mem" :int) :pointer))
-            (bio-write (cffi:foreign-funcall "BIO_new" :int (cffi:foreign-funcall "BIO_s_mem" :int) :pointer)))
-        (cffi:foreign-funcall "SSL_set_cipher_list" :pointer ssl :string "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH")
-        (cffi:foreign-funcall "SSL_set_bio" :pointer ssl :pointer bio-read :pointer bio-write)
-        (cffi:foreign-funcall "SSL_set_connect_state" :pointer ssl)
+      (format t "bio type: ~a~%" (ssl-bio-s-mem))
+      (let ((ssl (ssl-new ctx))
+            (bio-read (ssl-bio-new (ssl-bio-s-mem)))
+            (bio-write (ssl-bio-new (ssl-bio-s-mem))))
+        (ssl-set-cipher-list ssl "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH")
+        (ssl-set-bio ssl bio-read bio-write)
+        (ssl-set-connect-state ssl)
+        (ssl-set-info-callback ssl (cffi:callback tcp-ssl-info-cb))
+        (ssl-bio-set-mem-eof-return bio-read -1)
+        (ssl-bio-set-mem-eof-return bio-write -1)
+        ;; TODO: cleanup: remove pointer on close
+        (attach-data-to-pointer ssl (list :socket socket
+                                          :stream stream))
         (setf (socket-ssl-wrapper socket) (make-instance 'ssl-wrapper
                                                          :ctx ctx
                                                          :ssl ssl
                                                          :bio-read bio-read
                                                          :bio-write bio-write)))
       socket/stream)))
-
-(eval-when (:compile-toplevel :load-toplevel)
-  (cffi:foreign-funcall "SSL_library_init" :void)
-  (cffi:foreign-funcall "SSL_load_error_strings" :void))
 
 #|
 (define-c-callback ssl-event-cb :void ((bev :pointer) (events :short) (data-pointer :pointer))
