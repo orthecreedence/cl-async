@@ -181,7 +181,7 @@
             (decf data-length bufsize)
             (incf data-index bufsize)))))))
 
-(defgeneric write-socket-data (socket data &key read-cb write-cb event-cb)
+(defgeneric write-socket-data (socket data &key read-cb write-cb event-cb force)
   (:documentation
     "Write data into a cl-async socket. Allows specifying read/write/event
      callbacks. Any callback left nil will use that current callback from the
@@ -192,7 +192,7 @@
      to do it ourselves by checking if the socket is connected and buffering
      accordingly."))
 
-(defmethod write-socket-data ((socket socket) data &key read-cb write-cb event-cb)
+(defmethod write-socket-data ((socket socket) data &key read-cb write-cb event-cb force)
   (check-socket-open socket)
   (let* ((uvstream (socket-c socket))
          (write-timeout (getf (deref-data-from-pointer uvstream) :write-timeout))
