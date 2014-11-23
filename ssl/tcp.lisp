@@ -244,7 +244,12 @@
          (ssl-ctx (or ssl-ctx cl+ssl::*ssl-global-context*))
          (client-ctx (init-ssl-client-context ssl-ctx))
          (fd (or fd -1))
-         (bev (le-ssl:bufferevent-openssl-socket-new (event-base-c *event-base*) fd client-ctx (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting) +bev-opt-close-on-free+))
+         (bev (le-ssl:bufferevent-openssl-socket-new (event-base-c *event-base*)
+                                                     fd
+                                                     client-ctx
+                                                     (cffi:foreign-enum-value 'le-ssl:bufferevent-ssl-state ':bufferevent-ssl-connecting)
+                                                     (logior +bev-opt-close-on-free+
+                                                             +bev-opt-defer-callbacks+)))
 
          ;; assume dont-drain-read-buffer if unspecified and requesting a stream
          (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
@@ -305,7 +310,11 @@
                                              :write-timeout write-timeout)
                                        (when dont-drain-read-buffer-supplied-p
                                          (list :dont-drain-read-buffer dont-drain-read-buffer))))))
-    (connect-tcp-socket socket/stream host port)
+    ;; connect async, since this solves a problem where the socket starts to
+    ;; write *before* SSL inits (bad news bears)
+    (as:delay (lambda () (connect-tcp-socket socket/stream host port))
+              :time 0
+              :event-cb event-cb)
     socket/stream))
 
 ;; TODO: Figure out why read/write timeouts are borked when wrapping an existing
