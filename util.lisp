@@ -79,7 +79,7 @@
   (declare (type (or null octet-vector) data))
   (let ((buffer (fast-io:make-output-buffer)))
     (when data
-      (fast-io:fast-write-sequence data buffer))
+      (write-to-buffer data buffer))
     buffer))
 
 (declaim (inline buffer-output))
@@ -93,7 +93,7 @@
   "Write data to a buffer created with (make-buffer)."
   (declare (type octet-vector seq)
            (type fast-io::output-buffer buffer))
-  (fast-io:fast-write-sequence seq buffer start end))
+  (fast-io:fast-write-sequence seq buffer (or start 0) end))
 
 (defconstant +af-inet+ uv:+af-inet+)
 (defconstant +af-inet6+ uv:+af-inet-6+)
