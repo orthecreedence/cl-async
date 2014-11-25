@@ -1,3 +1,7 @@
+;;; this file is sort of our makeshift openssl bindings. i'd generate them as i
+;;; usually do via swig, but kind of don't care to because we're only going to
+;;; use a fraction of the exported functionality.
+
 (in-package :cl-async-ssl)
 
 (defconstant +ssl-error-none+ 0)
@@ -64,8 +68,6 @@
   (ctx :pointer))
 (cffi:defcfun ("SSL_free" ssl-free) :void
   (ssl :pointer))
-(cffi:defcfun ("BIO_free_all" ssl-bio-free-all) :void
-  (bio :pointer))
 (cffi:defcfun ("ERR_get_error" ssl-err-get-error) :int)
 (cffi:defcfun ("ERR_error_string" ssl-err-error-string) :string
   (e :unsigned-long)
@@ -79,6 +81,7 @@
 (cffi:defcfun ("SSL_state_string_long" ssl-state-string-long) :string
   (ssl :pointer))
 (cffi:defcfun ("TLSv1_client_method" ssl-tls-v1-client-method) :int)
+(cffi:defcfun ("SSLv23_server_method" ssl-ssl-v23-server-method) :int)
 (cffi:defcfun ("SSL_CTX_new" ssl-ctx-new) :pointer
   (method :int))
 (cffi:defcfun ("SSL_CTX_set_default_verify_paths" ssl-ctx-set-default-verify-paths) :int
@@ -91,8 +94,6 @@
   (ctx :pointer))
 (cffi:defcfun ("BIO_new" ssl-bio-new) :pointer
   (type :int))
-(cffi:defcfun ("SSL_do_handshake" ssl-do-handshake) :int
-  (ssl :pointer))
 (cffi:defcfun ("SSL_set_cipher_list" ssl-set-cipher-list) :int
   (ssl :pointer)
   (ciphers :string))
@@ -100,8 +101,6 @@
   (ssl :pointer)
   (bio-read :pointer)
   (bio-write :pointer))
-(cffi:defcfun ("SSL_set_connect_state" ssl-set-connect-state) :int
-  (ssl :pointer))
 (cffi:defcfun ("SSL_set_info_callback" ssl-set-info-callback) :void
   (ssl :pointer)
   (callback :pointer))
@@ -148,12 +147,4 @@
 (defun ssl-in-connect-init (ssl) (& (ssl-state ssl) +ssl-st-connect+))
 (defun ssl-in-accept-init (ssl) (& (ssl-state ssl) +ssl-st-accept+))
 (defun ssl-bio-set-mem-eof-return (bio v) (ssl-bio-ctrl bio +bio-c-set-buf-mem-eof-return+ v (cffi:null-pointer)))
-
-(defun last-ssl-error ()
-  "Returns the last error string (nil if none) and the last error code that
-   happened in SSL land."
-  (let ((errcode (ssl-get-error)))
-    (values
-      (ssl-error-string errcode)
-      errcode)))
 
