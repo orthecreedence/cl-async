@@ -20,6 +20,7 @@
                 #:socket-drain-read-buffer
                 #:write-to-uvstream
                 #:write-socket-data
+                #:write-pending-socket-data
                 #:init-incoming-socket
                 #:tcp-server-c
                 #:stream-append-bytes))

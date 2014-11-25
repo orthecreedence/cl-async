@@ -243,10 +243,14 @@
         ;; data
         (funcall do-send))))
 
-(defun write-pending-socket-data (socket)
-  "Write any pending data on the given socket to its underlying stream."
-  (write-socket-data socket (buffer-output (socket-buffer socket)) :force t)
-  (setf (socket-buffer socket) (make-buffer)))
+(defgeneric write-pending-socket-data (socket)
+  (:documentation
+    "Write any pending data on the given socket to its underlying stream."))
+
+(defmethod write-pending-socket-data ((socket socket))
+  (let ((pending (buffer-output (socket-buffer socket))))
+    (setf (socket-buffer socket) (make-buffer))
+    (write-socket-data socket pending :force t)))
 
 (define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int) (buf :pointer))
   "Called when we want to allocate data to be filled for stream reading."

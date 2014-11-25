@@ -13,6 +13,8 @@
 
 (defclass ssl-socket (socket)
   ((as-ssl :accessor socket-as-ssl :initarg :as-ssl :initform nil)
+   (ssl-buffer :accessor socket-ssl-buffer :initform (make-buffer))
+   (ssl-connected :accessor socket-ssl-connected :initform nil)
    (ssl-closing :accessor socket-ssl-closing :initform nil))
   (:documentation "Extends cl-async's socket to hold SSL info"))
 
@@ -51,16 +53,31 @@
   (let ((ssl (as-ssl-ssl as-ssl)))
     (do-chunk-data data *output-buffer*
       (lambda (buffer bufsize)
-        (ssl-write ssl (static-vectors:static-vector-pointer buffer) bufsize)))))
+        (ssl-write ssl (static-vectors:static-vector-pointer buffer) bufsize)))
+    (ssl-run-state ssl)))
 
-(defmethod write-socket-data ((socket ssl-socket) data &key read-cb write-cb event-cb start end force write-ssl)
-  (declare (ignore force start end))
-  (format t "< write: (encrypted? ~a) ~a~%" (not write-ssl) (length (subseq data (or start 0) end)))
-  (unless write-ssl
-    (return-from write-socket-data (call-next-method)))
-  (let ((uvstream (socket-c socket))
-        (do-send (lambda ()
-                   (write-to-ssl (socket-as-ssl socket) data))))
+(defmethod write-socket-data ((socket ssl-socket) data &key read-cb write-cb event-cb start end force (write-ssl t))
+  (declare (ignore force))
+  (cond ((and (not (socket-ssl-connected socket))
+              write-ssl)
+         ;; we're writing data INTO ssl (unencrypted data) but we haven't
+         ;; finished connecting to SSL yet, so chill on the writing (just buffer
+         ;; it)
+         (let ((data (if (stringp data)
+                         (babel:string-to-octets data :encoding :utf-8)
+                         data)))
+           (format t "< buffer: ~a~%" (length (subseq data (or start 0) end)))
+           (write-to-buffer data (socket-ssl-buffer socket) start end)
+           (return-from write-socket-data nil)))
+        ((not write-ssl)
+         ;; we're writing raw socket data (encrypted data), so blast it out
+         (format t "< write: raw: ~a (conn ~a)~%" (length (subseq data (or start 0) end)) (socket-connected socket))
+         (return-from write-socket-data (call-next-method))))
+  (format t "< write: ssl: ~a~%" (length (subseq data (or start 0) end)))
+  (let* ((uvstream (socket-c socket))
+         (as-ssl (socket-as-ssl socket))
+         (do-send (lambda ()
+                    (write-to-ssl as-ssl data))))
     (if (or read-cb write-cb event-cb)
         ;; we're specifying callbacks. since we're most likely calling this from
         ;; inside a socket callback and we don't necessarily want to overwrite
@@ -79,7 +96,17 @@
         ;; data
         (funcall do-send))))
 
-(defun ssl-run-state (ssl)
+(defmethod write-pending-socket-data ((socket ssl-socket))
+  ;; write out raw bytes using :write-ssl nil
+  (let ((pending (buffer-output (socket-buffer socket))))
+    (setf (socket-ssl-buffer socket) (make-buffer))
+    (write-socket-data socket pending :force t :write-ssl nil))
+  (when (socket-ssl-connected socket)
+    (let ((pending (buffer-output (socket-ssl-buffer socket))))
+      (setf (socket-ssl-buffer socket) (make-buffer))
+      (write-socket-data socket pending :force t))))
+
+(defun ssl-run-state (ssl &key from-info)
   "This function stupidly loops over SSL's objects looking for things to do,
    such as copying data from the write BIO into the read BIO or checking it
    SSL can be read from, etc. this is necessary because SSL doesn't really have
@@ -97,10 +124,16 @@
          (written 0))
     (loop for nread = (ssl-bio-read bio-write (static-vectors:static-vector-pointer *output-buffer*) (length *output-buffer*))
           while (< 0 nread) do
-      (write-socket-data socket *output-buffer* :end nread)
+      (write-socket-data socket *output-buffer* :end nread :write-ssl nil)
       (incf written nread))
+    (when (and from-info (zerop written))
+      (return-from ssl-run-state))
     (if (ssl-is-init-finished ssl)
         (let ((ret (ssl-read ssl (static-vectors:static-vector-pointer *input-buffer*) (length *input-buffer*))))
+          (unless (socket-ssl-connected socket)
+            (setf (socket-ssl-connected socket) t)
+            ;; write any buffered output we've stored up
+            (write-pending-socket-data socket))
           (cond ((<= ret 0)
                  (let* ((err (ssl-get-error ssl ret))
                         (str (cond
@@ -127,20 +160,21 @@
   (let ((w (logand where +ssl-st-mask+))
         (state (ssl-state-string-long ssl)))
     (format t ". info: ~a ~s~%" state (list where ret))
-    (cond ((& w +ssl-st-connect+) )
-          ((& w +ssl-st-accept+) )
-          ((& w +ssl-cb-handshake-done+) )
-          ((& w +ssl-cb-handshake-start+) )
-          ((& w +ssl-cb-read+) )
-          ((& w +ssl-cb-write+) )
+    (cond ((& w +ssl-st-connect+))
+          ((& w +ssl-st-accept+))
+          ((& w +ssl-cb-handshake-done+)
+           (ssl-run-state ssl))
+          ((& w +ssl-cb-handshake-start+))
+          ((& w +ssl-cb-read+))
+          ((& w +ssl-cb-write+))
           ((& w +ssl-cb-alert+)
            (let ((read-alert (& w +ssl-cb-read+))
                  (err (ssl-alert-type-string-long ret))
                  (desc (ssl-alert-desc-string-long ret)))
              (format t "! ssl: alert: (~s): ~a / ~a~%" (if read-alert :read :write) err desc)))
-          ((& w +ssl-cb-exit+) )
-          ((& w +ssl-cb-loop+) ;(ssl-run-state ssl)
-                               ))))
+          ((& w +ssl-cb-exit+)
+           (ssl-run-state ssl :from-info t))
+          ((& w +ssl-cb-loop+)))))
 
 (defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Create and return an SSL-activated socket."
@@ -176,7 +210,8 @@
            (stream (when (typep socket/stream 'as:async-stream) socket/stream))
            (socket-c (as:socket-c socket))
            (callbacks (get-callbacks socket-c))
-           (method (ssl-tls-v1-client-method))
+           ;(method (ssl-tlsv1-client-method))
+           (method (ssl-sslv23-client-method))
            (ctx (ssl-ctx-new method)))
       (ssl-ctx-set-default-verify-paths ctx)
       (ssl-ctx-set-verify ctx +ssl-verify-none+ (cffi:null-pointer))
@@ -187,6 +222,7 @@
             (bio-read (ssl-bio-new (ssl-bio-s-mem)))
             (bio-write (ssl-bio-new (ssl-bio-s-mem))))
         (ssl-set-cipher-list ssl "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH")
+        ;(ssl-set-cipher-list ssl "HIGH:!RC4:!MD5:!aNULL:!EDH:!EXP:+ECDHE-RSA-AES128-SHA256:+3DES")
         (ssl-set-bio ssl bio-read bio-write)
         (ssl-set-info-callback ssl (cffi:callback tcp-ssl-info-cb))
         (ssl-bio-set-mem-eof-return bio-read -1)

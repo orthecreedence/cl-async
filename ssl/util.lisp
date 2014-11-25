@@ -80,8 +80,9 @@
   (err :int))
 (cffi:defcfun ("SSL_state_string_long" ssl-state-string-long) :string
   (ssl :pointer))
-(cffi:defcfun ("TLSv1_client_method" ssl-tls-v1-client-method) :int)
-(cffi:defcfun ("SSLv23_server_method" ssl-ssl-v23-server-method) :int)
+(cffi:defcfun ("TLSv1_client_method" ssl-tlsv1-client-method) :int)
+(cffi:defcfun ("SSLv23_client_method" ssl-sslv23-client-method) :int)
+(cffi:defcfun ("SSLv23_server_method" ssl-sslv23-server-method) :int)
 (cffi:defcfun ("SSL_CTX_new" ssl-ctx-new) :pointer
   (method :int))
 (cffi:defcfun ("SSL_CTX_set_default_verify_paths" ssl-ctx-set-default-verify-paths) :int
