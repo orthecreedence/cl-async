@@ -97,15 +97,18 @@
            (type fast-io::output-buffer buffer))
   (fast-io:fast-write-sequence seq buffer (or start 0) end))
 
-(defun do-chunk-data (data buffer write-cb)
+(defun do-chunk-data (data buffer write-cb &key start end)
   "Util function that splits data into the (length buffer) chunks and calls
    write-cb for each chunk."
-  (let* ((data-length (length data))
-         (data-index 0)
+  (let* ((len (length data))
+         (start (or start 0))
+         (end (min (or end len) len))
+         (data-length (- end start))
+         (data-index start)
          (buffer-length (length buffer)))
     (loop while (< 0 data-length) do
       (let ((bufsize (min data-length buffer-length)))
-        (replace buffer data :start2 data-index)
+        (replace buffer data :start2 data-index :end2 end)
         (funcall write-cb buffer bufsize)
         (decf data-length bufsize)
         (incf data-index bufsize)))))

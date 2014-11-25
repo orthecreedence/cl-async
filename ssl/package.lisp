@@ -21,7 +21,8 @@
                 #:write-to-uvstream
                 #:write-socket-data
                 #:init-incoming-socket
-                #:tcp-server-c))
+                #:tcp-server-c
+                #:stream-append-bytes))
 
 ;; NOTE: the loading code is verbatim from cl+ssl
 

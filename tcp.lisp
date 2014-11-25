@@ -158,7 +158,7 @@
    are not enabled, but rather just not disabled."
   (error "not implemented"))
 
-(defun write-to-uvstream (uvstream data)
+(defun write-to-uvstream (uvstream data &key start end)
   "Util function to write data directly to a uv stream object."
   (do-chunk-data data *output-buffer*
     (lambda (buffer-c bufsize)
@@ -172,9 +172,11 @@
               (uv:free-req req)
               (event-handler res event-cb :socket socket)
               (return-from write-to-uvstream)))
-          (attach-data-to-pointer req uvstream))))))
+          (attach-data-to-pointer req uvstream))))
+    :start start
+    :end end))
 
-(defgeneric write-socket-data (socket data &key read-cb write-cb event-cb force)
+(defgeneric write-socket-data (socket data &key read-cb write-cb event-cb start end force &allow-other-keys)
   (:documentation
     "Write data into a cl-async socket. Allows specifying read/write/event
      callbacks. Any callback left nil will use that current callback from the
@@ -185,7 +187,7 @@
      to do it ourselves by checking if the socket is connected and buffering
      accordingly."))
 
-(defmethod write-socket-data ((socket socket) data &key read-cb write-cb event-cb force)
+(defmethod write-socket-data ((socket socket) data &key read-cb write-cb event-cb start end force)
   (check-socket-open socket)
   (let* ((uvstream (socket-c socket))
          (write-timeout (getf (deref-data-from-pointer uvstream) :write-timeout))
@@ -203,23 +205,23 @@
                              ;; actually work, so we do our own buffering here. this
                              ;; is all flushed out in the tcp-connect-cb.
                              (unless (socket-closed-p socket)
-                               (write-to-buffer bytes (socket-buffer socket))))
+                               (write-to-buffer bytes (socket-buffer socket) start end)))
                             ((and (not force) *buffer-writes*)
                              ;; buffer the socket data until the next event loop.
                              ;; this avoids multiple (unneccesary) calls to uv_write,
                              ;; which is fairly slow
-                             (write-to-buffer bytes (socket-buffer socket))
+                             (write-to-buffer bytes (socket-buffer socket) start end)
                              (unless (socket-buffering-p socket)
                                (setf (socket-buffering-p socket) t)
                                ;; flush the socket's buffer on the next loop
                                (as:with-delay ()
                                  (unless (socket-closed-p socket)
                                    (setf (socket-buffering-p socket) nil)
-                                   (write-to-uvstream uvstream (buffer-output (socket-buffer socket)))
+                                   (write-to-uvstream uvstream (buffer-output (socket-buffer socket)) :start start :end end)
                                    (setf (socket-buffer socket) (make-buffer))))))
                             (t
                              (unless (socket-closed-p socket)
-                               (write-to-uvstream uvstream bytes))))))))
+                               (write-to-uvstream uvstream bytes :start start :end end))))))))
     (when write-timeout
       (remove-event timeout)
       (add-event timeout :timeout (cdr write-timeout)))
@@ -284,7 +286,7 @@
               (read-cb
                ;; we're not draining and we have a read CB, so stream
                (stream-append-bytes stream bytes)
-               (funcall read-cb socket stream)))))))
+               (when read-cb (funcall read-cb socket stream))))))))
 
 (define-c-callback tcp-connect-cb :void ((req :pointer) (status :int))
   "Called when an outgoing TCP socket connects."

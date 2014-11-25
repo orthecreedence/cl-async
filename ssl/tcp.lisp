@@ -8,12 +8,13 @@
    (bio-read :accessor as-ssl-bio-read :initarg :bio-read :initform nil)
    (bio-write :accessor as-ssl-bio-write :initarg :bio-write :initform nil)
    (ssl :accessor as-ssl-ssl :initarg :ssl :initform nil)
-   (freed :accessor as-ssl-freed :initform nil)))
+   (freed :accessor as-ssl-freed :initform nil))
+  (:documentation "Wraps SSL connection information in a nice package"))
 
 (defclass ssl-socket (socket)
   ((as-ssl :accessor socket-as-ssl :initarg :as-ssl :initform nil)
    (ssl-closing :accessor socket-ssl-closing :initform nil))
-  (:documentation "Wraps a libevent SSL socket."))
+  (:documentation "Extends cl-async's socket to hold SSL info"))
 
 (defclass tcp-ssl-server (tcp-server)
   ((as-ssl :accessor tcp-server-ssl-as-ssl :initarg :ssl-ctx :initform nil))
@@ -25,8 +26,11 @@
     (return-from close-ssl))
   (let* ((ctx (as-ssl-ctx as-ssl))
          (ssl (as-ssl-ssl as-ssl)))
-    (and (cffi:pointerp ctx) (ssl-ctx-free ctx))
-    (and (cffi:pointerp ssl) (ssl-free ssl))
+    (when (cffi:pointerp ctx)
+      (ssl-ctx-free ctx))
+    (when (cffi:pointerp ssl)
+      (free-pointer-data ssl :preserve-pointer t)
+      (ssl-free ssl))
     (setf (as-ssl-freed as-ssl) t)))
   
 (defmethod close-socket ((socket ssl-socket) &key force)
@@ -47,9 +51,13 @@
   (let ((ssl (as-ssl-ssl as-ssl)))
     (do-chunk-data data *output-buffer*
       (lambda (buffer bufsize)
-        (ssl-write ssl buffer bufsize)))))
+        (ssl-write ssl (static-vectors:static-vector-pointer buffer) bufsize)))))
 
-(defmethod write-socket-data ((socket ssl-socket) data &key read-cb write-cb event-cb force)
+(defmethod write-socket-data ((socket ssl-socket) data &key read-cb write-cb event-cb start end force write-ssl)
+  (declare (ignore force start end))
+  (format t "- write: (encrypted? ~a) ~a~%" (not write-ssl) (length (subseq data (or start 0) end)))
+  (unless write-ssl
+    (return-from write-socket-data (call-next-method)))
   (let ((uvstream (socket-c socket))
         (do-send (lambda ()
                    (write-to-ssl (socket-as-ssl socket) data))))
@@ -71,33 +79,78 @@
         ;; data
         (funcall do-send))))
 
-(define-c-callback tcp-ssl-info-cb :void ((ssl :pointer) (where :int) (ret :int))
-  "Called whenever *stuff* happens on an SSL object."
-  (format t "- ssl: info: ~a (where: ~a) (ret: ~a)~%" ssl where ret)
+(defun ssl-run-state (ssl)
   (let* ((data (deref-data-from-pointer ssl))
          (socket (getf data :socket))
-         (stream (getf data :stream)))
-    )
-  )
+         (stream (getf data :stream))
+         (drain-read (socket-drain-read-buffer socket))
+         (callbacks (get-callbacks (as:socket-c socket)))
+         ;(connect-cb (getf callbacks :connect-cb))
+         (read-cb (getf callbacks :read-cb))
+         ;(write-cb (getf callbacks :write-cb))
+         ;(event-cb (getf callbacks :event-cb))
+         (as-ssl (socket-as-ssl socket))
+         (bio-write (as-ssl-bio-write as-ssl)))
+    (loop for nread = (ssl-bio-read bio-write (static-vectors:static-vector-pointer *output-buffer*) (length *output-buffer*))
+          while (< 0 nread) do
+      (write-socket-data socket *output-buffer* :end nread))
+    (let ((ret (ssl-read ssl (static-vectors:static-vector-pointer *input-buffer*) (length *input-buffer*))))
+      (cond ((<= ret 0)
+             (let* ((err (ssl-get-error ssl ret))
+                    (str (cond
+                           ((= err +ssl-error-ssl+)
+                            (ssl-err-error-string (ssl-err-get-error) (cffi:null-pointer)))
+                           ((= err +ssl-error-want-read+)
+                             "want-read")
+                           ((= err +ssl-error-want-write+)
+                            "want-write")
+                           ((= err +ssl-error-want-accept+)
+                            "want-accept")
+                           ((= err +ssl-error-want-connect+)
+                            "want-connect"))))
+               (format t "- err(~a): ~a~%" err str)))
+            ((and read-cb drain-read)
+             (funcall read-cb socket (subseq *input-buffer* 0 ret)))
+            (stream
+             (stream-append-bytes stream (subseq *input-buffer* 0 ret))
+             (when read-cb (funcall read-cb socket stream)))))))
+
+(define-c-callback tcp-ssl-info-cb :void ((ssl :pointer) (where :int) (ret :int))
+  "Called whenever *stuff* happens on an SSL object."
+  (let ((w (logand where +ssl-st-mask+))
+        (state (ssl-state-string-long ssl)))
+    (format t "- ssl: info: (where ~a/~a) (fin ~a) ~a~%" where ret (ssl-is-init-finished ssl) state)
+    (cond ((& w +ssl-st-connect+) )
+          ((& w +ssl-cb-handshake-done+) )
+          ((& w +ssl-cb-handshake-start+) )
+          ((& w +ssl-st-accept+) )
+          ((& w +ssl-cb-read+) )
+          ((& w +ssl-cb-write+) )
+          ((& w +ssl-cb-alert+)
+           (let ((read-alert (& w +ssl-cb-read+))
+                 (err (ssl-alert-type-string-long ret))
+                 (desc (ssl-alert-desc-string-long ret)))
+             (format t "- ssl: alert: (~s): ~a / ~a~%" (if read-alert :read :write) err desc)))
+          ((& w +ssl-cb-exit+) )
+          ((& w +ssl-cb-loop+)
+           (ssl-run-state ssl)))))
 
 (defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Create and return an SSL-activated socket."
   (check-event-loop-running)
   (labels ((connect-cb (sock)
-             ;; do something with openssl
+             (ssl-run-state (as-ssl-ssl (socket-as-ssl sock)))
              (when connect-cb
                (funcall connect-cb sock)))
            (read-cb (sock data)
-             (let ((data (if (typep data 'as:async-stream)
-                             (let ((buf (make-buffer))
-                                   (stream-buf (make-array 8096 :element-type 'as:octet)))
-                               (loop for n = (read-sequence stream-buf data)
-                                     while (< 0 n) do
-                                 (write-to-buffer stream-buf buf 0 n))
-                               (buffer-output buf))
-                             data)))
-               ;; send data into openssl
-               )))
+             (format t "- read: (encrypted? ~a) ~a~%" t (length data))
+             (let* ((as-ssl (socket-as-ssl sock))
+                    (ssl (as-ssl-ssl as-ssl))
+                    (bio-read (as-ssl-bio-read as-ssl)))
+               (do-chunk-data data *input-buffer*
+                 (lambda (buffer bufsize)
+                   (ssl-bio-write bio-read (static-vectors:static-vector-pointer buffer) bufsize)))
+               (ssl-run-state ssl))))
     (let* ((socket/stream (apply #'as:tcp-connect
                                  (append (list host port
                                                read-cb event-cb

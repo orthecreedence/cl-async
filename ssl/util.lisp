@@ -1,5 +1,15 @@
 (in-package :cl-async-ssl)
 
+(defconstant +ssl-error-none+ 0)
+(defconstant +ssl-error-ssl+ 1)
+(defconstant +ssl-error-want-read+ 2)
+(defconstant +ssl-error-want-write+ 3)
+(defconstant +ssl-error-want-x509-lookup+ 4)
+(defconstant +ssl-error-syscall+ 5)
+(defconstant +ssl-error-zero-return+ 6)
+(defconstant +ssl-error-want-connect+ 7)
+(defconstant +ssl-error-want-accept+ 8)
+
 (defconstant +ssl-st-connect+ #x1000)
 (defconstant +ssl-st-accept+ #x2000)
 (defconstant +ssl-st-mask+ #x0FFF)
@@ -28,11 +38,26 @@
 (defconstant +ssl-verify-fail-if-no-peer-cert+ #x02)
 (defconstant +ssl-verify-client-once+ #x04)
 
-(defconstant +ssl-bio-c-set-buf-mem-eof-return+ 130)
+(defconstant +bio-ctrl-reset+ 1)
+(defconstant +bio-ctrl-eof+ 2)
+(defconstant +bio-ctrl-info+ 3)
+(defconstant +bio-ctrl-set+ 4)
+(defconstant +bio-ctrl-get+ 5)
+(defconstant +bio-ctrl-push+ 6)
+(defconstant +bio-ctrl-pop+ 7)
+(defconstant +bio-ctrl-get-close+ 8)
+(defconstant +bio-ctrl-set-close+ 9)
+(defconstant +bio-ctrl-pending+ 10)
+(defconstant +bio-ctrl-flush+ 11)
+(defconstant +bio-ctrl-dup+ 12)
+(defconstant +bio-ctrl-wpending+ 13)
+(defconstant +bio-ctrl-set-callback+ 14)
+(defconstant +bio-ctrl-get-callback+ 15)
+(defconstant +bio-c-set-buf-mem-eof-return+ 130)
 
-(cffi:defcfun ("SSL_set_shutdown" ssl-set-shutdown) :void
+(cffi:defcfun ("SSL_get_error" ssl-get-error) :int
   (ssl :pointer)
-  (mode :int))
+  (ret :int))
 (cffi:defcfun ("SSL_shutdown" ssl-shutdown) :int
   (ssl :pointer))
 (cffi:defcfun ("SSL_CTX_free" ssl-ctx-free) :void
@@ -41,9 +66,18 @@
   (ssl :pointer))
 (cffi:defcfun ("BIO_free_all" ssl-bio-free-all) :void
   (bio :pointer))
-(cffi:defcfun ("ERR_get_error" ssl-get-error) :int)
-(cffi:defcfun ("ERR_reason_error_string" ssl-error-string) :string
+(cffi:defcfun ("ERR_get_error" ssl-err-get-error) :int)
+(cffi:defcfun ("ERR_error_string" ssl-err-error-string) :string
+  (e :unsigned-long)
+  (buf :pointer))
+(cffi:defcfun ("ERR_reason_error_string" ssl-err-reason-error-string) :string
   (errcode :int))
+(cffi:defcfun ("SSL_alert_type_string_long" ssl-alert-type-string-long) :string
+  (err :int))
+(cffi:defcfun ("SSL_alert_desc_string_long" ssl-alert-desc-string-long) :string
+  (err :int))
+(cffi:defcfun ("SSL_state_string_long" ssl-state-string-long) :string
+  (ssl :pointer))
 (cffi:defcfun ("TLSv1_client_method" ssl-tls-v1-client-method) :int)
 (cffi:defcfun ("SSL_CTX_new" ssl-ctx-new) :pointer
   (method :int))
@@ -57,6 +91,8 @@
   (ctx :pointer))
 (cffi:defcfun ("BIO_new" ssl-bio-new) :pointer
   (type :int))
+(cffi:defcfun ("SSL_do_handshake" ssl-do-handshake) :int
+  (ssl :pointer))
 (cffi:defcfun ("SSL_set_cipher_list" ssl-set-cipher-list) :int
   (ssl :pointer)
   (ciphers :string))
@@ -69,8 +105,8 @@
 (cffi:defcfun ("SSL_set_info_callback" ssl-set-info-callback) :void
   (ssl :pointer)
   (callback :pointer))
-(cffi:defcfun ("SSL_CTX_set_info_callback" ssl-ctx-set-info-callback) :void
-  (ctx :pointer)
+(cffi:defcfun ("SSL_set_msg_callback" ssl-set-msg-callback) :void
+  (ssl :pointer)
   (callback :pointer))
 (cffi:defcfun ("SSL_state" ssl-state) :int
   (ssl :pointer))
@@ -83,6 +119,8 @@
   (cmd :int)
   (arg :long)
   (parg :pointer))
+(cffi:defcfun ("BIO_ctrl_pending" ssl-bio-ctrl-pending) :unsigned-int
+  (bio :pointer))
 (cffi:defcfun ("BIO_s_mem" ssl-bio-s-mem) :int)
 (cffi:defcfun ("BIO_read" ssl-bio-read) :int
   (bio :pointer)
@@ -92,21 +130,24 @@
   (bio :pointer)
   (buf :pointer)
   (len :int))
+(cffi:defcfun ("SSL_pending" ssl-pending) :int
+  (ssl :pointer))
 (cffi:defcfun ("SSL_read" ssl-read) :int
   (ssl :pointer)
   (buf :pointer)
-  (len :pointer))
+  (len :int))
 (cffi:defcfun ("SSL_write" ssl-write) :int
   (ssl :pointer)
   (buf :pointer)
   (len :int))
 
-(defun ssl-is-init-finished (ssl) (= (ssl-state ssl) +ssl-st-ok+))
-(defun ssl-in-init (ssl) (not (zerop (logand (ssl-state ssl) +ssl-st-init+))))
-(defun ssl-in-before (ssl) (not (zerop (logand (ssl-state ssl) +ssl-st-before+))))
-(defun ssl-in-connect-init (ssl) (not (zerop (logand (ssl-state ssl) +ssl-st-connect+))))
-(defun ssl-in-accept-init (ssl) (not (zerop (logand (ssl-state ssl) +ssl-st-accept+))))
-(defun ssl-bio-set-mem-eof-return (bio v) (ssl-bio-ctrl bio +ssl-bio-c-set-buf-mem-eof-return+ v (cffi:null-pointer)))
+(defun & (&rest vals) (not (zerop (apply 'logand vals))))
+(defun ssl-is-init-finished (ssl) (& (ssl-state ssl) +ssl-st-ok+))
+(defun ssl-in-init (ssl) (& (ssl-state ssl) +ssl-st-init+))
+(defun ssl-in-before (ssl) (& (ssl-state ssl) +ssl-st-before+))
+(defun ssl-in-connect-init (ssl) (& (ssl-state ssl) +ssl-st-connect+))
+(defun ssl-in-accept-init (ssl) (& (ssl-state ssl) +ssl-st-accept+))
+(defun ssl-bio-set-mem-eof-return (bio v) (ssl-bio-ctrl bio +bio-c-set-buf-mem-eof-return+ v (cffi:null-pointer)))
 
 (defun last-ssl-error ()
   "Returns the last error string (nil if none) and the last error code that
