@@ -1,12 +1,17 @@
 (in-package :cl-async)
 
-(defun event-handler (errno event-cb &key socket catch-errors)
+(defun event-handler (error event-cb &key socket catch-errors extra)
   "Called when an event (error, mainly) occurs."
-  (let* ((event nil)
-         (errstr (error-str errno)))
+  ;; here we check if errno is actually an event/error object passed in
+  ;; directly. if so, we kindly forward it along to the event-cb.
+  (let* ((errno (when (numberp error) error))
+         (event (unless (numberp error) error))
+         (errstr (when errno (error-str errno))))
     (flet ((do-handle ()
              (unwind-protect
                (cond
+                 ;; if we passed in an event, do nothing
+                 (event nil)
                  ((= errno (uv:errval :etimedout))
                   (setf event (make-instance 'tcp-timeout :socket socket :code errno :msg "connection timed out")))
                  ((= errno (uv:errval :econnreset))
