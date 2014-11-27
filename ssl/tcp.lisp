@@ -40,7 +40,6 @@
   (declare (ignore force))
   (let* ((as-ssl (socket-as-ssl socket))
          (ssl (as-ssl-ssl as-ssl)))
-    (ssl-run-state ssl)
     (call-next-method)
     (ssl-shutdown ssl)
     ;; DON'T free the ctx for incoming sockets!
@@ -342,6 +341,7 @@
                               (lambda (ssl) (ssl-set-accept-state ssl)))
                             (setf (socket-ssl-function sock) 'ssl-accept)
                             (let ((ssl (as-ssl-ssl (socket-as-ssl sock))))
+                              (ssl-accept ssl)
                               (ssl-run-state ssl))
                             (when connect-cb (funcall connect-cb sock))))
          (server (as:tcp-server bind-address
