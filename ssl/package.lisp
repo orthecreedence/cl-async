@@ -1,20 +1,30 @@
 (defpackage :cl-async-ssl
   (:use :cl :cl-async-base :cl-async :cl-async-util)
   (:nicknames :as-ssl)
-  (:export #:ssl-socket
-           #:tcp-ssl-server
-           #:socket-underlying
+  (:export #:+ssl-op-all+
+           #:+ssl-op-no-sslv2+
+           #:+ssl-op-no-sslv3+
+           #:+ssl-op-no-tlsv1+
+           #:+ssl-op-no-tlsv1-2+
+           #:+ssl-op-no-tlsv1-1+
+
+           #:+ssl-verify-none+
+           #:+ssl-verify-peer+
+           #:+ssl-verify-fail-if-no-peer-cert+
+           #:+ssl-verify-client-once+
+
+           #:ssl-socket
            #:tcp-ssl-error
-           ;#:wrap-in-ssl
-           #:init-tcp-ssl-socket
            #:tcp-ssl-connect
            #:tcp-ssl-server)
   (:import-from :cl-async
                 #:*output-buffer*
                 #:*input-buffer*
+                #:event-handler
                 #:socket-connected
                 #:socket-buffer
                 #:socket-buffering-p
+                #:socket-direction
                 #:check-socket-open
                 #:check-event-loop-running
                 #:socket-drain-read-buffer

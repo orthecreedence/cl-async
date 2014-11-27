@@ -42,6 +42,48 @@
 (defconstant +ssl-verify-fail-if-no-peer-cert+ #x02)
 (defconstant +ssl-verify-client-once+ #x04)
 
+(defconstant +ssl-filetype-asn1+ 2)
+(defconstant +ssl-filetype-pem+ 1)
+
+(defconstant +ssl-op-all+ #x80000BFF)
+;; DTLS options
+(defconstant +ssl-op-no-query-mtu+ #x00001000)
+;; Turn on Cookie Exchange (on relevant for servers)
+(defconstant +ssl-op-cookie-exchange+ #x00002000)
+;; Don't use RFC4507 ticket extension
+(defconstant +ssl-op-no-ticket+ #x00004000)
+;; Use Cisco's "speshul" version of DTLS_BAD_VER (as client) 
+(defconstant +ssl-op-cisco-anyconnect+ #x00008000)
+;; As server, disallow session resumption on renegotiation
+(defconstant +ssl-op-no-session-resumption-on-renegotiation+ #x00010000)
+;; Don't use compression even if supported
+(defconstant +ssl-op-no-compression+ #x00020000)
+;; Permit unsafe legacy renegotiation
+(defconstant +ssl-op-allow-unsafe-legacy-renegotiation+ #x00040000)
+;; If set, always create a new key when using tmp_ecdh parameters
+(defconstant +ssl-op-single-ecdh-use+ #x00080000)
+;; If set, always create a new key when using tmp_dh parameters
+(defconstant +ssl-op-single-dh-use+ #x00100000)
+;; Set to always use the tmp_rsa key when doing RSA operations,
+;; even when this violates protocol specs
+(defconstant +ssl-op-ephemeral-rsa+ #x00200000)
+;; Set on servers to choose the cipher according to the server's
+;; preferences
+(defconstant +ssl-op-cipher-server-preference+ #x00400000)
+;; If set, a server will allow a client to issue a SSLv3.0 version number
+;; as latest version supported in the premaster secret, even when TLSv1.0
+;; (version 3.1) was announced in the client hello. Normally this is
+;; forbidden to prevent version rollback attacks.
+(defconstant +ssl-op-tls-rollback-bug+ #x00800000)
+
+(defconstant +ssl-op-no-sslv2+ #x01000000)
+(defconstant +ssl-op-no-sslv3+ #x02000000)
+(defconstant +ssl-op-no-tlsv1+ #x04000000)
+(defconstant +ssl-op-no-tlsv1-2+ #x08000000)
+(defconstant +ssl-op-no-tlsv1-1+ #x10000000)
+
+(defconstant +ssl-ctrl-options+ 3)
+
 (defconstant +bio-ctrl-reset+ 1)
 (defconstant +bio-ctrl-eof+ 2)
 (defconstant +bio-ctrl-info+ 3)
@@ -80,11 +122,26 @@
   (err :int))
 (cffi:defcfun ("SSL_state_string_long" ssl-state-string-long) :string
   (ssl :pointer))
+(cffi:defcfun ("TLSv1_method" ssl-tlsv1-method) :int)
 (cffi:defcfun ("TLSv1_client_method" ssl-tlsv1-client-method) :int)
+(cffi:defcfun ("TLSv1_server_method" ssl-tlsv1-server-method) :int)
+(cffi:defcfun ("SSLv23_method" ssl-sslv23-method) :int)
 (cffi:defcfun ("SSLv23_client_method" ssl-sslv23-client-method) :int)
 (cffi:defcfun ("SSLv23_server_method" ssl-sslv23-server-method) :int)
 (cffi:defcfun ("SSL_CTX_new" ssl-ctx-new) :pointer
   (method :int))
+(cffi:defcfun ("SSL_CTX_ctrl" ssl-ctx-ctrl) :long
+  (ctx :pointer)
+  (cmd :int)
+  (larg :unsigned-long)
+  (parg :pointer))
+(cffi:defcfun ("SSL_CTX_use_certificate_chain_file" ssl-ctx-use-certificate-chain-file) :int
+  (ctx :pointer)
+  (file :string))
+(cffi:defcfun ("SSL_CTX_use_PrivateKey_file" ssl-ctx-use-privatekey-file) :int
+  (ctx :pointer)
+  (file :string)
+  (type :int))
 (cffi:defcfun ("SSL_CTX_set_default_verify_paths" ssl-ctx-set-default-verify-paths) :int
   (ctx :pointer))
 (cffi:defcfun ("SSL_CTX_set_verify" ssl-ctx-set-verify) :int
@@ -109,6 +166,10 @@
   (ssl :pointer)
   (callback :pointer))
 (cffi:defcfun ("SSL_state" ssl-state) :int
+  (ssl :pointer))
+(cffi:defcfun ("SSL_set_accept_state" ssl-set-accept-state) :void
+  (ssl :pointer))
+(cffi:defcfun ("SSL_set_connect_state" ssl-set-connect-state) :void
   (ssl :pointer))
 (cffi:defcfun ("SSL_connect" ssl-connect) :int
   (ssl :pointer))
@@ -148,4 +209,8 @@
 (defun ssl-in-connect-init (ssl) (& (ssl-state ssl) +ssl-st-connect+))
 (defun ssl-in-accept-init (ssl) (& (ssl-state ssl) +ssl-st-accept+))
 (defun ssl-bio-set-mem-eof-return (bio v) (ssl-bio-ctrl bio +bio-c-set-buf-mem-eof-return+ v (cffi:null-pointer)))
+
+(defun ssl-ctx-set-options (ctx options)
+  "Function version of the openssl macro."
+  (ssl-ctx-ctrl ctx +ssl-ctrl-options+ options (cffi:null-pointer)))
 
