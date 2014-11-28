@@ -7,7 +7,7 @@
 (defclass event ()
   ((c :accessor event-c :initarg :c :initform (cffi:null-pointer))
    (freed :accessor event-freed :reader event-freed-p :initform nil))
-  (:documentation "Wraps a C libevent event object."))
+  (:documentation "Wraps a C libuv event object."))
 
 (defun check-event-unfreed (event)
   "Checks that an event being operated on is not freed."
@@ -60,6 +60,7 @@
 
 (define-c-callback timer-close-cb :void ((timer-c :pointer))
   "Called when a timer closes."
+  (free-pointer-data timer-c :preserve-pointer t)
   (uv:uv-timer-stop timer-c)
   (uv:free-handle timer-c))
 
@@ -110,5 +111,6 @@
    Or you can remove/free it instead.
 
    This is useful for triggering arbitrary events, and can even be triggered
-   from a thread outside the libevent loop."
+   from a thread outside the libuv loop."
   (delay callback :event-cb event-cb :time (* 100 31536000)))
+
