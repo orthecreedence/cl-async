@@ -139,23 +139,9 @@
            #:async-output-stream
            #:async-io-stream
 
-           ;; http conditions/accessors
-           #:http-info
-           #:http-error
-           #:http-timeout
-           #:http-refused
-           ;;http functions
-           #:http-client
-           #:http-response
-           #:http-server
-           #:close-http-server
-           ;; http classes/accessors
-           #:http-request
-           #:http-request-c
-           #:http-request-method
-           #:http-request-uri
-           #:http-request-resource
-           #:http-request-querystring
-           #:http-request-headers
-           #:http-request-body))
+           ;; idler
+           #:idler
+           #:idler-freed-p
+           #:free-idler
+           #:idle))
 
