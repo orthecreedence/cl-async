@@ -38,13 +38,11 @@
   
 (defmethod close-socket ((socket ssl-socket) &key force)
   (declare (ignore force))
+  (setf (socket-ssl-closing socket) t)
   (let* ((as-ssl (socket-as-ssl socket))
          (ssl (as-ssl-ssl as-ssl)))
     (call-next-method)
     (ssl-shutdown ssl)
-    ;; DON'T free the ctx for incoming sockets!
-    (when (eq (socket-direction socket) :in)
-      (setf (as-ssl-ctx as-ssl) nil))
     (close-ssl as-ssl)))
 
 (defmethod close-tcp-server ((tcp-server tcp-ssl-server))
@@ -55,10 +53,16 @@
 
 (defun write-to-ssl (as-ssl data)
   "Write data into SSL."
-  (let ((ssl (as-ssl-ssl as-ssl)))
-    (do-chunk-data data *output-buffer*
+  (let ((data (if (stringp data)
+                  (babel:string-to-octets data :encoding :utf-8)
+                  data))
+        (buff *output-buffer*)
+        (ssl (as-ssl-ssl as-ssl)))
+    (do-chunk-data data buff
       (lambda (buffer bufsize)
         (ssl-write ssl (static-vectors:static-vector-pointer buffer) bufsize)))
+    ;; zero that shit
+    (zero-buffer buff)
     (ssl-run-state ssl)))
 
 (defmethod write-socket-data ((socket ssl-socket) data &key read-cb write-cb event-cb start end force (write-ssl t))
@@ -71,14 +75,14 @@
          (let ((data (if (stringp data)
                          (babel:string-to-octets data :encoding :utf-8)
                          data)))
-           (format t "< buffer: ~a~%" (length (subseq data (or start 0) end)))
+           (vom:debug "< write: buffer: ~a~%" (length (subseq data (or start 0) end)))
            (write-to-buffer data (socket-ssl-buffer socket) start end)
            (return-from write-socket-data nil)))
         ((not write-ssl)
          ;; we're writing raw socket data (encrypted data), so blast it out
-         (format t "< write: raw: ~a (conn ~a)~%" (length (subseq data (or start 0) end)) (socket-connected socket))
+         (vom:debug "< write: raw: ~a (conn ~a)~%" (length (subseq data (or start 0) end)) (socket-connected socket))
          (return-from write-socket-data (call-next-method))))
-  (format t "< write: ssl: ~a~%" (length (subseq data (or start 0) end)))
+  (vom:debug "< write: ssl: ~a~%" (length (subseq data (or start 0) end)))
   (let* ((uvstream (socket-c socket))
          (as-ssl (socket-as-ssl socket))
          (do-send (lambda ()
@@ -111,7 +115,8 @@
   (when (socket-ssl-connected socket)
     (let ((pending (buffer-output (socket-ssl-buffer socket))))
       (setf (socket-ssl-buffer socket) (make-buffer))
-      (write-socket-data socket pending :force t))))
+      (write-socket-data socket pending :force t)
+      (zero-buffer pending))))
 
 (defun ssl-run-state (ssl &key from-info)
   "This function stupidly loops over SSL's objects looking for things to do,
@@ -134,20 +139,23 @@
       (when (and from-info (zerop (ssl-bio-ctrl-pending bio-write)))
         (return-from ssl-run-state))
       (when (< 0 (ssl-bio-ctrl-pending bio-write))
-        ;; NOTE: we don't use *output-buffer* here because we don't want
-        ;; plaintext data sitting in some non-collected buffer
-        (let ((buff (static-vectors:make-static-vector 4096 :element-type 'octet)))
+        (let ((buff *output-buffer*))
           (loop for nread = (ssl-bio-read bio-write (static-vectors:static-vector-pointer buff) (length buff))
                 while (< 0 nread) do
             (write-socket-data socket buff :end nread :write-ssl nil))))
       (if (ssl-is-init-finished ssl)
           (progn
             (unless (socket-ssl-connected socket)
-              (format t "! init!~%")
+              (vom:debug ". init, run buffered SSL writes~%")
               (setf (socket-ssl-connected socket) t)
               ;; write any buffered output we've stored up
               (write-pending-socket-data socket))
-            (let ((ret (ssl-read ssl (static-vectors:static-vector-pointer *input-buffer*) (length *input-buffer*))))
+            ;; make sure we leave if the socket is shutting down (which can be
+            ;; triggered in the (write-pending-socket-data ...) call above)
+            (when (socket-ssl-closing socket)
+              (return-from ssl-run-state))
+            (let* ((buff *input-buffer*)
+                   (ret (ssl-read ssl (static-vectors:static-vector-pointer buff) (length buff))))
               (cond ((<= ret 0)
                      (let* ((err (ssl-get-error ssl ret))
                             (code nil)
@@ -171,12 +179,14 @@
                                                         :socket socket)
                                          event-cb
                                          :socket socket)
-                           (format t "! err(~a): ~a~%" err str))))
+                           (vom:debug "! err(~a): ~a~%" err str))))
                     ((and (< 0 ret) read-cb drain-read)
-                     (funcall read-cb socket (subseq *input-buffer* 0 ret)))
+                     (funcall read-cb socket (subseq buff 0 ret)))
                     ((and (< 0 ret) stream)
-                     (stream-append-bytes stream (subseq *input-buffer* 0 ret))
-                     (when read-cb (funcall read-cb socket stream))))))
+                     (stream-append-bytes stream (subseq buff 0 ret))
+                     (when read-cb (funcall read-cb socket stream))))
+              ;; zero that shit
+              (zero-buffer buff)))
           (funcall (socket-ssl-function socket) ssl)))))
 
 (define-c-callback tcp-ssl-info-cb :void ((ssl :pointer) (where :int) (ret :int))
@@ -184,11 +194,11 @@
    state function sometimes."
   (let ((w (logand where +ssl-st-mask+))
         (state (ssl-state-string-long ssl)))
-    (format t ". info: ~a ~s~%" state (list where ret))
+    (vom:debug ". info: ~a ~s~%" state (list where ret))
     (cond ((& w +ssl-st-connect+))
           ((& w +ssl-st-accept+))
           ((& w +ssl-cb-handshake-done+)
-           (format t "* handshake~%")
+           (vom:debug "* handshake~%")
            ;(ssl-run-state ssl :from-info t)
            )
           ((& w +ssl-cb-handshake-start+))
@@ -198,9 +208,9 @@
            (let ((read-alert (& w +ssl-cb-read+))
                  (err (ssl-alert-type-string-long ret))
                  (desc (ssl-alert-desc-string-long ret)))
-             (format t "! ssl: alert: (~s): ~a / ~a~%" (if read-alert :read :write) err desc)))
+             (vom:debug "! ssl: alert: (~s): ~a / ~a~%" (if read-alert :read :write) err desc)))
           ((& w +ssl-cb-exit+)
-           (format t "* exit~%")
+           (vom:debug "* exit~%")
            ;(ssl-run-state ssl :from-info t)
            )
           ((& w +ssl-cb-loop+)))))
@@ -222,7 +232,7 @@
     (ssl-ctx-set-options ctx options)
     ctx))
 
-(defun attach-ssl-to-socket (ctx socket/stream connect-cb after-create-cb)
+(defun attach-ssl-to-socket (ctx socket/stream connect-cb after-create-cb &key store-ctx)
   "Given a normal cl-async socket (incoming or outgoing), set it up to be
    wrapped in SSL by attaching some SSL objects to it and replacing the
    connect-cb and read-cb with our own. Note that the given socket MUST be of
@@ -231,7 +241,7 @@
    Note that this function *really* should be called before the passed socket
    is connected, and certainly before any data is exchanged over it."
   (labels ((read-cb (sock data)
-             (format t "> read: raw: ~a~%" (length data))
+             (vom:debug "> read: raw: ~a~%" (length data))
              (let* ((as-ssl (socket-as-ssl sock))
                     (ssl (as-ssl-ssl as-ssl))
                     (bio-read (as-ssl-bio-read as-ssl))
@@ -266,7 +276,7 @@
         (attach-data-to-pointer ssl (list :socket socket
                                           :stream stream))
         (setf (socket-as-ssl socket) (make-instance 'as-ssl
-                                                    :ctx ctx
+                                                    :ctx (when store-ctx ctx)
                                                     :ssl ssl
                                                     :bio-read bio-read
                                                     :bio-write bio-write))
@@ -322,23 +332,29 @@
                   (let ((ctx (create-ssl-ctx :method :sslv23-server :options ssl-options)))
                     (when certificate
                       (let ((res (ssl-ctx-use-certificate-chain-file ctx (namestring certificate))))
-                        (when (< res 0)
+                        (when (<= res 0)
                           (let* ((code (ssl-err-get-error))
                                  (msg (ssl-err-error-string code (cffi:null-pointer))))
-                            (error 'tcp-ssl-error :code code :msg (format nil "error opening certificate(~a): ~a~%" code msg))))))
+                            (error 'tcp-ssl-error :code code :msg (format nil "error opening certificate(~a): ~a (~a)~%" code msg certificate))))))
                     (when key
                       (let* ((type (case keytype
                                      (:pem +ssl-filetype-pem+)
-                                     (:asn1 +ssl-filetype-asn1+)))
+                                     (:asn1 +ssl-filetype-asn1+)
+                                     (t +ssl-x509-filetype-default+)))
                              (res (ssl-ctx-use-privatekey-file ctx (namestring certificate) type)))
-                        (when (< res 0)
+                        (when (<= res 0)
                           (let* ((code (ssl-err-get-error))
                                  (msg (ssl-err-error-string code (cffi:null-pointer))))
-                            (error 'tcp-ssl-error :code code :msg (format nil "error loading keyfile(~a): ~a~%" code msg))))))
+                            (error 'tcp-ssl-error :code code :msg (format nil "error loading keyfile(~a): ~a (~a)~%" code msg key))))))
                     ctx)))
          (wrap-connect-cb (lambda (sock)
                             (attach-ssl-to-socket ctx sock 'ssl-accept
-                              (lambda (ssl) (ssl-set-accept-state ssl)))
+                              (lambda (ssl) (ssl-set-accept-state ssl))
+                              ;; we don't want to store the CTX because doing so
+                              ;; causes it to be freed when the socket closes,
+                              ;; and we can't have our sockets closing our
+                              ;; server's CTX willy nilly.
+                              :store-ctx nil)
                             (setf (socket-ssl-function sock) 'ssl-accept)
                             (let ((ssl (as-ssl-ssl (socket-as-ssl sock))))
                               (ssl-accept ssl)
@@ -353,7 +369,7 @@
                                 :stream stream)))
     (change-class server 'tcp-ssl-server)
     ;; notice that if we're using a passed-in context, we don't add it to the
-    ;; as-ssl object. this means it won't be freed when the sevrer closes.
+    ;; as-ssl object. this means it won't be freed when the server closes.
     ;; however if ssl-ctx is nil, it means we created our own context and it
     ;; will be freed on close.
     (let ((as-ssl (make-instance 'as-ssl :ctx (unless ssl-ctx ctx))))

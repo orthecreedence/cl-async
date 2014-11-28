@@ -4,7 +4,8 @@
   :version "0.6.0"
   :description "SSL Wrapper around cl-async socket implementation."
   :depends-on (#:cffi
-               #:cl-async)
+               #:cl-async
+               #:vom)
   :components
   ((:file "ssl/package")
    (:file "ssl/util" :depends-on ("ssl/package"))

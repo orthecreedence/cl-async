@@ -4,6 +4,12 @@
 
 (in-package :cl-async-ssl)
 
+(defun zero-buffer (buff)
+  "Zero out a buffer. Not 100% perfect because of the GC, but better than
+   letting stale plaintext data sit around."
+  (dotimes (i (length buff))
+    (setf (aref buff i) 0)))
+
 (defconstant +ssl-error-none+ 0)
 (defconstant +ssl-error-ssl+ 1)
 (defconstant +ssl-error-want-read+ 2)
@@ -44,6 +50,7 @@
 
 (defconstant +ssl-filetype-asn1+ 2)
 (defconstant +ssl-filetype-pem+ 1)
+(defconstant +ssl-x509-filetype-default+ 3)
 
 (defconstant +ssl-op-all+ #x80000BFF)
 ;; DTLS options
@@ -139,6 +146,10 @@
   (ctx :pointer)
   (file :string))
 (cffi:defcfun ("SSL_CTX_use_PrivateKey_file" ssl-ctx-use-privatekey-file) :int
+  (ctx :pointer)
+  (file :string)
+  (type :int))
+(cffi:defcfun ("SSL_CTX_use_RSAPrivateKey_file" ssl-ctx-use-rsaprivatekey-file) :int
   (ctx :pointer)
   (file :string)
   (type :int))
