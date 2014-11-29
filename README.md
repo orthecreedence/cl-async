@@ -1,23 +1,16 @@
 cl-async - Asynchronous operations for Common Lisp
 ==================================================
 Cl-async is a library for general purpose, non-blocking programming in Common
-Lisp.  Cl-async uses [Libevent2](http://libevent.org/) as the backend, which is
-a fast, stable, portable library for asynchronous IO (see my [notes on choosing Libevent](http://orthecreedence.github.com/cl-async/implementation-notes#libevent)).
+Lisp. Cl-async uses [libuv](http://docs.libuv.org/en/v1.x/) as the backend,
+which is a fast, stable, portable library for asynchronous IO (used as the
+backend library in Node.js).
 
 The main goal is to provide an experience that makes general asynchronous 
 programming in lisp natural, and to also provide a number of
 [drivers](http://orthecreedence.github.com/cl-async/drivers) on top of cl-async.
 
-*This library's current status is BETA.* You will generally have a better
-experience by using the git version of this library and the git version of
-[the libevent2 bindings](https://github.com/orthecreedence/cl-libevent2).
-
-__NOTE:__ In the latest Quicklisp release, CFFI was upped from 0.10.x to 0.11.0.
-This version generates a bunch of type/deprecation warnings with the Quicklisp
-version of cl-libevent2. If you get warnings about `(:STRUCT LE::TIMEVAL)` then
-grab the latest git version of [cl-libevent2](https://github.com/orthecreedence/cl-libevent2),
-which should fix these issues. You may also have to clear your ASDF cache after
-doing this.
+__NOTE:__ cl-async uses the v1.x branch of libuv, so make sure to grab that
+version of it (not the v0.10.x branch).
 
 ### [Documentation](http://orthecreedence.github.com/cl-async/documentation)
 Please see the [cl-async website](http://orthecreedence.github.com/cl-async) for
@@ -42,13 +35,10 @@ Quick links:
 - [Implementation notes](http://orthecreedence.github.com/cl-async/implementation-notes)
 - [Drivers](http://orthecreedence.github.com/cl-async/drivers)
 
-### Quicklisp
-This library is now fully in quicklisp, along with its sister bindings,
-[cl-libevent2](https://github.com/orthecreedence/cl-libevent2). If you want to keep up with the
-most recent changes (recommended, as many bugfixes happen on master), download
-from git, otherwise feel free to use the quicklisp release. Also, if using
-quicklisp, be familiar with the [closed issues list](https://github.com/orthecreedence/cl-async/issues?state=closed).
-An issue you're having may have already been fixed =].
+### Install
+```lisp
+(ql:quickload :cl-async)
+```
 
 ### Tests
 There is a fairly complete suite of tests in the `cl-async-test` package:
@@ -58,12 +48,6 @@ There is a fairly complete suite of tests in the `cl-async-test` package:
 (cl-async-test:run-tests)
 ```
 
-As bugs happen (or as I remember old bugs) I'll be adding more tests.
-
-### TODO
-See the [TODO list](https://github.com/orthecreedence/cl-async/issues).
-
 ### License
 As always, my code is MIT licenced. Do whatever the hell you want with it. Enjoy!
-
 
