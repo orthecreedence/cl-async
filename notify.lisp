@@ -7,8 +7,6 @@
 (defclass notifier ()
   ((c :accessor notifier-c :initarg :c :initform (cffi:null-pointer))
    (freed :accessor notifier-freed :reader notifier-freed-p :initform nil)
-   (main-cb :accessor notifier-main-cb :initarg :main-cb :initform nil)
-   (event-cb :accessor notifier-event-cb :initarg :event-cb :initform nil)
    (single-shot :accessor notifier-single-shot :reader notifier-single-shot-p
                 :initarg :single-shot :initform t))
   (:documentation "Wraps a threading-enabled notifier."))
@@ -34,13 +32,15 @@
 
 (define-c-callback async-close-cb :void ((async-c :pointer))
   "Called when an async handle is closed."
+  (free-pointer-data async-c :preserve-pointer t)
   (uv:free-handle async-c))
 
 (define-c-callback async-cb :void ((async-c :pointer))
   "Called when an async notifier is triggered."
   (let* ((notifier (deref-data-from-pointer async-c))
-         (callback (notifier-main-cb notifier))
-         (event-cb (notifier-event-cb notifier)))
+         (callbacks (get-callbacks async-c))
+         (callback (getf callbacks :main-cb))
+         (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
       (unwind-protect
            (when callback (funcall callback))
@@ -54,12 +54,14 @@
    free the notifier after it's triggered."
   (check-event-loop-running)
   (let* ((async-c (uv:alloc-handle :async))
-         (notifier (make-instance 'notifier :c async-c :main-cb callback :event-cb event-cb
+         (notifier (make-instance 'notifier :c async-c
                                             :single-shot single-shot)))
     (let ((r (uv:uv-async-init (event-base-c *event-base*) async-c (cffi:callback async-cb))))
       (if (< r 0)
           (event-handler r event-cb :catch-errors t)
           (progn
+            (save-callbacks async-c (list :main-cb callback
+                                          :event-cb event-cb))
             (attach-data-to-pointer async-c notifier)
             notifier)))))
 
@@ -67,3 +69,4 @@
   "Fires the callback attached to a notifier. Can be called from any thread."
   (let ((async-c (notifier-c notifier)))
     (uv:uv-async-send async-c)))
+
