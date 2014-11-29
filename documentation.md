@@ -3,6 +3,12 @@ title: Documentation
 layout: documentation
 ---
 
+<a id="upgrade"></a>
+Upgrading to v0.6
+=================
+cl-async v0.6.x switches the backend from libevent to libuv. Please [read the
+guide on upgrading to v0.6.x](/cl-async/upgrade-v0.6).
+
 <a id="documentation"></a>
 Documentation
 =============

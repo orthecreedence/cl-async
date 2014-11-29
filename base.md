@@ -22,7 +22,7 @@ conditions it uses.
 <a id="start-event-loop"></a>
 ### start-event-loop
 {% highlight cl %}
-(defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb catch-app-errors))
+(defun start-event-loop (start-fn &key default-event-cb catch-app-errors))
   => integer
 {% endhighlight %}
 
@@ -77,7 +77,7 @@ the same values for each thread.
 <a id="with-event-loop"></a>
 ### with-event-loop
 {% highlight cl %}
-(defmacro with-event-loop ((&key fatal-cb logger-cb default-event-cb catch-app-errors)
+(defmacro with-event-loop ((&key default-event-cb catch-app-errors)
                            &body body)
   => integer
 {% endhighlight %}

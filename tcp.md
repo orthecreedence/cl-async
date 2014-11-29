@@ -136,7 +136,7 @@ This function is a deprecated version of [tcp-connect](#tcp-connect). Use
 ### init-tcp-socket
 {% highlight cl %}
 (defun init-tcp-socket (read-cb event-cb
-                        &key data stream (fd -1)
+                        &key data stream
                              connect-cb write-cb
                              (read-timeout -1) (write-timeout -1)
                              (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
@@ -148,8 +148,6 @@ exceptions:
 
  1. It only *initializes* a [socket](#socket) object, it doesn't connect it.
  2. It doesn't accept host/port arguments.
- 3. It accepts a `:fd` keyword argument, which allows wrapping the socket being
- initialized around an existing file descriptor.
 
 In other words, `init-tcp-socket` is `tcp-connect`'s lower-level brother. Once
 initialized, an unconnected socket can be connected using [connect-tcp-socket](#connect-tcp-socket).
@@ -157,7 +155,7 @@ initialized, an unconnected socket can be connected using [connect-tcp-socket](#
 <a id="connect-tcp-socket"></a>
 ### connect-tcp-socket
 {% highlight cl %}
-(defun connect-tcp-socket (socket/stream host port))
+(defun connect-tcp-socket (socket/stream host port &key event-cb))
   => socket/stream
 {% endhighlight %}
 

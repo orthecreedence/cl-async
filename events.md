@@ -24,6 +24,8 @@ watching an OS file descriptor for changes.
 - [make-event](#make-event) _function_
 - [watch-fd](#watch-fd) _function_
 - [event-freed](#event-freed) _condition_
+- [ref](#ref) _function_
+- [unref](#unref) _function_
 
 <a id="event"></a>
 ### event
@@ -207,3 +209,28 @@ _extends [event-error](/cl-async/base#event-error)_
 This error is thrown when an event that has been freed is operated on in some
 way. You can test if an event is freed already using the [event-freed-p](#event-freed-p)
 method.
+
+<a id="ref"></a>
+### ref
+{% highlight cl %}
+(defmethod ref ((handle event)))
+  => nil
+{% endhighlight %}
+
+References the event, making it so that the event loop will not exit until the
+event is freed.
+
+See [unref](#unref) as well.
+
+<a id="unref"></a>
+### unref
+{% highlight cl %}
+(defmethod unref ((handle event)))
+  => nil
+{% endhighlight %}
+
+Unreferences the event. This means that even if it's active in the event loop,
+the loop can exit without the event being closed/freed.
+
+See [ref](#ref) as well.
+
