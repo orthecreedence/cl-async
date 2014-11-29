@@ -73,3 +73,28 @@ the event loop to invoke the notifier's callback *in the event loop thread*.
 
 Stops the given notifier and frees its resources.
 
+<a id="ref"></a>
+### ref
+{% highlight cl %}
+(defmethod ref ((handle notifier)))
+  => nil
+{% endhighlight %}
+
+References the notifier, making it so that the event loop will not exit until
+the notifier is freed.
+
+See [unref](#unref) as well.
+
+<a id="unref"></a>
+### unref
+{% highlight cl %}
+(defmethod unref ((handle notifier)))
+  => nil
+{% endhighlight %}
+
+Unreferences the notifier. This means that even if it's active in the event
+loop, the loop can exit without closing the notifier. This allows you to have
+open notifiers in other threads *without* blocking your event loop from closing.
+
+See [ref](#ref) as well.
+
