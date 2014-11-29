@@ -23,6 +23,13 @@ be loaded/run simply by telling `run-tests` to do so:
 (cl-async-test:run-tests :ssl t)
 {% endhighlight %}
 
+### Threading
+You can also test the threading capabilities:
+
+{% highlight cl %}
+(cl-async-test:run-tests :threading t)
+{% endhighlight %}
+
 Notes
 -----
 If you get errors running the test suite (or the tests don't pass), please be

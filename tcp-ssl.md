@@ -248,8 +248,14 @@ socket is not drained and is only done so by [reading from the stream](/cl-async
 Called when a client connects (but not necessarily when it has sent data). If
 present, is *always* called before the [read-cb](#tcp-ssl-server-read-cb).
 
+<a id="conditions"></a>
+Conditions
+----------
+These are the conditions the TCP SSL system can signal in [event callbacks](/cl-async/event-handling).
+
 <a id="tcp-ssl-error"></a>
 ### tcp-ssl-error
 _extends [tcp-error](/cl-async/tcp#tcp-error)_
 
 Triggered when an error happens while communicating over an SSL socket.
+
