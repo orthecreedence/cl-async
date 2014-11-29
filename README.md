@@ -26,6 +26,9 @@ Quick links:
   - [TCP](http://orthecreedence.github.com/cl-async/tcp)
   - [TCP stream](http://orthecreedence.github.com/cl-async/tcp-stream)
   - [TCP SSL](http://orthecreedence.github.com/cl-async/tcp-ssl)
+  - [Pollers](http://orthecreedence.github.com/cl-async/pollers)
+  - [Idlers](http://orthecreedence.github.com/cl-async/idlers)
+  - [Notifiers](http://orthecreedence.github.com/cl-async/notifiers)
   - [Futures](http://orthecreedence.github.com/cl-async/future)
   - [Threading](http://orthecreedence.github.com/cl-async/threading)
   - [Stats](http://orthecreedence.github.com/cl-async/stats)
@@ -40,12 +43,17 @@ Quick links:
 (ql:quickload :cl-async)
 ```
 
+Please be aware that until cl-async v0.6.x is in quicklisp, you might want to
+git clone the master branch into `quicklisp/local-projects/`.
+
 ### Tests
 There is a fairly complete suite of tests in the `cl-async-test` package:
 
 ```common-lisp
 (ql:quickload :cl-async-test)
 (cl-async-test:run-tests)
+(cl-async-test:run-tests :ssl t)
+(cl-async-test:run-tests :threading t)
 ```
 
 ### License
