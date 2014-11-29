@@ -19,8 +19,10 @@
                  (:file "tcp")
                  (:file "tcp-stream")
                  (:file "threading")
-				 ;(:file "tcp-ssl")
+                 ;(:file "tcp-ssl")
                  (:file "signal")
-				 (:file "benchmarks")
+                 (:file "idle")
+                 (:file "poll")
+                 (:file "benchmarks")
                  (:file "run")))))
 

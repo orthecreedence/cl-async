@@ -143,5 +143,10 @@
            #:idler
            #:idler-freed-p
            #:free-idler
-           #:idle))
+           #:idle
+           
+           #:poller
+           #:poller-freed-p
+           #:free-poller
+           #:poll))
 

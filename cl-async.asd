@@ -44,5 +44,6 @@
    (:file "tcp-stream" :depends-on ("tcp"))
    (:file "signal" :depends-on ("package"))
    (:file "notify" :depends-on ("package"))
+   (:file "poll" :depends-on ("package"))
    (:file "idle" :depends-on ("package"))))
 

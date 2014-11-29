@@ -8,14 +8,15 @@
 (defun free-idler (idler)
   "Stop and free an idler."
   (unless (idler-freed-p idler)
+    (setf (idler-freed idler) t)
     (let ((idle-c (idler-c idler)))
       (when idle-c
+        (uv:uv-idle-stop idle-c)
         (uv:uv-close idle-c (cffi:callback idle-close-cb))))))
 
 (define-c-callback idle-close-cb :void ((idle-c :pointer))
   "Called when an idler closes."
   (free-pointer-data idle-c :preserve-pointer t)
-  (uv:uv-idle-stop idle-c)
   (uv:free-handle idle-c))
 
 (define-c-callback idle-cb :void ((handle :pointer))

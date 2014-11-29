@@ -386,7 +386,7 @@
    pointers and so forth."
   (init-incoming-socket server status))
 
-(defun init-tcp-socket (read-cb event-cb &key data stream (fd -1) connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun init-tcp-socket (read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Initialize an async socket, but do not connect it."
   (check-event-loop-running)
 
@@ -395,7 +395,6 @@
          (dont-drain-read-buffer (if (and stream (not dont-drain-read-buffer-supplied-p))
                                      t
                                      dont-drain-read-buffer))
-         (fd (when (<= 0 fd) fd))
          (socket (make-instance 'socket :c uvstream
                                         :direction :out
                                         :drain-read-buffer (not dont-drain-read-buffer)))
@@ -412,20 +411,6 @@
                                            :stream tcp-stream))
     ;; call this AFTER attach-data-to-pointer because this appends to the data
     (set-socket-timeouts uvstream read-timeout write-timeout :socket-is-uvstream t)
-    ;; wrap existing fd
-    (when fd
-      (let ((r (uv:uv-tcp-open uvstream fd)))
-        (unless (zerop r)
-          (event-handler r event-cb :catch-errors t)
-          (return-from init-tcp-socket nil))
-        (set-socket-nonblocking fd)
-        (when (fd-connected-p fd)
-          ;; wrapping a pre-connected FD is not allowed in windows =[
-          (when (progn #+windows t)
-            (error "FD wrapping no longer supported in windows. Please use a poller instead or bug libuv maintainers to support windows wrapping of connected FDs."))
-          (let ((req (uv:alloc-req :connect)))
-            (attach-data-to-pointer req uvstream)
-            (tcp-connect-cb req 0)))))
     (if stream
         tcp-stream
         socket)))
