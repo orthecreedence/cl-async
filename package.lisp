@@ -21,8 +21,6 @@
            #:event-errmsg
            ;; common functions
            #:stats
-           #:enable-threading-support
-           #:with-threading-context
            #:dump-event-loop-status
            #:add-event-loop-exit-callback
            #:ref
@@ -127,7 +125,6 @@
            #:init-tcp-socket
            #:connect-tcp-socket
            #:tcp-connect
-           #:tcp-send
            #:tcp-server
 
            ;; tcp stream
