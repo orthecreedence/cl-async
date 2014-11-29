@@ -232,7 +232,7 @@
     (ssl-ctx-set-options ctx options)
     ctx))
 
-(defun attach-ssl-to-socket (ctx socket/stream connect-cb after-create-cb &key store-ctx)
+(defun attach-ssl-to-socket (ctx socket/stream connect-cb after-create-cb &key store-ctx ciphers)
   "Given a normal cl-async socket (incoming or outgoing), set it up to be
    wrapped in SSL by attaching some SSL objects to it and replacing the
    connect-cb and read-cb with our own. Note that the given socket MUST be of
@@ -257,7 +257,9 @@
            (socket (change-class socket 'ssl-socket))
            (stream (when (typep socket/stream 'as:async-stream) socket/stream))
            (socket-c (as:socket-c socket))
-           (callbacks (get-callbacks socket-c)))
+           (callbacks (get-callbacks socket-c))
+           (ciphers (or ciphers
+                        "HIGH:!RC4:!MD5:!aNULL:!EDH:!EXP:+ECDHE-RSA-AES128-SHA256:+3DES")))
       ;; replace our socket's callbacks
       (setf (getf callbacks :connect-cb) connect-cb)
       (setf (getf callbacks :ssl-read-cb) (getf callbacks :read-cb))
@@ -267,8 +269,7 @@
             (bio-read (ssl-bio-new (ssl-bio-s-mem)))
             (bio-write (ssl-bio-new (ssl-bio-s-mem))))
         (funcall after-create-cb ssl)
-        ;(ssl-set-cipher-list ssl "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH")
-        (ssl-set-cipher-list ssl "HIGH:!RC4:!MD5:!aNULL:!EDH:!EXP:+ECDHE-RSA-AES128-SHA256:+3DES")
+        (ssl-set-cipher-list ssl ciphers)
         (ssl-set-bio ssl bio-read bio-write)
         (ssl-set-info-callback ssl (cffi:callback tcp-ssl-info-cb))
         ;(ssl-bio-set-mem-eof-return bio-read -1)
@@ -282,7 +283,7 @@
                                                     :bio-write bio-write))
         socket/stream))))
 
-(defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) ssl-ctx ssl-options)
+(defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) ssl-ctx ssl-options ciphers)
   "Create and return an SSL-activated socket."
   (check-event-loop-running)
   (let* ((socket/stream (apply #'as:tcp-connect
@@ -316,7 +317,8 @@
                             (when connect-cb
                               (funcall connect-cb sock)))
                           (lambda (ssl)
-                            (ssl-set-connect-state ssl)))
+                            (ssl-set-connect-state ssl))
+                          :ciphers ciphers)
     ;; now that the 'socket class was replaced with 'ssl-socket, we can safely
     ;; write out our data and it till be buffered properly.
     (when data
@@ -326,7 +328,7 @@
 (defun tcp-ssl-server (bind-address port read-cb event-cb
                        &key connect-cb (backlog -1) stream
                             ssl-ctx
-                            certificate key (keytype :pem) ssl-options)
+                            certificate key (keytype :pem) ssl-options ciphers)
   "Wraps a tcp server in SSL."
   (let* ((ctx (or ssl-ctx
                   (let ((ctx (create-ssl-ctx :method :sslv23-server :options ssl-options)))
@@ -354,7 +356,8 @@
                               ;; causes it to be freed when the socket closes,
                               ;; and we can't have our sockets closing our
                               ;; server's CTX willy nilly.
-                              :store-ctx nil)
+                              :store-ctx nil
+                              :ciphers ciphers)
                             (setf (socket-ssl-function sock) 'ssl-accept)
                             (let ((ssl (as-ssl-ssl (socket-as-ssl sock))))
                               (ssl-accept ssl)
