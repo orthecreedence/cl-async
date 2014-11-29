@@ -2,6 +2,18 @@
   (:use :cl :cl-async-base :cl-async :cl-async-util)
   (:nicknames :as-ssl)
   (:export #:+ssl-op-all+
+           #:+ssl-op-no-query-mtu+
+           #:+ssl-op-cookie-exchange+
+           #:+ssl-op-no-ticket+
+           #:+ssl-op-cisco-anyconnect+
+           #:+ssl-op-no-session-resumption-on-renegotiation+
+           #:+ssl-op-no-compression+
+           #:+ssl-op-allow-unsafe-legacy-renegotiation+
+           #:+ssl-op-single-ecdh-use+
+           #:+ssl-op-single-dh-use+
+           #:+ssl-op-ephemeral-rsa+
+           #:+ssl-op-cipher-server-preference+
+           #:+ssl-op-tls-rollback-bug+
            #:+ssl-op-no-sslv2+
            #:+ssl-op-no-sslv3+
            #:+ssl-op-no-tlsv1+
