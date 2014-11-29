@@ -49,9 +49,7 @@
            #:fd-add
 
            ;; notifier exports
-           #:notifier-freed
            #:notifier
-           #:notifier-c
            #:notifier-freed-p
            #:free-notifier
            #:make-notifier
