@@ -1,6 +1,6 @@
 (in-package :cl-async)
 
-(defun event-handler (error event-cb &key socket catch-errors extra)
+(defun event-handler (error event-cb &key socket catch-errors)
   "Called when an event (error, mainly) occurs."
   ;; here we check if errno is actually an event/error object passed in
   ;; directly. if so, we kindly forward it along to the event-cb.
@@ -72,6 +72,7 @@
 
 (define-c-callback walk-cb :void ((handle :pointer) (arg :pointer))
   "Called when we're walking the loop."
+  (declare (ignore arg))
   (format t "handle: ~s (~a)~%" (uv:handle-type handle) handle)
   (force-output))
 
@@ -121,17 +122,9 @@
       (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+))
       (do-close-loop evloop (1+ loops)))))
 
-(defun start-event-loop (start-fn &key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
+(defun start-event-loop (start-fn &key default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
   "Simple wrapper function that starts an event loop which runs the given
-   callback, most likely to init your server/client.
-
-   Supports setting up a callback for fatal errors. In case you don't want
-   libevent to just exit your app for you.
-
-   Supports setting up a logging callback for your application.
-
-   *PLEASE NOTE* Using libevent functions from within the logging callback can
-   lead to strange bugs and problems. Don't do it."
+   callback, most likely to init your server/client."
   (when *event-base*
     (error "Event loop already started. Please wait for it to exit."))
   (cffi:with-foreign-object (loop :unsigned-char (uv:uv-loop-size))
@@ -176,7 +169,7 @@
           (remhash (event-base-id *event-base*) *event-base-registry*))
         (setf *event-base* nil)))))
 
-(defmacro with-event-loop ((&key fatal-cb logger-cb default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
+(defmacro with-event-loop ((&key default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
                            &body body)
   "Makes starting an event loop a tad less annoying. I really couldn't take
    typing out `(start-event-loop (lambda () ...) ...) every time. Example:
@@ -187,8 +180,6 @@
    See how nice that is?"
   (append
     `(as:start-event-loop (lambda () ,@body)
-       :fatal-cb ,fatal-cb
-       :logger-cb ,logger-cb
        :default-event-cb ,default-event-cb)
     (when catch-app-errors-supplied-p
       `(:catch-app-errors ,catch-app-errors))))

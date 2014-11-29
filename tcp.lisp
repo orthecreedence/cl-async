@@ -151,11 +151,13 @@
 (defun enable-socket (socket &key read write)
   "Enable read/write monitoring on a socket. If :read or :write are nil, they
    are not disabled, but rather just not enabled."
+  (declare (ignore socket read write))
   (error "not implemented"))
 
 (defun disable-socket (socket &key read write)
   "Disable read/write monitoring on a socket. If :read or :write are nil, they
    are not enabled, but rather just not disabled."
+  (declare (ignore socket read write))
   (error "not implemented"))
 
 (defun write-to-uvstream (uvstream data &key start end)
@@ -255,10 +257,11 @@
 (define-c-callback tcp-alloc-cb :void ((handle :pointer) (size :unsigned-int) (buf :pointer))
   "Called when we want to allocate data to be filled for stream reading."
   (declare (ignore handle))
-  (uv:alloc-uv-buf (static-vectors:static-vector-pointer *input-buffer*) *buffer-size* buf))
+  (uv:alloc-uv-buf (static-vectors:static-vector-pointer *input-buffer*) (min size *buffer-size*) buf))
 
 (define-c-callback tcp-read-cb :void ((uvstream :pointer) (nread :int) (buf :pointer))
   "Called when a stream has been read into a buffer returned by alloc-cb."
+  (declare (ignore buf))
   (let* ((stream-data (deref-data-from-pointer uvstream))
          (read-timeout (getf stream-data :read-timeout))
          (timeout (car read-timeout))
@@ -337,6 +340,7 @@
 
 (define-c-callback tcp-shutdown-cb :void ((req :pointer) (status :int))
   "Called when a tcp socket shuts down."
+  (declare (ignore status))
   (uv:free-req req)
   (let ((uvstream (car (deref-data-from-pointer req))))
     (when (zerop (uv:uv-is-closing uvstream))
@@ -479,7 +483,7 @@
         ;; check that our listener instantiated properly
         (when (or (< r-bind 0)
                   (< r-listen 0))
-          (uv:uv-close server-c)
+          (close-tcp-server server-class)
           (event-handler (min r-bind r-listen) event-cb :catch-errors t)
           (return-from tcp-server))
         ;; make sure the server is closed/freed on exit

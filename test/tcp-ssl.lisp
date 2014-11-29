@@ -19,8 +19,8 @@
             (setf server-data (concat server-data (babel:octets-to-string data)))
             (as:write-socket-data sock "thxlol "))
           nil
-          :certificate (asdf:system-relative-pathname :cl-async #P"test/ssl/cert")
-          :key  (asdf:system-relative-pathname :cl-async #P"test/ssl/pkey")
+          :certificate (asdf:system-relative-pathname :cl-async #P"test/ssl/certkey")
+          :key  (asdf:system-relative-pathname :cl-async #P"test/ssl/certkey")
           :connect-cb (lambda (sock)
                         (declare (ignore sock))
                         (incf connect-num)))
@@ -29,15 +29,13 @@
           (lambda ()
             (dolist (addr '("127.0.0.1" "localhost"))
               ;; split request "hai " up between tcp-ssl-connect and write-socket-data
-              (let* ((client-ctx (cl+ssl::ssl-ctx-new (cl+ssl::ssl-v23-client-method)))
-                     (sock (as-ssl:tcp-ssl-connect addr 31389
+              (let* ((sock (as-ssl:tcp-ssl-connect addr 31389
                              (lambda (sock data)
                                (incf client-replies)
                                (unless (as:socket-closed-p sock)
                                  (as:close-socket sock))
                                (setf client-data (concat client-data (babel:octets-to-string data))))
                              (lambda (ev) (error ev))
-                             :ssl-ctx client-ctx
                              :data "ha")))
                 (as:write-socket-data sock "i "))))
           :time .2)
