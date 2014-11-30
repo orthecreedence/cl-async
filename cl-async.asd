@@ -31,7 +31,6 @@
                #:cl-libuv
                #:cl-async-base
                #:cl-async-util
-               #:cl-async-future
                #:babel
                #:cl-ppcre
                #:trivial-gray-streams)
