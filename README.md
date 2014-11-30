@@ -57,5 +57,5 @@ There is a fairly complete suite of tests in the `cl-async-test` package:
 ```
 
 ### License
-As always, my code is MIT licenced. Do whatever the hell you want with it. Enjoy!
+As always, my code is MIT licensed. Do whatever the hell you want with it. Enjoy!
 
