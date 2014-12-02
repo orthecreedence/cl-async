@@ -502,37 +502,47 @@
     (connect-tcp-socket socket/stream host port)
     socket/stream))
 
-(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1) stream)
+(defun tcp-server (bind-address port read-cb event-cb &key connect-cb (backlog -1) stream fd)
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (check-event-loop-running)
-  (with-ip-to-sockaddr ((sockaddr sockaddr-size) bind-address port)
-    (let* ((data-pointer (create-data-pointer))
-           (listener (le:evconnlistener-new-bind (event-base-c *event-base*)
-                                                  (cffi:callback tcp-accept-cb)
-                                                  data-pointer
-                                                  (logior le:+lev-opt-reuseable+ le:+lev-opt-close-on-free+)
-                                                  backlog
-                                                  sockaddr
-                                                  sockaddr-size))
-           (server-class (make-instance 'tcp-server
-                                        :c listener
-                                        :stream stream
-                                        :data-pointer data-pointer)))
-      ;; check that our listener instantiated properly
-      (when (or (and (not (cffi:pointerp listener))
-                     (zerop listener))
-                (cffi:null-pointer-p listener))
-        (free-pointer-data data-pointer)
-        (error (make-instance 'tcp-server-bind-error :addr bind-address :port port)))
-      ;; make sure the server is closed/freed on exit
-      (add-event-loop-exit-callback (lambda ()
-                                      (close-tcp-server server-class)
-                                      (free-pointer-data data-pointer)))
-      (attach-data-to-pointer data-pointer server-class)
-      ;; setup an accept error cb
-      (le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
-      (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
-      ;; return the listener, which can be closed by the app if needed
-      server-class)))
+  (let* ((data-pointer (create-data-pointer))
+         (listener
+           (if fd
+               (progn
+                 (le:evutil-make-socket-nonblocking fd)
+                 (le:evconnlistener-new (event-base-c *event-base*)
+                                        (cffi:callback tcp-accept-cb)
+                                        data-pointer
+                                        (logior le:+lev-opt-reuseable+ le:+lev-opt-close-on-free+)
+                                        backlog
+                                        fd))
+               (with-ip-to-sockaddr ((sockaddr sockaddr-size) bind-address port)
+                 (le:evconnlistener-new-bind (event-base-c *event-base*)
+                                             (cffi:callback tcp-accept-cb)
+                                             data-pointer
+                                             (logior le:+lev-opt-reuseable+ le:+lev-opt-close-on-free+)
+                                             backlog
+                                             sockaddr
+                                             sockaddr-size))))
+         (server-class (make-instance 'tcp-server
+                                      :c listener
+                                      :stream stream
+                                      :data-pointer data-pointer)))
+    ;; check that our listener instantiated properly
+    (when (or (and (not (cffi:pointerp listener))
+                   (zerop listener))
+              (cffi:null-pointer-p listener))
+      (free-pointer-data data-pointer)
+      (error (make-instance 'tcp-server-bind-error :addr bind-address :port port)))
+    ;; make sure the server is closed/freed on exit
+    (add-event-loop-exit-callback (lambda ()
+                                    (close-tcp-server server-class)
+                                    (free-pointer-data data-pointer)))
+    (attach-data-to-pointer data-pointer server-class)
+    ;; setup an accept error cb
+    (le:evconnlistener-set-error-cb listener (cffi:callback tcp-accept-err-cb))
+    (save-callbacks data-pointer (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
+    ;; return the listener, which can be closed by the app if needed
+    server-class))
 
