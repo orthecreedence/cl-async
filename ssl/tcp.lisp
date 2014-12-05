@@ -326,7 +326,7 @@
     socket/stream))
 
 (defun tcp-ssl-server (bind-address port read-cb event-cb
-                       &key connect-cb (backlog -1) stream
+                       &key connect-cb (backlog -1) stream fd
                             ssl-ctx
                             certificate key (keytype :pem) ssl-options ciphers)
   "Wraps a tcp server in SSL."
@@ -369,7 +369,8 @@
                                 event-cb
                                 :connect-cb wrap-connect-cb
                                 :backlog backlog
-                                :stream stream)))
+                                :stream stream
+                                :fd fd)))
     (change-class server 'tcp-ssl-server)
     ;; notice that if we're using a passed-in context, we don't add it to the
     ;; as-ssl object. this means it won't be freed when the server closes.

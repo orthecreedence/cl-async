@@ -464,34 +464,36 @@
     (connect-tcp-socket socket/stream host port :event-cb event-cb)
     socket/stream))
 
-(defun tcp-server (bind-address port read-cb event-cb &key connect-cb backlog stream)
+(defun tcp-server (bind-address port read-cb event-cb &key connect-cb backlog stream fd)
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (check-event-loop-running)
   (let ((server-c (uv:alloc-handle :tcp)))
-    (with-ip-to-sockaddr ((sockaddr) bind-address port)
-      (uv:uv-tcp-init (event-base-c *event-base*) server-c)
-      (let* ((r-bind (uv:uv-tcp-bind server-c sockaddr 0))
-             (server-class (make-instance 'tcp-server
-                                          :c server-c
-                                          :stream stream))
-             (backlog (if (or (null backlog)
-                              (< backlog 0))
-                          128
-                          backlog))
-             (r-listen (uv:uv-listen server-c backlog (cffi:callback tcp-accept-cb))))
-        ;; check that our listener instantiated properly
-        (when (or (< r-bind 0)
-                  (< r-listen 0))
-          (close-tcp-server server-class)
-          (event-handler (min r-bind r-listen) event-cb :catch-errors t)
-          (return-from tcp-server))
-        ;; make sure the server is closed/freed on exit
-        (add-event-loop-exit-callback (lambda ()
-                                        (close-tcp-server server-class)))
-        (attach-data-to-pointer server-c server-class)
-        ;; setup an accept error cb
-        (save-callbacks server-c (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
-        ;; return the listener, which can be closed by the app if needed
-        server-class))))
+    (uv:uv-tcp-init (event-base-c *event-base*) server-c)
+    (let* ((r-bind (if fd
+                       (uv:uv-tcp-open server-c fd)
+                       (with-ip-to-sockaddr ((sockaddr) bind-address port)
+                         (uv:uv-tcp-bind server-c sockaddr 0))))
+           (server-class (make-instance 'tcp-server
+                                        :c server-c
+                                        :stream stream))
+           (backlog (if (or (null backlog)
+                            (< backlog 0))
+                        128
+                        backlog))
+           (r-listen (uv:uv-listen server-c backlog (cffi:callback tcp-accept-cb))))
+      ;; check that our listener instantiated properly
+      (when (or (< r-bind 0)
+                (< r-listen 0))
+        (close-tcp-server server-class)
+        (event-handler (min r-bind r-listen) event-cb :catch-errors t)
+        (return-from tcp-server))
+      ;; make sure the server is closed/freed on exit
+      (add-event-loop-exit-callback (lambda ()
+                                      (close-tcp-server server-class)))
+      (attach-data-to-pointer server-c server-class)
+      ;; setup an accept error cb
+      (save-callbacks server-c (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
+      ;; return the listener, which can be closed by the app if needed
+      server-class)))
 
