@@ -3,7 +3,7 @@ title: cl-async - now using libuv
 layout: post
 ---
 Cl-async has swapped its backend from libevent to libuv. Please see the
-[v0.6.x upgrade guide](/cl-async/upgrade-v0.6) if you have no already.
+[v0.6.x upgrade guide](/cl-async/upgrade-v0.6) if you have not already.
 
 There are a number of reasons for swapping out libevent:
 
@@ -27,8 +27,8 @@ problems or have questions.
 
 There are a number of great things this rewrite has given cl-async.
 
-First an foremost, faster TCP IO. We swapped out the manual byte-by-byte copies
-between C &gt;--&lt; lisp, instead using [static-vectors](https://github.com/sionescu/static-vectors)
+First and foremost, faster TCP IO. We swapped out the manual byte-by-byte copies
+between C &lt;--&gt; lisp, instead using [static-vectors](https://github.com/sionescu/static-vectors)
 for transfering data between C and lisp. On top of this, all socket buffering
 is done using [fast-io](https://github.com/rpav/fast-io) which is another speed
 boost on top of static-vectors.
@@ -39,7 +39,7 @@ another thread. By using [notifiers](/cl-async/notifiers) instead, you can
 trigger callbacks in the event loop thread *without* going through the dance of
 adding dummy events and triggering them. And because notifiers provide a simpler
 abstraction, it's no longer necessary to manually turn on threading support in
-cl-async: it's always on now. See the updated [threading docs](/cl-async/threading)
+cl-async: it's always on now. See the [updated threading docs](/cl-async/threading)
 for more info.
 
 SSL has also been updated. Previously, cl-async used libevent's SSL wrapper.
