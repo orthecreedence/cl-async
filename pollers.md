@@ -44,7 +44,7 @@ is ready for the actions given in the list `:poll-for` (allowed actions are
 You can optionally pass an `:event-cb` function, called when errors occur while
 polling.
 
-If you are polling an fd that's a socket, you *must* pass `:socket t`.
+If you are polling an fd that's a socket, you __must__ pass `:socket t`.
 
 <a id="free-poller"></a>
 ### free-poller
