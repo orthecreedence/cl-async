@@ -54,23 +54,22 @@ Let's integrate what we just did with [promises](http://orthecreedence.github.io
   "Run `operation` in a background thread, and finish the returned future with
    the result(s) of the operation once complete. The future will be finished on
    the same thread `(work ...)` was spawned from (your event-loop thread)."
-  (let* ((future (make-future))
-         (err nil)
-         (result nil)
-         (notifier (as:make-notifier (lambda ()
-                                       (if err
-                                           (signal-error future err)
-                                           (apply 'finish (append (list future) result)))))))
-    (bt:make-thread (lambda ()
-                      (handler-case
-                        (setf result (multiple-value-list (funcall operation)))
-                        (t (e) (setf err e)))
-                      (as:trigger-notifier notifier)))
-    future))
+  (bb:with-promise (resolve reject :resolve-fn resolver)
+    (let* ((err nil)
+           (result nil)
+           (notifier (as:make-notifier (lambda ()
+                                         (if err
+                                             (reject err)
+                                             (apply resolver result))))))
+      (bt:make-thread (lambda ()
+                        (handler-case
+                          (setf result (multiple-value-list (funcall operation)))
+                          (t (e) (setf err e)))
+                        (as:trigger-notifier notifier))))))
 
 (as:with-event-loop ()
   (as:with-delay (1) (format t "event loop still running...~%"))
-  (future-handler-case
+  (bb:catcher
     (alet ((val (work (lambda () (sleep 3) (+ 4 5)))))
       (format t "got val: ~a~%" val))
     (t (e) (format t "err: ~a~%" e))))
