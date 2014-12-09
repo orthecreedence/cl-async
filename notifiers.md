@@ -5,11 +5,10 @@ layout: documentation
 
 Notifiers
 ===
-An idler is an object that tells the event loop to call its callback once per
-loop. This means your callback will be fired for each loop of the event loop
-(including when the loop has events to process...don't be fooled into thinking
-it will only be called when the loop is idle!)
-
+A notifier is an object that lets you trigger a callback in your event loop
+thread *from any other thread* in a safe way. This can be very useful for
+triggering callbacks in your event loop thread if, say, a worker thread has
+finished a job and wants to let you know it's done.
 
 - [notifier](#notifier) _class_
   - [notifier-freed-p](#notifier-freed-p)
