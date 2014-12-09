@@ -15,6 +15,11 @@ The goal of the v0.6.x upgrade was to port cl-async over to libuv with the
 cl-async v0.6.x is built against libuv-1.0.0-rc2. This means you must use
 cl-async with libuv >= v1.0.0-rc2 or it will not work.
 
+### fast-io
+cl-async v0.6.x requires [fast-io](https://github.com/rpav/fast-io) version [de0e8b5](https://github.com/rpav/fast-io/commit/de0e8b5f04d08be47bdd9fe4ae23f63626564ed8)
+or greater, so be sure to pull fast-io from its aster branch if testing the
+non-quicklisp version of cl-async.
+
 ## Breaking changes
 Note that we're only listing breaking changes here.
 
