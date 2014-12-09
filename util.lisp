@@ -10,20 +10,22 @@
            #:callback
 
            #:bytes
-           
+           #:make-buffer
+           #:buffer-output
+           #:write-to-buffer
+
+           #:do-chunk-data
+
            #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
            #:+af-unix+
-           #:*default-lookup-type*
 
            #:+sockaddr-size+
            #:+sockaddr6-size+
            #:+addrinfo-size+
-           #:+timeval-size+
-           #:+bev-opt-close-on-free+
-           #:+bev-opt-defer-callbacks+
 
+           #:call-with-callback-restarts
            #:catch-app-errors
            #:run-event-cb
 
@@ -32,7 +34,7 @@
            #:make-foreign-type
 
            #:with-lock
-           
+
            #:make-pointer-eql-able
            #:create-data-pointer
            #:save-callbacks
@@ -51,13 +53,17 @@
            #:*ipv4-scanner*
            #:*ipv6-scanner*
 
+           #:error-str
+
            #:ipv4-address-p
            #:ipv6-address-p
            #:ip-address-p
            #:ip-str-to-sockaddr
            #:with-ip-to-sockaddr
-           #:*addrinfo*
-           #:addrinfo-ai-addr))
+           #:addrinfo-to-string
+
+           #:set-socket-nonblocking
+           #:fd-connected-p))
 (in-package :cl-async-util)
 
 (deftype octet () '(unsigned-byte 8))
@@ -70,25 +76,85 @@
    data into write-socket-data."
   (coerce vector '(vector octet)))
 
-(defconstant +af-inet+ le:+af-inet+)
-(defconstant +af-inet6+ le:+af-inet-6+)
-(defconstant +af-unspec+ le:+af-unspec+)
-(defconstant +af-unix+ le:+af-unix+)
+(defun make-buffer (&optional data)
+  "Create an octet buffer, optoinally filled with the given data."
+  (declare (type (or null octet-vector) data))
+  (let ((buffer (fast-io:make-output-buffer)))
+    (when data
+      (write-to-buffer data buffer))
+    buffer))
 
-(defvar *default-lookup-type*
-  (progn
-    #+(or :bsd :freebsd :darwin) +af-inet+
-    #-(or :bsd :freebsd :darwin) +af-unspec+)
-  "Holds the best default lookup type for a given platform.")
+(declaim (inline buffer-output))
+(defun buffer-output (buffer)
+  "Grab the output from a buffer created with (make-buffer)."
+  (declare (type fast-io::output-buffer buffer))
+  (fast-io:finish-output-buffer buffer))
+
+(declaim (inline write-to-buffer))
+(defun write-to-buffer (seq buffer &optional start end)
+  "Write data to a buffer created with (make-buffer)."
+  (declare (type octet-vector seq)
+           (type fast-io::output-buffer buffer))
+  (fast-io:fast-write-sequence seq buffer (or start 0) end))
+
+(defun do-chunk-data (data buffer write-cb &key start end)
+  "Util function that splits data into the (length buffer) chunks and calls
+   write-cb for each chunk."
+  (let* ((len (length data))
+         (start (or start 0))
+         (end (min (or end len) len))
+         (data-length (- end start))
+         (data-index start)
+         (buffer-length (length buffer)))
+    (loop while (< 0 data-length) do
+      (let ((bufsize (min data-length buffer-length)))
+        (replace buffer data :start2 data-index :end2 end)
+        (funcall write-cb buffer bufsize)
+        (decf data-length bufsize)
+        (incf data-index bufsize)))))
+
+(defconstant +af-inet+ uv:+af-inet+)
+(defconstant +af-inet6+ uv:+af-inet-6+)
+(defconstant +af-unspec+ uv:+af-unspec+)
+(defconstant +af-unix+ uv:+af-unix+)
 
 ;; define some cached values to save CFFI calls. believe it or not, this does
 ;; make a performance difference
-(defconstant +sockaddr-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in)))
-(defconstant +sockaddr6-size+ (cffi:foreign-type-size (le::cffi-type le::sockaddr-in-6)))
-(defconstant +addrinfo-size+ (cffi:foreign-type-size (le::cffi-type le::addrinfo)))
-(defconstant +timeval-size+ (cffi:foreign-type-size (le::cffi-type le::timeval)))
-(defconstant +bev-opt-close-on-free+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-close-on-free+))
-(defconstant +bev-opt-defer-callbacks+ (cffi:foreign-enum-value 'le:bufferevent-options :+bev-opt-defer-callbacks+))
+(defconstant +sockaddr-size+ (cffi:foreign-type-size '(:struct uv:sockaddr-in)))
+(defconstant +sockaddr6-size+ (cffi:foreign-type-size '(:struct uv:sockaddr-in-6)))
+(defconstant +addrinfo-size+ (cffi:foreign-type-size '(:struct uv:addrinfo)))
+
+(defun call-with-callback-restarts (thunk &optional (abort-restart-description "Abort cl-async callback."))
+  "Call thunk with restarts that make it possible to ignore the callback
+  in case of an error or safely terminate the event loop.
+
+  If SWANK is active, set SLDB's quit restart to ABORT-CALLBACK restart
+  if *safe-sldb-quit-restart* is true or EXIT-EVENT-LOOP otherwise."
+  (restart-case
+      ;; have to use the ugly symbol-value hack instead of #+swank / #-swank
+      ;; in order to avoid compiling in SWANK (in)dependency
+      (let* ((swank-package (find-package :swank))
+             (quit-restart-sym (when swank-package
+                                 (find-symbol (symbol-name '#:*sldb-quit-restart*)
+                                              swank-package))))
+        (if quit-restart-sym
+            (let ((old-quit-restart (symbol-value quit-restart-sym)))
+              (setf (symbol-value quit-restart-sym)
+                    (if *safe-sldb-quit-restart*
+                        'abort-callback
+                        'exit-event-loop))
+              (unwind-protect
+                   (funcall thunk)
+                (setf (symbol-value quit-restart-sym) old-quit-restart)))
+            (funcall thunk)))
+    (abort-callback ()
+      :report (lambda (stream) (write-string abort-restart-description stream))
+      (format *debug-io* "~&;; callback aborted~%")
+      (values))
+    (exit-event-loop ()
+      :report "Exit the current event loop"
+      (format *debug-io* "~&;; exiting the event loop.~%")
+      (uv:uv-stop (event-base-c *event-base*)))))
 
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
@@ -116,7 +182,7 @@
                      (error err)
                      ;; what do you know, a new error. send to event-cb =]
                      (funcall ,evcb err)))))
-           (progn ,@body)))))
+           (call-with-callback-restarts #'(lambda () ,@body))))))
 
 (defmacro run-event-cb (event-cb &rest args)
   "Used inside of catch-app-errors, wraps the calling of an event-cb such that
@@ -144,15 +210,21 @@
        (cffi:defcallback ,name ,return-val ,args
          (,name ,@arg-names)))))
 
-(defmacro make-foreign-type ((var type &key initial type-size) bindings &body body)
+(defmacro make-foreign-type ((var type &key initial) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."
-  `(cffi:with-foreign-object (,var ,type)
-     ,(when initial
-        `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size ,type))))
-     ,@(loop for binding in bindings collect
-         `(setf (cffi:foreign-slot-value ,var ,type ,(car binding)) ,(cadr binding)))
-     ,@body))
+  (let ((type (if (eq type 'uv:addrinfo)
+                  (progn
+                    #+windows 'uv:addrinfo-w
+                    #-windows 'uv:addrinfo)
+                  type))
+        (type-size (cffi:foreign-type-size (list :struct type))))
+    `(cffi:with-foreign-object (,var :unsigned-char ,type-size)
+       ,(when initial
+          `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size '(:struct ,type)))))
+       ,@(loop for binding in bindings collect
+           `(setf (cffi:foreign-slot-value ,var '(:struct ,type) ,(car binding)) ,(cadr binding)))
+       ,@body)))
 
 (defmacro with-lock (&body body)
   "If threading is enabled, locks the current event loop before processing body
@@ -181,43 +253,39 @@
 (defun save-callbacks (pointer callbacks)
   "Save a set of callbacks, keyed by the given pointer."
   (with-lock
-    (unless (event-base-function-registry *event-base*)
-      (setf (event-base-function-registry *event-base*) (make-hash-table :test #'eql)))
     (let ((callbacks (if (listp callbacks)
                          callbacks
                          (list callbacks))))
-      (setf (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)) callbacks))))
+      (setf (gethash (make-pointer-eql-able pointer) *function-registry*) callbacks))))
 
 (defun get-callbacks (pointer)
   "Get all callbacks for the given pointer."
   (with-lock
-    (when (event-base-function-registry *event-base*)
-      (gethash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)))))
+    (when *function-registry*
+      (gethash (make-pointer-eql-able pointer) *function-registry*))))
 
 (defun clear-callbacks (pointer)
   "Clear out all callbacks for the given pointer."
   (with-lock
-    (when (event-base-function-registry *event-base*)
-      (remhash (make-pointer-eql-able pointer) (event-base-function-registry *event-base*)))))
+    (when *function-registry*
+      (remhash (make-pointer-eql-able pointer) *function-registry*))))
 
 (defun attach-data-to-pointer (pointer data)
   "Attach a lisp object to a foreign pointer."
   (with-lock
-    (unless (event-base-data-registry *event-base*)
-      (setf (event-base-data-registry *event-base*) (make-hash-table :test #'eql)))
-    (setf (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)) data)))
+    (setf (gethash (make-pointer-eql-able pointer) *data-registry*) data)))
 
 (defun deref-data-from-pointer (pointer)
   "Grab data attached to a CFFI pointer."
   (with-lock
-    (when (and pointer (event-base-data-registry *event-base*))
-      (gethash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)))))
+    (when (and pointer *data-registry*)
+      (gethash (make-pointer-eql-able pointer) *data-registry*))))
 
 (defun clear-pointer-data (pointer)
   "Clear the data attached to a CFFI pointer."
   (with-lock
-    (when (and pointer (event-base-data-registry *event-base*))
-      (remhash (make-pointer-eql-able pointer) (event-base-data-registry *event-base*)))))
+    (when (and pointer *data-registry*)
+      (remhash (make-pointer-eql-able pointer) *data-registry*))))
 
 (defun free-pointer-data (pointer &key preserve-pointer)
   "Clears out all data attached to a foreign pointer, and frees the pointer
@@ -232,22 +300,6 @@
           (when (cffi:pointerp pointer)
             (cffi:foreign-free pointer)))))))
 
-(defmacro with-struct-timeval (var seconds &rest body)
-  "Convert seconds to a valid struct timeval C data type."
-  `(multiple-value-bind (time-sec time-usec) (split-usec-time ,seconds)
-     (make-foreign-type (,var (le::cffi-type le::timeval))
-                        (('le::tv-sec time-sec)
-                         ('le::tv-usec time-usec))
-       ,@body)))
-
-(defun split-usec-time (time-s)
-  "Given a second value, ie 3.67, return the number of seconds as the first
-   value and the number of usecs for the second value."
-  (if (numberp time-s)
-      (multiple-value-bind (time-sec time-frac) (floor time-s)
-        (values time-sec (floor (* 1000000 time-frac))))
-      nil))
-
 (defun append-array (arr1 arr2)
   "Create an array, made up of arr1 followed by arr2."
   (let ((arr1-length (length arr1))
@@ -257,7 +309,11 @@
       (replace arr arr1 :start1 0)
       (replace arr arr2 :start1 arr1-length)
       arr)))
-      
+
+(defun error-str (uv-errno)
+  "Given a libuv error number, return the error string."
+  (uv:uv-err-name uv-errno))
+
 (defparameter *ipv4-scanner*
   (cl-ppcre:create-scanner
     "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{2}|[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{2}|[0-9])$"
@@ -283,88 +339,90 @@
   (or (ipv4-address-p addr)
       (ipv6-address-p addr)))
 
-(defparameter *addrinfo*
-  #+(or :windows :bsd :freebsd :darwin) (le::cffi-type le::evutil-addrinfo)
-  #-(or :windows :bsd :freebsd :darwin) (le::cffi-type le::addrinfo)
-  "Determines the correct type of addrinfo for the current platform.")
-
-;; define some abstracted accessors.
-(defmacro addrinfo-ai-addr (pt)
-  "A wrapper around addrinfo's ai-addr accessor (there is one for windows that
-   uses evutil_addrinfo, and one for linux that uses addrinfo)."
-  #+(or :windows :bsd :freebsd :darwin) `(le-a:evutil-addrinfo-ai-addr ,pt)
-  #-(or :windows :bsd :freebsd :darwin) `(le-a:addrinfo-ai-addr ,pt))
-
-(defmacro sockaddr-in-sin-family (obj)
-  "Wrapper around getting/setting sockaddr_in->sin_family"
-  #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-family ,obj)
-  #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-family ,obj))
-
-(defmacro sockaddr-in-sin-port (obj)
-  "Wrapper around getting/setting sockaddr_in->sin_port"
-  #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-port ,obj)
-  #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-port ,obj))
-
-(defmacro sockaddr-in-sin-addr (obj)
-  "Wrapper around getting/setting sockaddr_in->sin_addr"
-  #+(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-bsd-sin-addr ,obj)
-  #-(or :bsd :freebsd :darwin) `(le-a:sockaddr-in-sin-addr ,obj))
-
 (defun ip-str-to-sockaddr (address port)
   "Convert a string IP address and port into a sockaddr-in struct. Must be freed
    by the app!"
   (cond
     ((or (null address)
          (ipv4-address-p address))
-     (let ((sockaddr (cffi:foreign-alloc (le::cffi-type le::sockaddr-in)))
-           (address (if (string= address "0.0.0.0")
-                        nil
-                        address))
-           (c-address (if address
-                          (cffi:foreign-funcall "inet_addr" :string address :unsigned-long)
-                          (cffi:foreign-funcall "htonl" :unsigned-long 0 :unsigned-long))))
-       (cffi:foreign-funcall "memset" :pointer sockaddr :unsigned-char 0 :unsigned-char +sockaddr-size+)
-       #+(and ecl windows (not ecl-bytecmp))
-       (progn
-         ;; in ECL (w/ C compiler on windows), SOMEHOW the return address of
-         ;; ip-str-to-sockaddr (this fn) was getting overwritten. this *hand
-         ;; crafted* (sustainably raised) C code fixes our little problem.
-         (ffi:clines "#include <winsock2.h>")
-         (ffi:c-inline (sockaddr +af-inet+ port c-address)
-                       (:pointer :short :unsigned-short :unsigned-long)
-                       :void
-           "struct sockaddr_in *addr = ecl_to_pointer(#0);
-            struct in_addr ia;
-            ia.S_un.S_addr = #3;
-            addr->sin_family = #1;
-            addr->sin_port = htons(#2);
-            addr->sin_addr = ia;"
-           :one-liner nil
-           :side-effects t))
-       #-(and ecl windows (not ecl-bytecmp))
-       (progn
-         (setf (sockaddr-in-sin-family sockaddr) +af-inet+)
-         (setf (sockaddr-in-sin-port sockaddr) (cffi:foreign-funcall "htons" :int port :unsigned-short))
-         (setf (sockaddr-in-sin-addr sockaddr) c-address))
-       (values sockaddr +sockaddr-size+)))
+     (let ((sockaddr (cffi:foreign-alloc '(:struct uv:sockaddr-in))))
+       (uv:uv-ip-4-addr (or address "0.0.0.0") port sockaddr)
+       sockaddr))
     ((ipv6-address-p address)
-     (let ((sockaddr6 (cffi:foreign-alloc (le::cffi-type le::sockaddr-in-6))))
-       (cffi:foreign-funcall "memset" :pointer sockaddr6 :unsigned-char 0 :unsigned-char +sockaddr6-size+)
-       (setf (le-a:sockaddr-in-6-sin-6-family sockaddr6) +af-inet6+
-             (le-a:sockaddr-in-6-sin-6-port sockaddr6) (cffi:foreign-funcall "htons" :int port :unsigned-short))
-       (cffi:foreign-funcall "inet_pton"
-                             :short +af-inet6+
-                             :string address
-                             :pointer (cffi:foreign-slot-pointer sockaddr6 (le::cffi-type le::sockaddr-in-6) 'le::sin-6-addr-0))
-       (values sockaddr6 +sockaddr6-size+)))
+     (let ((sockaddr (cffi:foreign-alloc '(:struct uv:sockaddr-in-6))))
+       (uv:uv-ip-6-addr address port sockaddr)
+       sockaddr))
     (t
      (error (format nil "Invalid address passed (not IPv4 or IPV6): ~s~%" address)))))
 
-(defmacro with-ip-to-sockaddr (((bind bind-size) address port) &body body)
+(defmacro with-ip-to-sockaddr (((bind) address port) &body body)
   "Wraps around ipv4-str-to-sockaddr. Converts a string address and port and
    creates a sockaddr-in object, runs the body with it bound, and frees it."
-  `(multiple-value-bind (,bind ,bind-size) (ip-str-to-sockaddr ,address ,port)
+  `(let ((,bind (ip-str-to-sockaddr ,address ,port)))
      (unwind-protect
        (progn ,@body)
        (cffi:foreign-free ,bind))))
 
+(defun addrinfo-to-string (addrinfo)
+  "Given a (horrible) addrinfo C object pointer, grab either an IP4 or IP6
+   address and return is as a string."
+  (let* ((type (progn #+windows 'uv:addrinfo-w #-windows 'uv:addrinfo))
+         (family (cffi:foreign-slot-value addrinfo (list :struct type) 'uv::ai-family))
+         (err nil))
+    (cffi:with-foreign-object (buf :unsigned-char 128)
+      ;; note here, we use the OS-dependent addrinfo-ai-addr macro
+      ;; defined in util.lisp
+      (let ((ai-addr (cffi:foreign-slot-value addrinfo (list :struct type) 'uv::ai-addr)))
+        (if (cffi:null-pointer-p ai-addr)
+            (setf err "the addrinfo->ai_addr object was null (stinks of a memory alignment issue)")
+            (cond ((eq family +af-inet+)
+                   (let ((sin-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in) 'uv::sin-addr)))
+                     (uv:uv-inet-ntop family sin-addr buf 128)))
+                  ((eq family +af-inet6+)
+                   (let ((sin6-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in-6) 'uv::sin-6-addr-0)))
+                     (uv:uv-inet-ntop family sin6-addr buf 128)))
+                  (t
+                   (setf err (format nil "unsupported DNS family: ~a" family))))))
+      (values (cffi:foreign-string-to-lisp buf) family err))))
+
+(defun set-socket-nonblocking (fd)
+  "Sets an FD into non-blocking mode."
+  (let ((FIONBIO -2147195266)
+        (F_GETFL 3)
+        (F_SETFL 4)
+        (O_NONBLOCK 2048))
+    (cond ((cffi:foreign-symbol-pointer "ioctlsocket")
+           (cffi:with-foreign-object (nonblocking :unsigned-long)
+             (setf (cffi:mem-aref nonblocking :unsigned-long) 1)
+             (cffi:foreign-funcall "ioctlsocket"
+                                   :int fd
+                                   :long FIONBIO
+                                   :pointer nonblocking
+                                   :int)))
+          ((cffi:foreign-symbol-pointer "fcntl")
+           (let ((flags (cffi:foreign-funcall "fcntl"
+                                              :int fd
+                                              :int F_GETFL
+                                              :pointer (cffi:null-pointer)
+                                              :int)))
+             (cffi:foreign-funcall "fcntl"
+                                   :int fd
+                                   :int F_SETFL
+                                   :int (logior flags O_NONBLOCK)
+                                   :int))))))
+
+(defun fd-connected-p (fd)
+  "Check if an FD is connected."
+  (cffi:with-foreign-objects ((error :int)
+                              (len :int))
+    (setf (cffi:mem-aref len :int) (cffi:foreign-type-size :int))
+    (let* ((SOL_SOCKET #+windows 65535 #-windows 1)
+           (SO_ERROR #+windows 4103 #-windows 4)
+           (res (cffi:foreign-funcall "getsockopt"
+                                      :int fd
+                                      :int SOL_SOCKET
+                                      :int SO_ERROR
+                                      :pointer error
+                                      :pointer len
+                                      :int)))
+      (zerop res))))

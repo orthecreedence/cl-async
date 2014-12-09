@@ -1,7 +1,8 @@
 (in-package :cl-async)
 
 (defclass async-stream (trivial-gray-stream-mixin)
-  ((socket :accessor stream-socket :initarg :socket :initform nil))
+  ((socket :accessor stream-socket :initarg :socket :initform nil)
+   (buffer :accessor stream-buffer :initform (make-buffer)))
   (:documentation "The underlying class for async streams. Wraps a tcp socket class."))
 (defclass async-output-stream (async-stream fundamental-binary-output-stream) ()
   (:documentation "Async output stream."))
@@ -13,13 +14,17 @@
 ;; -----------------------------------------------------------------------------
 ;; base stream
 ;; -----------------------------------------------------------------------------
+(defmethod stream-append-bytes ((stream async-stream) bytes)
+  "Append some data to a stream's underlying buffer."
+  (write-to-buffer bytes (stream-buffer stream)))
+
 (defmethod stream-output-type ((stream async-stream))
   "This is always a binary stream."
-  '(unsigned-byte 8))
+  'cl-async-util:octet)
 
 (defmethod stream-element-type ((stream async-stream))
   "This is always a binary stream."
-  '(unsigned-byte 8))
+  'cl-async-util:octet)
 
 (defmethod open-stream-p ((stream async-stream))
   "Test the underlying socket to see if this stream is open."
@@ -41,36 +46,37 @@
 ;; -----------------------------------------------------------------------------
 (defmethod stream-clear-output ((stream async-output-stream))
   "Attempt to clear the output buffer of an output stream."
-  (when (open-stream-p stream)
-    (let* ((socket (stream-socket stream))
-           (bev (socket-c socket))
-           (bev-output (le::bufferevent-get-output bev)))
-      (loop while (< 0 (le:evbuffer-get-length bev-output)) do
-        (le:evbuffer-drain bev-output 9999999)))))
+  ;; we don't have the concept of an output buffer, only an underlying UV stream
+  ;; that's either written to or isn't
+  nil)
 
 (defmethod stream-force-output ((stream async-output-stream))
   "Force an output stream to send its data to the underlying fd."
-  (when (open-stream-p stream)
-    (let* ((socket (stream-socket stream))
-           (bev (socket-c socket))
-           (bev-output (le:bufferevent-get-output bev))
-           (fd (le:bufferevent-getfd bev)))
-      (le:evbuffer-write bev-output fd))))
+  ;; we don't have the concept of an output buffer, only an underlying UV stream
+  ;; that's either written to or isn't
+  nil)
 
 (defmethod stream-finish-output ((stream async-output-stream))
   "Really, since we're async, same as force-output."
   (stream-force-output stream))
 
-(defmethod stream-write-byte ((stream async-output-stream) byte)
-  "Write one byte to the underlying socket."
-  (when (open-stream-p stream)
-    (write-socket-data (stream-socket stream) (vector byte))))
-  
 (defmethod stream-write-sequence ((stream async-output-stream) sequence start end &key)
   "Write a sequence of bytes to the underlying socket."
   (when (open-stream-p stream)
     (let ((seq (subseq sequence start end)))
       (write-socket-data (stream-socket stream) seq))))
+
+(defmethod stream-write-byte ((stream async-output-stream) byte)
+  "Write one byte to the underlying socket."
+  (stream-write-sequence stream (vector byte) 0 1))
+  
+(defmethod send-buffered-data ((stream async-output-stream))
+  "Take data we've buffered between initial sending and actual socket connection
+   and send it out."
+  (let ((data (buffer-output (stream-buffer stream))))
+    (setf (stream-buffer stream) (make-buffer))
+    (write-socket-data (stream-socket stream) data))
+  nil)
 
 ;; -----------------------------------------------------------------------------
 ;; input stream
@@ -78,25 +84,22 @@
 (defmethod stream-clear-input ((stream async-input-stream))
   "Attempt to clear the input buffer of an input stream."
   (when (open-stream-p stream)
-    (let* ((socket (stream-socket stream))
-           (bev (socket-c socket))
-           (bev-input (le::bufferevent-get-input bev)))
-      (loop while (< 0 (le:evbuffer-get-length bev-input)) do
-        (le:evbuffer-drain bev-input 9999999)))))
+    (setf (stream-buffer stream) (make-buffer))))
 
 (defmethod stream-read-byte ((stream async-input-stream))
   "Read one byte from the underlying socket."
-  (let ((byte (read-bytes-from-socket (stream-socket stream) 1)))
-    (if byte
-        (aref byte 0)
+  (let* ((buff (make-array 1 :element-type '(unsigned-byte 8)))
+         (num (stream-read-sequence stream buff 0 1)))
+    (if (= num 1)
+        (aref buff 0)
         :eof)))
 
 (defmethod stream-read-sequence ((stream async-input-stream) sequence start end &key)
   "Attempt to read a sequence of bytes from the underlying socket."
-  (let ((seq (read-bytes-from-socket (stream-socket stream) (- end start))))
-    (if seq
-        (progn
-          (replace sequence seq)
-          (length seq))
-        start)))
+  (let* ((buffer (buffer-output (stream-buffer stream)))
+         (numbytes (min (length buffer) (- end start)))
+         (bytes (subseq buffer start (min (length buffer) numbytes))))
+    (setf (stream-buffer stream) (make-buffer (subseq buffer numbytes)))
+    (replace sequence bytes)
+    (length bytes)))
 

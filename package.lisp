@@ -11,6 +11,9 @@
            #:+af-unspec+
            #:+af-unix+
 
+           #:*buffer-writes*
+           #:*buffer-size*
+           
            ;; common conditions/accessors
            #:event-info
            #:event-error
@@ -18,10 +21,10 @@
            #:event-errmsg
            ;; common functions
            #:stats
-           #:enable-threading-support
-           #:with-threading-context
            #:dump-event-loop-status
            #:add-event-loop-exit-callback
+           #:ref
+           #:unref
            #:start-event-loop
            #:with-event-loop
            #:exit-event-loop
@@ -42,6 +45,13 @@
            #:make-event
            #:watch-fd
            #:fd-add
+
+           ;; notifier exports
+           #:notifier
+           #:notifier-freed-p
+           #:free-notifier
+           #:make-notifier
+           #:trigger-notifier
 
            ;; signal numbers
            #:+sighup+
@@ -92,6 +102,7 @@
            #:tcp-socket
            #:tcp-error
            #:tcp-eof
+           #:tcp-reset
            #:tcp-timeout
            #:tcp-refused
            #:tcp-accept-error
@@ -114,7 +125,6 @@
            #:init-tcp-socket
            #:connect-tcp-socket
            #:tcp-connect
-           #:tcp-send
            #:tcp-server
 
            ;; tcp stream
@@ -124,23 +134,14 @@
            #:async-output-stream
            #:async-io-stream
 
-           ;; http conditions/accessors
-           #:http-info
-           #:http-error
-           #:http-timeout
-           #:http-refused
-           ;;http functions
-           #:http-client
-           #:http-response
-           #:http-server
-           #:close-http-server
-           ;; http classes/accessors
-           #:http-request
-           #:http-request-c
-           #:http-request-method
-           #:http-request-uri
-           #:http-request-resource
-           #:http-request-querystring
-           #:http-request-headers
-           #:http-request-body))
+           ;; idler
+           #:idler
+           #:idler-freed-p
+           #:free-idler
+           #:idle
+           
+           #:poller
+           #:poller-freed-p
+           #:free-poller
+           #:poll))
 

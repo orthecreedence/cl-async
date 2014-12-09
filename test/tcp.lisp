@@ -50,7 +50,7 @@
     (signals as:tcp-timeout
       (async-let ()
         (test-timeout 2)
-        (as:tcp-connect "1.24.3.4" 3
+        (as:tcp-connect "1.24.3.4" 9090
           (lambda (sock data) (declare (ignore sock data)))
           (lambda (ev)
             (incf num-err)
@@ -104,45 +104,45 @@
           (lambda (ev) (declare (ignore ev)))
           :data "HELLO!"))
     (is (string= server-data "HELLO!"))))
-                          
-(defun get-usocket-fd (connection)
-  "Gets the fd from a usocket connection."
-  (let* ((type (type-of connection))
-         (stream (cond ((subtypep type 'usocket:stream-usocket)
-                        (usocket:socket-stream connection))
-                       ((subtypep type 'stream)
-                        connection))))
-    (when stream
-      #+sbcl
-        (sb-sys:fd-stream-fd stream)
-      #+cmu
-        (system:fd-stream-fd stream)
-      #+ccl
-        (ccl::ioblock-device (ccl::stream-ioblock stream t))
-      #+clisp
-        (ext:stream-handles stream))))
 
-(test wrap-existing-fd
-  "Make sure wrapping an existing file descriptor works"
-  (multiple-value-bind (response)
-      (async-let ((response nil))
+(test no-overlap
+  "Make sure that requests/responses don't overlap."
+  (multiple-value-bind (res)
+      (async-let ((res (make-hash-table :test 'eq)))
         (test-timeout 3)
-        (let* ((server (as:tcp-server nil 31311
-                         (lambda (sock data)
-                           (as:write-socket-data sock (concat (babel:octets-to-string data) " lol")))
-                         (lambda (ev) (declare (ignore ev))))))
-          (as:delay
-            (lambda ()
-              (let* ((conn (usocket:socket-connect "127.0.0.1" 31311))
-                     (sock (as:init-tcp-socket
-                             (lambda (sock data)
-                               (setf response (babel:octets-to-string data))
-                               (as:close-socket sock)
-                               (as:close-tcp-server server))
-                             (lambda (ev)
-                               (format t "EV: ~a~%" ev))
-                             :fd (get-usocket-fd conn))))
-                (as:write-socket-data sock "omg")))
-            :time .2)))
-    (is (string= response "omg lol"))))
+        
+        (let ((counter 1))
+          (as:tcp-server nil 31389
+            (lambda (sock data)
+              (dotimes (i (length data))
+                (assert (= (aref data 0) (aref data i))))
+              (incf (getf (as:socket-data sock) :bytes) (length data))
+              (when (<= (+ as:*buffer-size* 20000) (getf (as:socket-data sock) :bytes))
+                (let ((res (make-array 500000 :initial-element (getf (as:socket-data sock) :id)
+                                              :element-type 'as:octet)))
+                  (as:write-socket-data sock res))))
+            nil
+            :connect-cb (lambda (sock)
+                          (setf (as:socket-data sock) (list :id counter :bytes 0))
+                          (incf counter))))
+        (dotimes (i 4)
+          (let ((x i))
+            (as:tcp-connect "127.0.0.1" 31389
+              (lambda (sock data)
+                (declare (ignorable sock))
+                (push data (gethash x res)))
+              nil
+              :data (make-array (+ as:*buffer-size* 20000) :initial-element x)))))
+    (loop ;for k being the hash-keys of res
+          for v being the hash-values of res do
+      (let ((stream (flexi-streams:make-in-memory-output-stream :element-type '(unsigned-byte 8))))
+        (dolist (part v)
+          (write-sequence part stream))
+        (let ((bytes (flexi-streams:get-output-stream-sequence stream))
+              (is-eq t))
+          (dotimes (i (length bytes))
+            (unless (= (aref bytes 0) (aref bytes i))
+              (setf is-eq nil)
+              (return)))
+          (is (eq is-eq t)))))))
 
