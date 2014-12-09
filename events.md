@@ -22,7 +22,6 @@ watching an OS file descriptor for changes.
 - [with-interval](#with-interval) _macro_
 - [remove-interval](#remove-interval) _function_
 - [make-event](#make-event) _function_
-- [watch-fd](#watch-fd) _function_
 - [event-freed](#event-freed) _condition_
 - [ref](#ref) _function_
 - [unref](#unref) _function_
@@ -177,30 +176,6 @@ and libevent will trigger the callback for you.
 
 This is a very thin wrapper around [delay](#delay), in fact all it does is call
 `delay` with a one-year delay.
-
-<a id="watch-fd"></a>
-### watch-fd
-{% highlight cl %}
-(defun watch-fd (fd &key event-cb read-cb write-cb timeout-cb timeout))
-  => event
-{% endhighlight %}
-
-Allows you to create an event that watches a file descriptor. This can be useful
-if you need to manually watch a socket without having libevent/cl-async do any
-buffering on it.
-
-`:read-cb` is fired when the fd is ready to be read from.  
-`:write-cb` is fired when the fd is ready to be written to.  
-`:timeout-cb` is fired when the time given by `:timeout` (in seconds) expires.  
-`:timeout` specifies that the event fire in the given number of seconds.
-
-cl-async does not provide any abstractions to get a file descriptor from a
-socket or other objects that may hold one, it is your responsibility to get
-this fd yourself, and pass it to `watch-fd`.
-
-__NOTE__: `watch-fd` does *not* free the event it creates for you. It is up to
-you to track the event it returns and call [free-event](#free-event) on it
-manually when you no longer need the event.
 
 <a id="event-freed"></a>
 ### event-freed
