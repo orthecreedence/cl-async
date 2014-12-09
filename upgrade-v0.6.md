@@ -6,7 +6,7 @@ layout: documentation
 Upgrading to v0.6.x
 ===
 cl-async has swapped out its backend library from libevent to libuv. For more
-information on why, [see the related post](/cl-async/2014/11/29/cl-async-now-with-libuv.html).
+information on why, [see the related post](/cl-async/2014/11/29/cl-async-now-using-libuv.html).
 
 The goal of the v0.6.x upgrade was to port cl-async over to libuv with the
 *least amount of API changes as possible*.
