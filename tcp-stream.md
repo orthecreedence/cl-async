@@ -50,17 +50,16 @@ reading and writing on the underlying socket.
 <a id="tcp-stream-notes"></a>
 Buffer draining notes
 ---------------------
-Streams work by sucking the data out of libevent's bufferevent for the given
-socket. Normally, when a `read-cb` fires on a socket, cl-async will drain the
-data received out of the bufferevent and put it into a byte array it passes to
-the `read-cb`.
+Streams work by sucking the data out of the socket they are set up to wrap.
+Normally, when a `read-cb` fires on a socket, cl-async will drain the
+data received and put it into a byte array it passes to the `read-cb`.
 
-In the case of streams, the stream drains this data directly, so you have to
-tell cl-async to *not* drain the read bufferevent, which will still call
-`read-cb`, but only to notify you that data is ready. This is what
-`:dont-drain-read-buffer` does for you. Note that if you specify `:stream t`
-then `dont-drain-read-buffer` is assumed to be `T` unless explicitely stated
-otherwise.
+In the case of streams, cl-async pushes the data onto the stream's input buffer
+instead of passing the data to the `read-cb` directly. The stream is then passed
+as the second parameter to the `read-cb` (the first still being the socket
+object). This is what `:dont-drain-read-buffer` does for you. Note that if you
+specify `:stream t` then `dont-drain-read-buffer` is assumed to be `T` unless
+explicitely stated otherwise.
 
 When the `read-cb` fires and `dont-drain-read-buffer` is `T`, the `data` param
 will always be the stream and the socket data can be read via `read-sequence` or

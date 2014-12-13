@@ -28,14 +28,12 @@ watching an OS file descriptor for changes.
 
 <a id="event"></a>
 ### event
-The event class wraps around a libevent event C object. It is accepted by
+The event class wraps around a libuv event C object. It is accepted by
 [free-event](#free-event), [remove-event](#remove-event), and [add-event](#add-event).
 
 <a id="event-c"></a>
 ##### event-c
-Allows you to access the underlying C libevent object associated with this event.
-This is for use by advanced users who want more control over the event, and have
-knowledge of how libevent works.
+Allows you to access the underlying C object associated with this event.
 
 It's exported in case you need to do something cl-async doesn't provide.
 
@@ -86,9 +84,8 @@ If `:timeout` is specified, the event will fire in the given number of seconds
 regardless of whether or not the other conditions the event is watching for are
 met.
 
-If `:activate` is true *and* `:timeout` is null, the event is not added back
-into the event loop, but is instead manually activated (via [libevent's
-event\_active function](http://www.wangafu.net/~nickm/libevent-book/Ref4_event.html#_manually_activating_an_event)).
+If `:activate` is true *and* `:timeout` is null, the event t is instead manually
+activated.
 
 Note that if you omit *both* `:activate` *and* `:timeout`, the event will be
 added to the loop but not activated (and will never be run unless you call
@@ -168,11 +165,6 @@ timer on the interval (cancels it).
 Makes it easy to add an arbitrary event to the event loop. This event needs to
 either be activated via `(add-event event :activate t)` (see [add-event](#add-event))
 or removed manually.
-
-If you use `enable-threading-support`, you can activate the event from another
-thread. This is really useful if you want to queue long-running work in a
-background thread. Then once the work is done you call `add-event` on the event
-and libevent will trigger the callback for you.
 
 This is a very thin wrapper around [delay](#delay), in fact all it does is call
 `delay` with a one-year delay.

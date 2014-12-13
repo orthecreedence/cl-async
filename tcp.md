@@ -53,7 +53,7 @@ specify data to be sent once the connection is established via the `:data`
 keyword. All incoming data will be sent to the [read-cb](#tcp-connect-read-cb),
 and any events will be sent to the [event-cb](/cl-async/event-handling).
 
-`tcp-connect` returns a [socket](#socket) class, which wraps the libevent socket
+`tcp-connect` returns a [socket](#socket) class, which wraps the C socket
 implementation and also allows storing arbitrary data with the socket.
 
 `tcp-connect` can also return a stream of type [async-io-stream](/cl-async/tcp-stream#async-io-stream)
@@ -66,7 +66,7 @@ callbacks on it), check out [write-socket-data](#write-socket-data), or in the
 case of a stream, you can use `write-sequence` to send new data on the stream.
 
 Note that the `host` can be an IP address *or* a hostname. The hostname will
-be looked up asynchronously via libevent's DNS implementation.
+be looked up asynchronously via cl-async's DNS implementation.
 
 {% highlight cl %}
 ;; example:
@@ -253,7 +253,7 @@ anything.
 
 <a id="socket"></a>
 ### socket
-This class is a wrapper around the libevent socket class. It is passed to tcp
+This class is a wrapper around the libuv socket class. It is passed to tcp
 callback functions, and allows you to perform certain actions on the socket
 (such as [closing it](#close-socket), [setting read/write timeouts](#set-socket-timeouts),
 [writing data to it](#write-socket-data), etc).
@@ -263,14 +263,11 @@ store arbitrary, app-specific data in the socket.
 
 <a id="socket-c"></a>
 ##### socket-c
-This accessor lets you access the underlying [libevent bufferevent](http://www.wangafu.net/~nickm/libevent-book/Ref6_bufferevent.html)
+This accessor lets you access the underlying [libuv stream](http://docs.libuv.org/en/v1.x/tcp.html)
 object for the socket. While this is not immediately useful for any cl-async
 related purpose (and manipulating it outside of cl-async may make your worst
 nightmares come true if you aren't careful), it can be very useful to do your
-own bufferevent operations through the [libevent bindings](https://github.com/orthecreedence/cl-libevent2).
-
-TL;DR: Don't touch this accessor unless you are fairly familiar with libevent's
-API and how it interacts with cl-async.
+own stream operations through the [cl-libuv bindings](https://github.com/orthecreedence/cl-libuv).
 
 <a id="socket-data"></a>
 ##### socket-data
@@ -438,8 +435,8 @@ accepting a client connection.
 
 <a id="tcp-accept-error-listener"></a>
 ##### tcp-accept-error-listener
-The libevent listener c object. Provided in case your app needs to process it in
-some way.
+The listener c object. Provided in case your app needs to process it in some
+way.
 
 <a id="tcp-accept-error-tcp-server"></a>
 ##### tcp-accept-error-tcp-server

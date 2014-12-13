@@ -13,7 +13,6 @@ conditions it uses.
 - [with-event-loop](#with-event-loop) _macro_
 - [exit-event-loop](#exit-event-loop) _function_
 - [add-event-loop-exit-callback](#add-event-loop-exit-callback) _function_
-- [dump-event-loop-status](#dump-event-loop-status) _function_
 - [event-info](#event-info) _condition_
 - [event-error](#event-error) _condition_
   - [event-errcode](#event-errcode) _accessor_
@@ -34,13 +33,6 @@ returns, which doesn't happen until the loop is empty *or*
 This function must be called before any other operations in the library are
 allowed. If you try to do an async operation without an event loop running, it
 will throw an error.
-
-It allows specifying callbacks for the fatal errors in libevent (called when
-libevent would normally exit, taking your app with it), logging, and default
-application error handling.
-
-`start-event-loop` returns 1 if the event loop exited naturally, and 0 if it was
-forced to close via [exit-event-loop](#exit-event-loop).
 
 {% highlight cl %}
 ;; example:
@@ -121,23 +113,6 @@ takes no arguments. It can be used to clean up/alert various sections of your
 code that would benefit from knowing that an event loop has exited (generally
 you can just put this cleanup directly after calling [start-event-loop](#start-event-loop),
 but it can make sense to pass in closures that do cleanup for you.
-
-<a id="dump-event-loop-status"></a>
-### dump-event-loop-status
-{% highlight cl %}
-(defun dump-event-loop-status (file &key (return-as-string t)))
-  => string
-{% endhighlight %}
-
-This is a debugging function that can help shed *some* light on why an event
-loop isn't exiting by dumping out all the events the loop currently holds.
-Although it's not very specific about the events it contains, it can still be
-useful.
-
-Since libevent only lets you dump the events to a file, the default is for you
-to specify which file to dump into, which is then read back as a string (and the
-file is then removed). If you wish the keep the file, pass
-`:return-as-string nil`.
 
 <a id="event-info"></a>
 ### event-info

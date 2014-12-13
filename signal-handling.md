@@ -60,7 +60,7 @@ signal processing.
   => nil
 {% endhighlight %}
 
-Unbinds a signal handler. This deletes the libevent signal listener event and
+Unbinds a signal handler. This deletes the underlying signal listener event and
 also restores the lisp signal handler that existed before calling
 [signal-handler](#signal-handler).
 
@@ -79,7 +79,7 @@ also restores the lisp signal handler that existed before calling
   => nil
 {% endhighlight %}
 
-Clear all cl-async bound signal handlers. This deletes the libevent event
+Clear all cl-async bound signal handlers. This deletes the underlying event
 listeners and restores the original lisp signal handlers for each bound signal.
 
 This is useful if you don't want to track all the signals you've bound and

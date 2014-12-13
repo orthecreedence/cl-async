@@ -34,7 +34,7 @@ abilities of cl-async:
 <a id="quick-start"></a>
 Quick start
 -----------
-Cl-async uses an event loop (via [libevent](http://libevent.org/)) to keep track
+Cl-async uses an event loop (via [libuv](http://docs.libuv.org/en/v1.x/)) to keep track
 of events it's currently processing. An event can be something like a timer
 being fired, data being received on a socket, an operating system signal being
 delivered to your application, etc. Everything that an evented application does

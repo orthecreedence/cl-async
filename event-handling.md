@@ -12,11 +12,6 @@ to be invoked. Originally event callbacks were failure callbacks, but since
 non-failure conditions are sometimes useful to an app, it made sense to make it
 more generic.
 
-The event conditions generally match conditions in libevent, although they try
-to be as informative as possible. Note that conditions are not actually thrown,
-but rather instantiated via `make-instance` and passed directly to the event
-callback.
-
 <a id="application-error-handler"></a>
 ### Application error handling
 cl-async can be set up to catch errors in your application and pass them to

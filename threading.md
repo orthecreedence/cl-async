@@ -37,7 +37,7 @@ thread*.
 Here, we create a notifier (which sits in the event loop inactive), start a thread
 that does work in the backgorund (while we continue to process events in our
 main thread). Once *all of our hard work* is done, the event is marked as active
-and then libevent triggers the callback attached to our event *in our main
+and then cl-async triggers the callback attached to our event *in our main
 thread*.
 
 Note that we save the result of our work into `result`. We can do this without
