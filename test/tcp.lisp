@@ -75,6 +75,7 @@
         (let* ((server (as:tcp-server nil 41818
                          (lambda (sock data) (declare (ignore sock data)))
                          (lambda (ev) (declare (ignore ev))))))
+          (assert server () "failed to listen at port 41818")
           (as:tcp-connect "127.0.0.1" 41818
             (lambda (sock data) (declare (ignore sock data)))
             (lambda (ev) (declare (ignore ev)))
