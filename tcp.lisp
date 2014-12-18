@@ -184,7 +184,7 @@
      callbacks. Any callback left nil will use that current callback from the
      socket (so they only override when specified, otherwise keep the current
      callback).
-     
+
      Note that libuv doesn't buffer output for non-connected sockets, so we have
      to do it ourselves by checking if the socket is connected and buffering
      accordingly."))
@@ -281,7 +281,7 @@
       (when timeout
         (remove-event timeout)
         (add-event timeout :timeout (cdr read-timeout)))
-      
+
       ;; read the buffer
       (let ((bytes (make-array nread :element-type 'octet)))
         ;; input buffer was given to libuv in the alloc-cb, so we can just pull
@@ -451,6 +451,7 @@
 (defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
+  (check-type data (or null (simple-array octet (*)) string))
   (let ((socket/stream (apply #'init-tcp-socket
                               (append (list read-cb event-cb
                                             :data data
@@ -496,4 +497,3 @@
       (save-callbacks server-c (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
       ;; return the listener, which can be closed by the app if needed
       server-class)))
-

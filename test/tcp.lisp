@@ -110,7 +110,7 @@
   (multiple-value-bind (res)
       (async-let ((res (make-hash-table :test 'eq)))
         (test-timeout 3)
-        
+
         (let ((counter 1))
           (as:tcp-server nil 31389
             (lambda (sock data)
@@ -132,7 +132,9 @@
                 (declare (ignorable sock))
                 (push data (gethash x res)))
               nil
-              :data (make-array (+ as:*buffer-size* 20000) :initial-element x)))))
+              :data (make-array (+ as:*buffer-size* 20000)
+                                :initial-element x
+                                :element-type '(unsigned-byte 8))))))
     (loop ;for k being the hash-keys of res
           for v being the hash-values of res do
       (let ((stream (flexi-streams:make-in-memory-output-stream :element-type '(unsigned-byte 8))))
@@ -145,4 +147,3 @@
               (setf is-eq nil)
               (return)))
           (is (eq is-eq t)))))))
-
