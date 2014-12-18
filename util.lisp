@@ -167,10 +167,11 @@
     ;; use this binding
     `(let ((_evcb-err nil))
        (if (event-base-catch-app-errors *event-base*)
-           (let* ((,evcb (if (symbolp ,event-cb)
-                             (handler-case (symbol-function ,event-cb)
-                               (undefined-function () nil))
-                             ,event-cb))
+           (let* ((,evcb (cond ((not (symbolp ,event-cb))
+                                ,event-cb)
+                               ((fboundp ,event-cb)
+                                (symbol-function ,event-cb))
+                               (t nil)))
                   (,evcb (if (functionp ,evcb)
                              ,evcb
                              (event-base-default-event-handler *event-base*))))
