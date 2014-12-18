@@ -1,45 +1,5 @@
 (in-package :cl-async)
 
-(defun event-handler (error event-cb &key socket catch-errors)
-  "Called when an event (error, mainly) occurs."
-  ;; here we check if errno is actually an event/error object passed in
-  ;; directly. if so, we kindly forward it along to the event-cb.
-  (let* ((errno (when (numberp error) error))
-         (event (unless (numberp error) error))
-         (errstr (when errno (error-str errno))))
-    (macrolet ((do-handle (catch-p)
-                 `(unwind-protect
-                       (cond
-                         ;; if we passed in an event, do nothing
-                         (event nil)
-                         ((= errno (uv:errval :etimedout))
-                          (setf event (make-instance 'tcp-timeout :socket socket :code errno :msg "connection timed out")))
-                         ((= errno (uv:errval :econnreset))
-                          (setf event (make-instance 'tcp-reset :socket socket :code errno :msg "connection reset")))
-                         ((= errno (uv:errval :econnrefused))
-                          (setf event (make-instance 'tcp-refused :socket socket :code errno :msg "connection refused")))
-                         ((= errno (uv:errval :eof))
-                          (setf event (make-instance 'tcp-eof :socket socket)))
-                         ((= errno (uv:errval :eai-noname))
-                          (setf event (make-instance 'dns-error :code errno :msg "DNS lookup fail")))
-                         ((= errno (uv:errval :efault))
-                          (setf event (make-instance 'event-error :code errno :msg "bad address in system call argument")))
-                         (t
-                          (setf event (make-instance 'event-error :code errno :msg errstr))))
-                    (when event
-                      (unwind-protect
-                           (when event-cb
-                             ,(if catch-p
-                                  '(run-event-cb event-cb event)
-                                  '(funcall event-cb event)))
-                        ;; if the app closed the socket in the event cb (perfectly fine),
-                        ;; make sure we don't trigger an error trying to close it again.
-                        (handler-case (and socket (close-socket socket :force t))
-                          (socket-closed () nil)))))))
-      (if catch-errors
-          (catch-app-errors event-cb (do-handle t))
-          (do-handle nil)))))
-
 (defun add-event-loop-exit-callback (fn)
   "Add a function to be run when the event loop exits."
   (push fn (event-base-exit-functions *event-base*)))
@@ -96,13 +56,13 @@
   (case (uv:handle-type handle)
     (:tcp (let* ((data (deref-data-from-pointer handle))
                  (socket/server (if (listp data)
-                                    (getf data :socket)
+                                    (getf data :streamish)
                                     data)))
             (cond ((null data)
                    ;; this may happen, for example, when tcp-connect
                    ;; fails somewhere in the middle due to a bug
-                   (warn "a tcp handle without corresponding object detected")
-                   (do-close-tcp handle :force t))
+                   (warn "an uv handle without corresponding object detected")
+                   (do-close-streamish handle :force t))
                   ((typep socket/server 'tcp-server)
                    (unless (tcp-server-closed socket/server)
                      (close-tcp-server socket/server)))

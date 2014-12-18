@@ -48,12 +48,12 @@
    seriously I'm not going to waste precious time out of my life typing identity
    when I can just type id. The idea is the same, and everybody KNOWS what I'm
    trying to express.
-   
+
    Oh one more thing: the only reason I NEED identi...err, id is because Eos
    can't use its `is` macro around another macro. So I need a function to wrap
    it. Lame. BUT such is life."
   val)
-  
+
 ;; define the test suite
 (def-suite cl-async-test :description "cl-async test suite")
 (def-suite cl-async-test-core :in cl-async-test :description "cl-async test suite")
@@ -138,4 +138,3 @@
     (free-pointer-data data-pointer)
     (is (null (deref-data-from-pointer data-pointer)))
     (is (= data-size (hash-table-count (event-base-data-registry *event-base*))))))
-
