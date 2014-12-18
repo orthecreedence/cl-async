@@ -150,7 +150,7 @@
            (callbacks nil))
       (incf *event-base-next-id*)
       (delay start-fn)
-      ;; this is the once instance where we assign callbacks to a libevent object
+      ;; this is the once instance where we assign callbacks to an event loop object
       ;; instead of a data-pointer since the callbacks don't take any void* args,
       ;; meaning we have to dereference from the global (event-base-c *event-base*) object.
       (save-callbacks (event-base-c *event-base*) callbacks)

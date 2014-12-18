@@ -54,7 +54,7 @@
   "The numeric identifier assigned to each new event base.")
 (defclass event-base ()
   ((c :accessor event-base-c :initarg :c :initform nil
-     :documentation "Holds the C object pointing to the libevent event base.")
+     :documentation "Holds the C object pointing to the underlying event loop object.")
    (id :accessor event-base-id :initarg :id :initform nil
      :documentation "Holds this event loop's numeric id.")
    (function-registry :accessor event-base-function-registry :initarg :function-registry :initform (make-hash-table :test #'eql)

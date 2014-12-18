@@ -55,13 +55,13 @@
    (closed :accessor socket-closed :initarg :closed :initform nil)
    (direction :accessor socket-direction :initarg :direction :initform nil)
    (drain-read-buffer :accessor socket-drain-read-buffer :initarg :drain-read-buffer :initform t))
-  (:documentation "Wraps around a libevent bufferevent socket."))
+  (:documentation "Wraps around a socket."))
 
 (defclass tcp-server ()
   ((c :accessor tcp-server-c :initarg :c :initform (cffi:null-pointer))
    (closed :accessor tcp-server-closed :initarg :closed :initform nil)
    (stream :accessor tcp-server-stream :initarg :stream :initform nil))
-  (:documentation "Wraps around a libevent connection listener."))
+  (:documentation "Wraps around a connection listener."))
 
 (defun check-socket-open (socket)
   "Throw a socket-closed condition if given a socket that's closed."

@@ -21,7 +21,7 @@
 
 (defclass tcp-ssl-server (tcp-server)
   ((as-ssl :accessor tcp-server-as-ssl :initarg :as-ssl :initform nil))
-  (:documentation "Wraps around a libevent SSL servre/listener"))
+  (:documentation "Wraps around an SSL server/listener"))
 
 (defun close-ssl (as-ssl)
   "Close up a cl-async SSL object."
@@ -35,7 +35,7 @@
     (when (cffi:pointerp ssl)
       (free-pointer-data ssl :preserve-pointer t)
       (ssl-free ssl))))
-  
+
 (defmethod close-socket ((socket ssl-socket) &key force)
   (declare (ignore force))
   (setf (socket-ssl-closing socket) t)
@@ -237,7 +237,7 @@
    wrapped in SSL by attaching some SSL objects to it and replacing the
    connect-cb and read-cb with our own. Note that the given socket MUST be of
    the class ssl-socket.
-   
+
    Note that this function *really* should be called before the passed socket
    is connected, and certainly before any data is exchanged over it."
   (labels ((read-cb (sock data)
@@ -379,4 +379,3 @@
     (let ((as-ssl (make-instance 'as-ssl :ctx (unless ssl-ctx ctx))))
       (setf (tcp-server-as-ssl server) as-ssl))
     server))
-
