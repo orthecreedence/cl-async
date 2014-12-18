@@ -46,8 +46,11 @@
 
 (test tcp-connect-fail
   "Make sure a tcp connection fails"
-  (let ((num-err 0))
-    (signals as:tcp-timeout
+  (let ((num-err 0)
+        (caught-p nil))
+    ;; FIXME: trying to connect to the unrouteable
+    ;; address sometimes gives ETIMEDOUT and sometimes ECONNREFUSED
+    (handler-case
       (async-let ()
         (test-timeout 2)
         (as:tcp-connect "1.24.3.4" 9090
@@ -56,7 +59,12 @@
             (incf num-err)
             (error ev))
           :data "hai"
-          :read-timeout 1)))
+          :read-timeout 1))
+      (as:tcp-timeout ()
+        (setf caught-p t))
+      (as:tcp-refused ()
+        (setf caught-p t)))
+    (is-true caught-p)
     (is (= num-err 1))))
 
 (test tcp-server-close
