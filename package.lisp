@@ -5,7 +5,7 @@
            #:octet-vector
 
            #:bytes
-           
+
            #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
@@ -13,7 +13,7 @@
 
            #:*buffer-writes*
            #:*buffer-size*
-           
+
            ;; common conditions/accessors
            #:event-info
            #:event-error
@@ -117,6 +117,7 @@
            ;; tcp functions
            #:socket-closed-p
            #:close-socket
+           #:close-socket-server
            #:close-tcp-server
            #:write-socket-data
            #:set-socket-timeouts
@@ -126,6 +127,10 @@
            #:connect-tcp-socket
            #:tcp-connect
            #:tcp-server
+
+           #:pipe-connect
+           #:pipe-server
+           #:pipe-not-found
 
            ;; tcp stream
            #:async-stream
@@ -139,9 +144,8 @@
            #:idler-freed-p
            #:free-idler
            #:idle
-           
+
            #:poller
            #:poller-freed-p
            #:free-poller
            #:poll))
-

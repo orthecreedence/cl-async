@@ -43,6 +43,7 @@
    (:file "async-stream" :depends-on ("streamish"))
    (:file "socket" :depends-on ("streamish" "async-stream"))
    (:file "tcp" :depends-on ("dns" "socket"))
+   (:file "pipe" :depends-on ("socket"))
    (:file "signal" :depends-on ("streamish"))
    (:file "notify" :depends-on ("streamish"))
    (:file "poll" :depends-on ("streamish"))
