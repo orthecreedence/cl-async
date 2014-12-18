@@ -98,11 +98,16 @@
                  (socket/server (if (listp data)
                                     (getf data :socket)
                                     data)))
-            (if (typep socket/server 'tcp-server)
-                (unless (tcp-server-closed socket/server)
-                  (close-tcp-server socket/server))
-                (unless (socket-closed-p socket/server)
-                  (close-socket socket/server :force t)))))
+            (cond ((null data)
+                   ;; this may happen, for example, when tcp-connect
+                   ;; fails somewhere in the middle due to a bug
+                   (warn "a tcp handle without corresponding object detected")
+                   (do-close-tcp handle :force t))
+                  ((typep socket/server 'tcp-server)
+                   (unless (tcp-server-closed socket/server)
+                     (close-tcp-server socket/server)))
+                  ((not (socket-closed-p socket/server))
+                   (close-socket socket/server :force t)))))
     (:timer (let ((event (deref-data-from-pointer handle)))
               (unless (event-freed-p event)
                 (free-event event))))
@@ -189,4 +194,3 @@
   (let ((evloop (event-base-c *event-base*)))
     (when evloop
       (uv:uv-stop evloop))))
-
