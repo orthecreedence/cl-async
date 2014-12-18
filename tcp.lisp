@@ -17,12 +17,13 @@
                                  (tcp-server-bind-error-port c))))
   (:documentation "Thrown when a server fails to bind (generally, the port is already in use)."))
 
-(defclass tcp-socket (socket) ())
-(defclass tcp-server (socket-server) ())
+(defclass tcp-mixin () ())
+(defclass tcp-socket (tcp-mixin socket) ())
+(defclass tcp-server (tcp-mixin socket-server) ())
 
 (defmethod server-socket-class ((server tcp-server)) 'tcp-socket)
 
-(defmethod make-socket-handle ((socket tcp-socket))
+(defmethod make-socket-handle ((socket-or-server tcp-mixin))
   (let ((s (uv:alloc-handle :tcp)))
     (uv:uv-tcp-init (event-base-c *event-base*) s)
     s))
@@ -30,7 +31,7 @@
 (defun connect-tcp-socket (socket/stream host port &key event-cb)
   "Connect a tcp socket initialized with init-client-socket."
   (let* ((socket (if (subtypep (type-of socket/stream) 'async-stream)
-                     (stream-socket socket/stream)
+                     (streamish socket/stream)
                      socket/stream))
          (uvstream (socket-c socket)))
     ;; track the connection
@@ -74,39 +75,22 @@
     (connect-tcp-socket socket/stream host port :event-cb event-cb)
     socket/stream))
 
+(defmethod socket-server-bind ((server tcp-server) address fd)
+  (destructuring-bind (bind-address port) address
+    (if fd
+        (uv:uv-tcp-open (socket-server-c server) fd)
+        (with-ip-to-sockaddr ((sockaddr) bind-address port)
+          (uv:uv-tcp-bind (socket-server-c server) sockaddr 0)))))
+
 (defun tcp-server (bind-address port read-cb event-cb &key connect-cb backlog stream fd)
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
-  (check-event-loop-running)
-  (let ((server-c (uv:alloc-handle :tcp)))
-    (uv:uv-tcp-init (event-base-c *event-base*) server-c)
-    (let* ((r-bind (if fd
-                       (uv:uv-tcp-open server-c fd)
-                       (with-ip-to-sockaddr ((sockaddr) bind-address port)
-                         (uv:uv-tcp-bind server-c sockaddr 0))))
-           (server-instance (make-instance 'tcp-server
-                                           :c server-c
-                                           :stream stream))
-           (backlog (if (or (null backlog)
-                            (< backlog 0))
-                        128
-                        backlog))
-           (r-listen (when (zerop r-bind)
-                       (uv:uv-listen server-c backlog (cffi:callback socket-accept-cb)))))
-      ;; check that our listener instantiated properly
-      (when (or (< r-bind 0)
-                (< r-listen 0))
-        (close-socket-server server-instance)
-        (event-handler (or r-listen r-bind) event-cb :catch-errors t)
-        (return-from tcp-server))
-      ;; make sure the server is closed/freed on exit
-      (add-event-loop-exit-callback (lambda ()
-                                      (close-socket-server server-instance)))
-      (attach-data-to-pointer server-c server-instance)
-      ;; setup an accept error cb
-      (save-callbacks server-c (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
-      ;; return the listener, which can be closed by the app if needed
-      server-instance)))
+  (socket-server 'tcp-server
+                 (list bind-address port) read-cb event-cb
+                 :connect-cb connect-cb
+                 :backlog backlog
+                 :stream stream
+                 :fd fd))
 
 ;; compatiblity funcs
 (defun close-tcp-server (server)

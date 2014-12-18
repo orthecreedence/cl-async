@@ -17,7 +17,7 @@
                  (:file "event")
                  (:file "dns")
                  (:file "tcp")
-                 (:file "tcp-stream")
+                 (:file "async-stream")
                  (:file "threading")
                  ;(:file "tcp-ssl")
                  (:file "signal")
@@ -25,4 +25,3 @@
                  (:file "poll")
                  (:file "benchmarks")
                  (:file "run")))))
-

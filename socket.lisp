@@ -208,8 +208,14 @@
 (defgeneric server-socket-class (server)
   (:documentation "Return socket class for connections accepted by SERVER"))
 
-(defgeneric make-socket-handle (socket)
+(defgeneric make-socket-handle (socket-or-server)
   (:documentation "Create an underlying stream handle for socket connection"))
+
+(defmethod initialize-instance :after ((socket socket) &key &allow-other-keys)
+  (setf (socket-c socket) (make-socket-handle socket)))
+
+(defmethod initialize-instance :after ((server socket-server) &key &allow-other-keys)
+  (setf (socket-server-c server) (make-socket-handle server)))
 
 (defun init-incoming-socket (server status)
   "Called by the socket-accept-cb when an incoming connection is detected. Sets up
@@ -231,7 +237,7 @@
                                         :connected t
                                         :drain-read-buffer (not stream-data-p)))
                  (uvstream (socket-c socket))
-                 (stream (when stream-data-p (make-instance 'async-io-stream :socket socket))))
+                 (stream (when stream-data-p (make-instance 'async-io-stream :streamish socket))))
             (if (zerop (uv:uv-accept server uvstream))
                 (progn
                   (attach-data-to-pointer uvstream (list :streamish socket :stream stream))
@@ -265,7 +271,7 @@
                                 :direction :out
                                 :drain-read-buffer (not dont-drain-read-buffer)))
          (uvstream (socket-c socket))
-         (async-stream (when stream (make-instance 'async-io-stream :socket socket))))
+         (async-stream (when stream (make-instance 'async-io-stream :streamish socket))))
     (when data
       (write-socket-data socket data))
     (save-callbacks uvstream (list :read-cb read-cb
@@ -281,5 +287,35 @@
         async-stream
         socket)))
 
-(defmethod initialize-instance :after ((socket socket) &key &allow-other-keys)
-  (setf (socket-c socket) (make-socket-handle socket)))
+(defgeneric socket-server-bind (server address fd)
+  (:documentation "Bind socket server to the specified address, return
+  libuv errno. Specify FD to bind the server to an existing
+  file descriptor."))
+
+(defun socket-server (server-class address read-cb event-cb &key connect-cb backlog stream fd)
+  "Start a socket listener on the current event loop. Returns a socket-server instance
+   which can be closed with close-socket-server"
+  (check-event-loop-running)
+  (let* ((server-instance (make-instance server-class :stream stream))
+         (server-c (socket-server-c server-instance))
+         (r-bind (socket-server-bind server-instance address fd))
+         (backlog (if (or (null backlog)
+                          (< backlog 0))
+                      128
+                      backlog))
+         (r-listen (when (zerop r-bind)
+                     (uv:uv-listen server-c backlog (cffi:callback socket-accept-cb)))))
+    ;; check that our listener instantiated properly
+    (when (or (< r-bind 0)
+              (< r-listen 0))
+      (close-socket-server server-instance)
+      (event-handler (or r-listen r-bind) event-cb :catch-errors t)
+      (return-from socket-server))
+    ;; make sure the server is closed/freed on exit
+    (add-event-loop-exit-callback (lambda ()
+                                    (close-socket-server server-instance)))
+    (attach-data-to-pointer server-c server-instance)
+    ;; setup an accept error cb
+    (save-callbacks server-c (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
+    ;; return the listener, which can be closed by the app if needed
+    server-instance))
