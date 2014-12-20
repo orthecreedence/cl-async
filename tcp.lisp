@@ -1,15 +1,19 @@
 (in-package :cl-async)
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (setf (find-class 'tcp-info) (find-class 'socket-info))
-  (setf (find-class 'tcp-error) (find-class 'socket-error))
-  (setf (find-class 'tcp-reset) (find-class 'socket-reset))
-  (setf (find-class 'tcp-timeout) (find-class 'socket-timeout))
-  (setf (find-class 'tcp-refused) (find-class 'socket-refused))
-  (setf (find-class 'tcp-accept-error) (find-class 'socket-accept-error)))
+;; compatibility
+(macrolet ((define-condition-alias (alias name)
+             `(progn
+                (deftype ,alias () ',name)
+                (setf (find-class ',alias) (find-class ',name)))))
+  (define-condition-alias tcp-info socket-info)
+  (define-condition-alias tcp-error socket-error)
+  (define-condition-alias tcp-reset socket-reset)
+  (define-condition-alias tcp-timeout socket-timeout)
+  (define-condition-alias tcp-refused socket-refused)
+  (define-condition-alias tcp-accept-error socket-accept-error))
 
 ;; TBD: tcp-server-bind-error is not actually used currently
-(define-condition tcp-server-bind-error (tcp-error)
+(define-condition tcp-server-bind-error (socket-error)
   ((addr :accessor tcp-server-bind-error-addr :initarg :addr :initform nil)
    (port :accessor tcp-server-bind-error-port :initarg :port :initform nil))
   (:report (lambda (c s) (format s "Error binding TCP server (~a:~a)"

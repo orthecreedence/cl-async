@@ -97,7 +97,17 @@
            #:stop-dns-logging
            #:dns-lookup
 
-           ;; tcp conditions/accessors
+           ;; socket&tcp conditions/accessors
+           #:socket-info
+           #:socket-socket
+           #:socket-error
+           #:socket-eof
+           #:socket-reset
+           #:socket-timeout
+           #:socket-refused
+           #:socket-accept-error
+           #:socket-accept-error-listener
+           #:socket-accept-error-tcp-server
            #:tcp-info
            #:tcp-socket
            #:tcp-error
@@ -106,8 +116,6 @@
            #:tcp-timeout
            #:tcp-refused
            #:tcp-accept-error
-           #:tcp-accept-error-listener
-           #:tcp-accept-error-tcp-server
            #:socket-closed
            #:tcp-server-bind-error
            ;; socket class/accessors
