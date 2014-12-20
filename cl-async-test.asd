@@ -26,4 +26,7 @@
                  (:file "poll")
                  (:file "benchmarks")
                  (:file "run")
-                 (:file "filesystem")))))
+                 (:file "filesystem")
+                 ;; process tests are currently rather unix-dependent
+                 #-(or win32 windows)
+                 (:file "process")))))

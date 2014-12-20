@@ -49,4 +49,5 @@
    (:file "signal" :depends-on ("streamish"))
    (:file "notify" :depends-on ("streamish"))
    (:file "poll" :depends-on ("streamish"))
-   (:file "idle" :depends-on ("package"))))
+   (:file "idle" :depends-on ("package"))
+   (:file "process" :depends-on ("pipe"))))

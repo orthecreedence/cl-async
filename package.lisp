@@ -162,4 +162,9 @@
            #:filesystem-error
            #:filesystem-enoent
            #:filesystem-eacces
-           #:filesystem-eperm))
+           #:filesystem-eperm
+
+           #:spawn
+           #:process-input
+           #:process-output
+           #:process-error-output))
