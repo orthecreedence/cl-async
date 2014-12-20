@@ -54,6 +54,28 @@
    it. Lame. BUT such is life."
   val)
 
+(defun call-with-temporary-directory (thunk)
+  (as:mkdtemp (uiop:merge-pathnames*
+               "as-tst-XXXXXX"
+               (uiop:temporary-directory))
+              #'(lambda (dir)
+                  (as:add-event-loop-exit-callback
+                   #'(lambda ()
+                       (uiop:delete-directory-tree
+                             dir
+                             :validate #'(lambda (path)
+                                           (uiop:subpathp path (uiop:temporary-directory))))))
+                  (funcall thunk dir))))
+
+(defmacro with-temporary-directory ((dir) &body body)
+  `(call-with-temporary-directory #'(lambda (,dir) ,@body)))
+
+(defmacro with-path-under-tmpdir ((path-var subpath) &body body)
+  (alexandria:with-gensyms (dir)
+    `(with-temporary-directory (,dir)
+       (let ((,path-var (uiop:merge-pathnames* ,subpath ,dir)))
+         ,@body))))
+
 ;; define the test suite
 (def-suite cl-async-test :description "cl-async test suite")
 (def-suite cl-async-test-core :in cl-async-test :description "cl-async test suite")
