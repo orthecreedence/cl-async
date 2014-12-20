@@ -46,8 +46,11 @@
 
 (test tcp-connect-fail
   "Make sure a tcp connection fails"
-  (let ((num-err 0))
-    (signals as:tcp-timeout
+  (let ((num-err 0)
+        (caught-p nil))
+    ;; FIXME: trying to connect to the unrouteable
+    ;; address sometimes gives ETIMEDOUT and sometimes ECONNREFUSED
+    (handler-case
       (async-let ()
         (test-timeout 2)
         (as:tcp-connect "1.24.3.4" 9090
@@ -56,7 +59,12 @@
             (incf num-err)
             (error ev))
           :data "hai"
-          :read-timeout 1)))
+          :read-timeout 1))
+      (as:tcp-timeout ()
+        (setf caught-p t))
+      (as:tcp-refused ()
+        (setf caught-p t)))
+    (is-true caught-p)
     (is (= num-err 1))))
 
 (test tcp-server-close
@@ -110,7 +118,7 @@
   (multiple-value-bind (res)
       (async-let ((res (make-hash-table :test 'eq)))
         (test-timeout 3)
-        
+
         (let ((counter 1))
           (as:tcp-server nil 31389
             (lambda (sock data)
@@ -132,7 +140,9 @@
                 (declare (ignorable sock))
                 (push data (gethash x res)))
               nil
-              :data (make-array (+ as:*buffer-size* 20000) :initial-element x)))))
+              :data (make-array (+ as:*buffer-size* 20000)
+                                :initial-element x
+                                :element-type '(unsigned-byte 8))))))
     (loop ;for k being the hash-keys of res
           for v being the hash-values of res do
       (let ((stream (flexi-streams:make-in-memory-output-stream :element-type '(unsigned-byte 8))))
@@ -145,4 +155,3 @@
               (setf is-eq nil)
               (return)))
           (is (eq is-eq t)))))))
-

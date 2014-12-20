@@ -7,38 +7,38 @@
   (let* ((errno (when (numberp error) error))
          (event (unless (numberp error) error))
          (errstr (when errno (error-str errno))))
-    (flet ((do-handle ()
-             (unwind-protect
-               (cond
-                 ;; if we passed in an event, do nothing
-                 (event nil)
-                 ((= errno (uv:errval :etimedout))
-                  (setf event (make-instance 'tcp-timeout :socket socket :code errno :msg "connection timed out")))
-                 ((= errno (uv:errval :econnreset))
-                  (setf event (make-instance 'tcp-reset :socket socket :code errno :msg "connection reset")))
-                 ((= errno (uv:errval :econnrefused))
-                  (setf event (make-instance 'tcp-refused :socket socket :code errno :msg "connection refused")))
-                 ((= errno (uv:errval :eof))
-                  (setf event (make-instance 'tcp-eof :socket socket)))
-                 ((= errno (uv:errval :eai-noname))
-                  (setf event (make-instance 'dns-error :code errno :msg "DNS lookup fail")))
-                 ((= errno (uv:errval :efault))
-                  (setf event (make-instance 'event-error :code errno :msg "bad address in system call argument")))
-                 (t
-                  (setf event (make-instance 'event-error :code errno :msg errstr))))
-               (when event
-                 (unwind-protect
-                   (when event-cb
-                     (if catch-errors
-                         (run-event-cb event-cb event)
-                         (funcall event-cb event)))
-                   ;; if the app closed the socket in the event cb (perfectly fine),
-                   ;; make sure we don't trigger an error trying to close it again.
-                   (handler-case (and socket (close-socket socket :force t))
-                     (socket-closed () nil)))))))
+    (macrolet ((do-handle (catch-p)
+                 `(unwind-protect
+                       (cond
+                         ;; if we passed in an event, do nothing
+                         (event nil)
+                         ((= errno (uv:errval :etimedout))
+                          (setf event (make-instance 'tcp-timeout :socket socket :code errno :msg "connection timed out")))
+                         ((= errno (uv:errval :econnreset))
+                          (setf event (make-instance 'tcp-reset :socket socket :code errno :msg "connection reset")))
+                         ((= errno (uv:errval :econnrefused))
+                          (setf event (make-instance 'tcp-refused :socket socket :code errno :msg "connection refused")))
+                         ((= errno (uv:errval :eof))
+                          (setf event (make-instance 'tcp-eof :socket socket)))
+                         ((= errno (uv:errval :eai-noname))
+                          (setf event (make-instance 'dns-error :code errno :msg "DNS lookup fail")))
+                         ((= errno (uv:errval :efault))
+                          (setf event (make-instance 'event-error :code errno :msg "bad address in system call argument")))
+                         (t
+                          (setf event (make-instance 'event-error :code errno :msg errstr))))
+                    (when event
+                      (unwind-protect
+                           (when event-cb
+                             ,(if catch-p
+                                  '(run-event-cb event-cb event)
+                                  '(funcall event-cb event)))
+                        ;; if the app closed the socket in the event cb (perfectly fine),
+                        ;; make sure we don't trigger an error trying to close it again.
+                        (handler-case (and socket (close-socket socket :force t))
+                          (socket-closed () nil)))))))
       (if catch-errors
-          (catch-app-errors event-cb (do-handle))
-          (do-handle)))))
+          (catch-app-errors event-cb (do-handle t))
+          (do-handle nil)))))
 
 (defun add-event-loop-exit-callback (fn)
   "Add a function to be run when the event loop exits."
@@ -98,11 +98,16 @@
                  (socket/server (if (listp data)
                                     (getf data :socket)
                                     data)))
-            (if (typep socket/server 'tcp-server)
-                (unless (tcp-server-closed socket/server)
-                  (close-tcp-server socket/server))
-                (unless (socket-closed-p socket/server)
-                  (close-socket socket/server :force t)))))
+            (cond ((null data)
+                   ;; this may happen, for example, when tcp-connect
+                   ;; fails somewhere in the middle due to a bug
+                   (warn "a tcp handle without corresponding object detected")
+                   (do-close-tcp handle :force t))
+                  ((typep socket/server 'tcp-server)
+                   (unless (tcp-server-closed socket/server)
+                     (close-tcp-server socket/server)))
+                  ((not (socket-closed-p socket/server))
+                   (close-socket socket/server :force t)))))
     (:timer (let ((event (deref-data-from-pointer handle)))
               (unless (event-freed-p event)
                 (free-event event))))
@@ -150,7 +155,7 @@
            (callbacks nil))
       (incf *event-base-next-id*)
       (delay start-fn)
-      ;; this is the once instance where we assign callbacks to a libevent object
+      ;; this is the once instance where we assign callbacks to an event loop object
       ;; instead of a data-pointer since the callbacks don't take any void* args,
       ;; meaning we have to dereference from the global (event-base-c *event-base*) object.
       (save-callbacks (event-base-c *event-base*) callbacks)
@@ -189,4 +194,3 @@
   (let ((evloop (event-base-c *event-base*)))
     (when evloop
       (uv:uv-stop evloop))))
-

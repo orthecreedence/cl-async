@@ -64,12 +64,13 @@
   "Write a sequence of bytes to the underlying socket."
   (when (open-stream-p stream)
     (let ((seq (subseq sequence start end)))
-      (write-socket-data (stream-socket stream) seq))))
+      (write-socket-data (stream-socket stream) seq)
+      seq)))
 
 (defmethod stream-write-byte ((stream async-output-stream) byte)
   "Write one byte to the underlying socket."
   (stream-write-sequence stream (vector byte) 0 1))
-  
+
 (defmethod send-buffered-data ((stream async-output-stream))
   "Take data we've buffered between initial sending and actual socket connection
    and send it out."
@@ -102,4 +103,3 @@
     (setf (stream-buffer stream) (make-buffer (subseq buffer numbytes)))
     (replace sequence bytes)
     (length bytes)))
-

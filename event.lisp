@@ -38,9 +38,8 @@
 (defun add-event (event &key timeout activate)
   "Add an event to its specified event loop (make it pending). If given a
    :timeout (in seconds) the event will fire after that amount of time, unless
-   it's removed or freed. If :activate is true and the event has no timeout,
-   the event will be activated directly without being added to the event loop,
-   and its callback(s) will be fired."
+   it's removed or freed."
+  (declare (ignore activate)) ;; compatibility-only
   (check-event-unfreed event)
   (let ((timer-c (event-c event)))
     (uv:uv-timer-start timer-c (cffi:callback timer-cb) (round (* (or timeout 0) 1000)) 0)))
@@ -113,4 +112,3 @@
    This is useful for triggering arbitrary events, and can even be triggered
    from a thread outside the libuv loop."
   (delay callback :event-cb event-cb :time (* 100 31536000)))
-
