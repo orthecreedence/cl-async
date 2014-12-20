@@ -156,48 +156,53 @@
       (format *debug-io* "~&;; exiting the event loop.~%")
       (uv:uv-stop (event-base-c *event-base*)))))
 
+(defvar *evcb-err*)
+
 (defmacro catch-app-errors (event-cb &body body)
   "Wraps catching of application errors into a simple handler-case (if wanted),
    otherwise just runs the body with no error/event handling.
 
    If event-cbs are called via run-event-cb, makes sure the event-cb is NOT
    double-called with the same condition twice."
-  (let ((evcb (gensym "evcb")))
-    ;; define a binding for tracking already-fired errors. run-event-cb will
-    ;; use this binding
-    `(let ((_evcb-err nil))
-       (if (event-base-catch-app-errors *event-base*)
-           (let* ((,evcb (cond ((not (symbolp ,event-cb))
-                                ,event-cb)
-                               ((fboundp ,event-cb)
-                                (symbol-function ,event-cb))
-                               (t nil)))
-                  (,evcb (if (functionp ,evcb)
-                             ,evcb
-                             (event-base-default-event-handler *event-base*))))
-             (handler-case
-               (progn ,@body)
-               (t (err)
-                 (if (equal err _evcb-err)
-                     ;; error was already sent to eventcb, retrigger
-                     (error err)
-                     ;; what do you know, a new error. send to event-cb =]
-                     (funcall ,evcb err)))))
-           (call-with-callback-restarts #'(lambda () ,@body))))))
+  (alexandria:once-only (event-cb)
+    (alexandria:with-gensyms (evcb)
+      `(let ((*evcb-err* '()))
+         (if (event-base-catch-app-errors *event-base*)
+             (let ((,evcb (cond ((not (symbolp ,event-cb))
+                                 ,event-cb)
+                                ((fboundp ,event-cb)
+                                 (symbol-function ,event-cb))
+                                ((null ,event-cb)
+                                 (event-base-default-event-handler *event-base*))
+                                (t
+                                 (error "invalid event-cb: ~s" ,event-cb)))))
+               (handler-case
+                   (progn ,@body)
+                 (error (err)
+                   (if (member err *evcb-err*)
+                       ;; error was already sent to eventcb, retrigger
+                       (error err)
+                       ;; what do you know, a new error. send to event-cb =]
+                       (funcall ,evcb err)))))
+             (call-with-callback-restarts #'(lambda () ,@body)))))))
 
-(defmacro run-event-cb (event-cb &rest args)
-  "Used inside of catch-app-errors, wraps the calling of an event-cb such that
-   errors are caught and saved, making it so an event-cb isn't called twice with
-   the same condition."
-  `(handler-case
-     ;; run the event handler
-     (funcall ,event-cb ,@args)
-     ;; catch any errors and track them
-     (t (e)
-       ;; track the error so we don't re-fire (_evcb-err is defined in
-       ;; catch-app-errors)
-       (setf _evcb-err e)
-       (error e))))
+(defun run-event-cb (event-cb &rest args)
+  "When used in the dynamic context of catch-app-errors, wraps the
+   calling of an event-cb with args such that errors are caught and
+   saved, ensuring that an event-cb isn't called twice with the same
+   condition. When used outside the dynamic context of
+   catch-app-errors, just invokes event-cb with args."
+  (if (boundp '*evcb-err*)
+      (handler-case
+          ;; run the event handler
+          (apply event-cb args)
+        ;; catch any errors and track them
+        (error (e)
+          ;; track the error so we don't re-fire (*evcb-err* is bound in
+          ;; catch-app-errors)
+          (pushnew e *evcb-err*)
+          (error e)))
+      (apply event-cb args)))
 
 (defmacro define-c-callback (name return-val (&rest args) &body body)
   "Define a top-level function with the given and also define a C callback that
