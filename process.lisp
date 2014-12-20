@@ -140,3 +140,9 @@
                     (t
                      (process-close handle)
                      (event-handler res event-cb :catch-errors t))))))))))
+
+(defmethod handle-cleanup ((handle-type (eql :process)) handle)
+  (let ((process (deref-data-from-pointer handle)))
+    (process-close handle)
+    (when process
+      (setf (process-c process) nil))))

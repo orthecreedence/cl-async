@@ -116,3 +116,6 @@
 
 (defun tcp-server-closed (server)
   (socket-server-closed server))
+
+(defmethod handle-cleanup ((handle-type (eql :tcp)) handle)
+  (handle-cleanup :async-socket handle))

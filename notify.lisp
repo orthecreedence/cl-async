@@ -70,3 +70,7 @@
   (let ((async-c (notifier-c notifier)))
     (uv:uv-async-send async-c)))
 
+(defmethod handle-cleanup ((handle-type (eql :async)) handle)
+  (let ((notifier (deref-data-from-pointer handle)))
+    (unless (notifier-freed-p notifier)
+      (free-notifier notifier))))

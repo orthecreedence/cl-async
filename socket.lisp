@@ -310,3 +310,21 @@
     (save-callbacks server-c (list :read-cb read-cb :event-cb event-cb :connect-cb connect-cb))
     ;; return the listener, which can be closed by the app if needed
     server-instance))
+
+;; note: there's no actual :async-socket handle type,
+;; it's provided by handle-cleanup implementations for tcp and pipes
+(defmethod handle-cleanup ((handle-type (eql :async-socket)) handle)
+  (let* ((data (deref-data-from-pointer handle))
+         (socket/server (if (listp data)
+                            (getf data :streamish)
+                            data)))
+    (cond ((null data)
+           ;; this may happen, for example, when tcp-connect
+           ;; fails somewhere in the middle due to a bug
+           (warn "an uv handle without corresponding object detected")
+           (do-close-streamish handle :force t))
+          ((typep socket/server 'socket-server)
+           (unless (socket-server-closed socket/server)
+             (close-socket-server socket/server)))
+          ((not (socket-closed-p socket/server))
+           (close-socket socket/server :force t)))))

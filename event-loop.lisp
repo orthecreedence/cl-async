@@ -49,37 +49,15 @@
 (defvar *event-base-registry-lock* (bt:make-lock)
   "Locks the event-base registry.")
 
+(defgeneric handle-cleanup (handle-type handle)
+  (:documentation "Perform cleanup for a libuv handle")
+  (:method ((handle-type t) (handle t)) (values)))
+
 (define-c-callback loop-exit-walk-cb :void ((handle :pointer) (arg :pointer))
   "Called when we want to close the loop AND IT WONT CLOSE. So we walk each
    handle and close them."
   (declare (ignore arg))
-  ;; TBD: use generic function with eql specializer
-  (case (uv:handle-type handle)
-    ((:tcp :pipe)
-     (let* ((data (deref-data-from-pointer handle))
-            (socket/server (if (listp data)
-                               (getf data :streamish)
-                               data)))
-       (cond ((null data)
-              ;; this may happen, for example, when tcp-connect
-              ;; fails somewhere in the middle due to a bug
-              (warn "an uv handle without corresponding object detected")
-              (do-close-streamish handle :force t))
-             ((typep socket/server 'socket-server)
-              (unless (socket-server-closed socket/server)
-                (close-socket-server socket/server)))
-             ((not (socket-closed-p socket/server))
-              (close-socket socket/server :force t)))))
-    (:timer (let ((event (deref-data-from-pointer handle)))
-              (unless (event-freed-p event)
-                (free-event event))))
-    (:process (let ((process (deref-data-from-pointer handle)))
-                (process-close handle)
-                (when process
-                  (setf (process-c process) nil))))
-    (:async (let ((notifier (deref-data-from-pointer handle)))
-              (unless (notifier-freed-p notifier)
-                (free-notifier notifier))))))
+  (handle-cleanup (uv:handle-type handle) handle))
 
 (defun do-close-loop (evloop &optional (loops 0))
   "Close an event loop by looping over its open handles, closing them, rinsing
