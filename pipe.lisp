@@ -49,7 +49,8 @@
   (check-type data (or null (simple-array octet (*)) string))
   (let ((socket/stream (apply #'init-client-socket
                               'pipe
-                              (append (list read-cb event-cb
+                              (append (list :read-cb read-cb
+                                            :event-cb event-cb
                                             :data data
                                             :stream stream
                                             :connect-cb connect-cb
@@ -75,3 +76,6 @@
 ;; TBD: export socket conditions
 ;; TBD: refactor test
 ;; TBD: use mkdtemp for pipe tests (available via libuv)
+;; TBD: loop-exit-walk-cb (use generics, separate case for plain streams)
+;; TBD: to issues: uv_tcp_connect() errors not checked in tcp
+;; TBD: utf-8 streams

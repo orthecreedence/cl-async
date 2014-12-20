@@ -23,7 +23,7 @@
     (macrolet ((closing-streamish-afterwards (&body body)
                  `(unwind-protect
                        (progn ,@body)
-                    ;; if the app closed the socket in the event cb (perfectly fine),
+                    ;; if the app closed the streamish in the event cb (perfectly fine),
                     ;; make sure we don't trigger an error trying to close it again.
                     (when (and streamish (not (streamish-closed-p streamish)))
                       (close-streamish streamish :force t)))))
@@ -36,6 +36,7 @@
            (when event-cb
              (funcall event-cb event)))))))
 
+;; TBD: seems like streamish-info/socket-info/tcp-info/event-info isn't actually used?
 (define-condition streamish-info (event-info)
   ((streamish :initarg :streamish :accessor streamish :initform nil))
   (:report (lambda (c s)
@@ -135,7 +136,7 @@
     (when (zerop (uv:uv-is-closing uvstream))
       (uv:uv-close uvstream (cffi:callback streamish-close-cb)))))
 
-(defgeneric streamish-write (socket data &key start end &allow-other-keys)
+(defgeneric streamish-write (streamish data &key start end &allow-other-keys)
   (:documentation
     "Write data into a streamish. Allows specifying read/write/event
      callbacks. Any callback left nil will use that current callback from the
@@ -162,8 +163,8 @@
                                     &allow-other-keys)
   (if (or read-cb write-cb event-cb)
       ;; we're specifying callbacks. since we're most likely calling this from
-      ;; inside a socket callback and we don't necessarily want to overwrite
-      ;; that socket's callbacks until it finishes, we set a delay here so the
+      ;; inside a streamish callback and we don't necessarily want to overwrite
+      ;; that streamish' callbacks until it finishes, we set a delay here so the
       ;; callback binding happens after the caller returns to the event loop.
       (as:delay
        (lambda ()
@@ -174,7 +175,7 @@
                                  :event-cb (or event-cb (getf callbacks :event-cb))))
            (call-next-method))))
 
-      ;; we're not setting callbacks, so just enable the socket and send the
+      ;; we're not setting callbacks, so just enable the streamish and send the
       ;; data
       (call-next-method)))
 
@@ -235,10 +236,21 @@
           (run-event-cb 'event-handler status event-cb :streamish streamish)))))
 
 (define-c-callback streamish-close-cb :void ((uvstream :pointer))
-  "Called when a tcp socket closes."
+  "Called when a streamish closes."
   ;; !!NOTE!! This callback is used for both tcp clients AND servers! if either
   ;; ever needs special treatment, split out the callbacks
   (free-pointer-data uvstream :preserve-pointer t)
   (uv:free-handle uvstream))
 
-;; TBD: loop-exit-walk-cb (use generics, separate case for plain streams)
+(defun streamish-read-start (streamish)
+  "Start reading on the socket, return true on success.
+  Invoke streamish' event handler callback on error,
+  returning NIL."
+  (let* ((uvstream (streamish-c streamish))
+         (event-cb (getf (get-callbacks uvstream) :event-cb))
+         (res (uv:uv-read-start uvstream
+                                (cffi:callback streamish-alloc-cb)
+                                (cffi:callback streamish-read-cb))))
+    (if (zerop res)
+        t
+        (run-event-cb 'event-handler res event-cb :streamish streamish))))

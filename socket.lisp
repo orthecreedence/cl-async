@@ -41,7 +41,6 @@
    (bufferingp :accessor socket-buffering-p :initform nil
      :documentation "Lets us know if the socket is currently buffering output.")
    (connected :accessor socket-connected :initarg :connected :initform nil)
-   (direction :accessor socket-direction :initarg :direction :initform :out)
    (drain-read-buffer :accessor socket-drain-read-buffer))
   (:documentation "Wraps around a socket."))
 
@@ -72,11 +71,6 @@
   "Free a socket (uvstream) and clear out all associated data.
   Same as close-streamish."
   (close-streamish socket :force force))
-
-(defmethod close-streamish :after ((socket socket) &key &allow-other-keys)
-  (if (eq (socket-direction socket) :in)
-      (decf (event-base-num-connections-in *event-base*))
-      (decf (event-base-num-connections-out *event-base*))))
 
 (defgeneric close-socket-server (socket)
   (:documentation
@@ -192,18 +186,13 @@
       (free-pointer-data req :preserve-pointer t)
       (uv:free-req req)
       (setf (socket-connected socket) t)
-      (unless (socket-closed-p socket)
-        ;; start reading on the socket
-        (let ((res (uv:uv-read-start uvstream
-                                     (cffi:callback streamish-alloc-cb)
-                                     (cffi:callback streamish-read-cb))))
-          (if (zerop res)
-              (progn
-                (when connect-cb
-                  (funcall connect-cb (or stream socket)))
-                ;; write any buffered output we've stored up
-                (write-pending-socket-data socket))
-              (run-event-cb 'event-handler res event-cb :streamish socket)))))))
+      (when (and (not (socket-closed-p socket))
+                 ;; start reading on the socket
+                 (streamish-read-start socket))
+        (when connect-cb
+          (funcall connect-cb (or stream socket)))
+        ;; write any buffered output we've stored up
+        (write-pending-socket-data socket)))))
 
 (defgeneric server-socket-class (server)
   (:documentation "Return socket class for connections accepted by SERVER"))
@@ -254,8 +243,10 @@
    pointers and so forth."
   (init-incoming-socket server status))
 
-(defun init-client-socket (socket-class read-cb event-cb
-                           &key data stream connect-cb write-cb
+(defun init-client-socket (socket-class
+                           &key read-cb event-cb
+                             data stream connect-cb write-cb
+                             (direction :out)
                              (read-timeout -1)
                              (write-timeout -1)
                              (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
@@ -268,7 +259,7 @@
                t
                dont-drain-read-buffer))
          (socket (make-instance socket-class
-                                :direction :out
+                                :direction direction
                                 :drain-read-buffer (not dont-drain-read-buffer)))
          (uvstream (socket-c socket))
          (async-stream (when stream (make-instance 'async-io-stream :streamish socket))))

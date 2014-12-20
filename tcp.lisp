@@ -18,10 +18,25 @@
   (:documentation "Thrown when a server fails to bind (generally, the port is already in use)."))
 
 (defclass tcp-mixin () ())
-(defclass tcp-socket (tcp-mixin socket) ())
+(defclass tcp-socket (tcp-mixin socket)
+  ((direction :accessor socket-direction :initarg :direction :initform :out)))
 (defclass tcp-server (tcp-mixin socket-server) ())
 
 (defmethod server-socket-class ((server tcp-server)) 'tcp-socket)
+
+(defmethod initialize-instance :after ((socket tcp-socket) &key direction &allow-other-keys)
+  (ecase direction
+    (:in
+     (incf (event-base-num-connections-in *event-base*)))
+    (:out
+     (incf (event-base-num-connections-out *event-base*)))))
+
+(defmethod close-streamish :after ((socket tcp-socket) &key &allow-other-keys)
+  (ecase (socket-direction socket)
+    (:in
+     (decf (event-base-num-connections-in *event-base*)))
+    (:out
+     (decf (event-base-num-connections-out *event-base*)))))
 
 (defmethod make-socket-handle ((socket-or-server tcp-mixin))
   (let ((s (uv:alloc-handle :tcp)))
@@ -34,8 +49,6 @@
                      (streamish socket/stream)
                      socket/stream))
          (uvstream (socket-c socket)))
-    ;; track the connection
-    (incf (event-base-num-connections-out *event-base*))
     ;; only connect if we didn't get an existing fd passed in
     (flet ((do-connect (ip port)
              (with-ip-to-sockaddr ((sockaddr) ip port)
@@ -63,7 +76,8 @@
   (check-type data (or null (simple-array octet (*)) string))
   (let ((socket/stream (apply #'init-client-socket
                               'tcp-socket
-                              (append (list read-cb event-cb
+                              (append (list :read-cb read-cb
+                                            :event-cb event-cb
                                             :data data
                                             :stream stream
                                             :connect-cb connect-cb
