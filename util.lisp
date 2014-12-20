@@ -31,7 +31,7 @@
 
            #:define-c-callback
 
-           #:make-foreign-type
+           #:with-foreign-object*
 
            #:with-lock
 
@@ -211,7 +211,7 @@
        (cffi:defcallback ,name ,return-val ,args
          (,name ,@arg-names)))))
 
-(defmacro make-foreign-type ((var type &key initial) bindings &body body)
+(defmacro with-foreign-object* ((var type &key (zero t) (initial (when zero #x0))) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."
   (let ((type (if (eq type 'uv:addrinfo)
@@ -224,7 +224,7 @@
        ,(when initial
           `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size '(:struct ,type)))))
        ,@(loop for binding in bindings collect
-           `(setf (cffi:foreign-slot-value ,var '(:struct ,type) ,(car binding)) ,(cadr binding)))
+           `(setf (,(car binding) ,var) ,(cadr binding)))
        ,@body)))
 
 (defmacro with-lock (&body body)
