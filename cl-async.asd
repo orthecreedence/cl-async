@@ -33,7 +33,8 @@
                #:cl-async-util
                #:babel
                #:cl-ppcre
-               #:trivial-gray-streams)
+               #:trivial-gray-streams
+               #:uiop)
   :components
   ((:file "package")
    (:file "event-loop" :depends-on ("package"))
@@ -43,7 +44,8 @@
    (:file "async-stream" :depends-on ("streamish"))
    (:file "socket" :depends-on ("streamish" "async-stream"))
    (:file "tcp" :depends-on ("dns" "socket"))
-   (:file "pipe" :depends-on ("socket"))
+   (:file "filesystem" :depends-on ("streamish"))
+   (:file "pipe" :depends-on ("socket" "filesystem"))
    (:file "signal" :depends-on ("streamish"))
    (:file "notify" :depends-on ("streamish"))
    (:file "poll" :depends-on ("streamish"))

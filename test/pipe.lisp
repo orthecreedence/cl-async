@@ -50,7 +50,7 @@
 (test pipe-connect-fail
   "Make sure a pipe connection fails"
   (let ((num-err 0))
-    (signals as:pipe-not-found
+    (signals as:filesystem-enoent
       (async-let ()
         (test-timeout 2)
         (as:pipe-connect "/tmp/nosuchpipe"

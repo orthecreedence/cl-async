@@ -48,7 +48,6 @@
           :family as:+af-inet+))
     (is (cl-async-util::ipv4-address-p ipv4))))
 
-#+(or win32 windows)
 (test dns-lookup-ipv6
   "Test IPV6 family (can fail in *nix)"
   (multiple-value-bind (ipv6)

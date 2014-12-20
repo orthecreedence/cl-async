@@ -2,15 +2,9 @@
 
 (defclass pipe (streamish) ())
 
-(define-condition pipe-not-found (socket-error) ()
-  (:documentation "Bad pipe path"))
-
 (defclass pipe-mixin () ())
 (defclass pipe (pipe-mixin socket) ())
 (defclass pipe-server (pipe-mixin socket-server) ())
-
-(defmethod errno-event ((pipe pipe) (errno (eql (uv:errval :enoent))))
-  (make-instance 'pipe-not-found :socket pipe :code errno :msg "no such file or directory"))
 
 (defmethod server-socket-class ((server pipe-server)) 'tcp-socket)
 

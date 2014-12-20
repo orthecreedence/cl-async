@@ -156,4 +156,10 @@
            #:poller
            #:poller-freed-p
            #:free-poller
-           #:poll))
+           #:poll
+
+           #:mkdtemp
+           #:filesystem-error
+           #:filesystem-enoent
+           #:filesystem-eacces
+           #:filesystem-eperm))

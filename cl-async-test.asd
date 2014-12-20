@@ -25,4 +25,5 @@
                  (:file "idle")
                  (:file "poll")
                  (:file "benchmarks")
-                 (:file "run")))))
+                 (:file "run")
+                 (:file "filesystem")))))
