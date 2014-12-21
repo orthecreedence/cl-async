@@ -68,7 +68,8 @@
 
 (defmethod stream-write-byte ((stream async-output-stream) byte)
   "Write one byte to the underlying socket."
-  (stream-write-sequence stream (vector byte) 0 1))
+  (stream-write-sequence stream (make-array 1 :element-type 'octet
+					      :initial-element byte) 0 1))
   
 (defmethod send-buffered-data ((stream async-output-stream))
   "Take data we've buffered between initial sending and actual socket connection
