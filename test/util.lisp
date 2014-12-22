@@ -81,6 +81,60 @@
        (let ((,path-var (uiop:merge-pathnames* ,subpath ,dir)))
          ,@body))))
 
+(defvar *later-list*)
+
+(defun later (function)
+  "Execute the specified FUNCTION after event loop of WITH-TEST-EVENT-LOOP
+   terminates."
+  ;; using as:add-event-loop-exit-callback depends on event loop
+  ;; actually calling it, which may not be a good assumption
+  ;; for tests
+  (push function *later-list*))
+
+(defmacro with-test-event-loop ((&key (catch-app-errors t)) &body body)
+  "Run BODY within event loop, executing functions specified via LATER
+   after it terminates. Can be used with CALLED-ONCE and NEVER."
+  (alexandria:with-gensyms (fn)
+    `(let ((*later-list* '()))
+       (as:with-event-loop (:catch-app-errors ,catch-app-errors)
+         ,@body)
+       (dolist (,fn (nreverse *later-list*))
+         (funcall ,fn)))))
+
+(defun called-once (function)
+  "Wrap FUNCTION to make sure that it's called exactly once during
+   execution of WITH-TEST-EVENT-LOOP body."
+  (let ((count 0))
+    (later #'(lambda ()
+               (is (= 1 count)
+                   "callback is expected to be called once, ~
+                        but it was called ~d time~:p" count)))
+    #'(lambda (&rest args)
+        (incf count)
+        (apply function args))))
+
+(defun never (&rest args)
+  "NEVER function is for use as a callback that should be never
+   called. Use in the dynamic context of WITH-TEST-EVENT-LOOP."
+  (declare (ignore args))
+  (fail "'never' function called (unexpected callbacl)"))
+
+(defparameter *wait-interval* 0.05)
+
+(defun %wait (pred)
+  (let ((wait-successful-p nil))
+    (labels ((wait-for-it ()
+               (if (funcall pred)
+                   (setf wait-successful-p t)
+                   (as:delay #'wait-for-it :time *wait-interval*))))
+      (wait-for-it)
+      (unless wait-successful-p
+        (later #'(lambda ()
+                   (is-true wait-successful-p "WAIT failed")))))))
+
+(defmacro wait (expr)
+  `(%wait #'(lambda () ,expr)))
+
 ;; define the test suite
 (def-suite cl-async-test :description "cl-async test suite")
 (def-suite cl-async-test-core :in cl-async-test :description "cl-async test suite")
