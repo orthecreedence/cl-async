@@ -46,7 +46,7 @@
   "Shortens string concatenation because I'm lazy and really who the hell wants
    to type out (concatenate 'string ...) seriously, I mispell concatentate like
    90% of the time I type it out."
-  (apply #'concatenate (append '(string) args)))
+  (apply #'concatenate 'string args))
 
 (defun id (val)
   "Returns val. Yes, yes. I know that the identity function exists, but
