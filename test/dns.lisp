@@ -61,7 +61,7 @@
             (lambda (ev)
               (error ev))
             :family as:+af-inet6+))
-        (t (e) (format nil "(~a) ~a" (as:event-errcode e) (as:event-errmsg e))))
+        (error (e) (format nil "(~a) ~a" (as:event-errcode e) (as:event-errmsg e))))
     (is (cl-async-util::ipv6-address-p ipv6))))
 
 (test dns-fail
