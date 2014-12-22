@@ -9,6 +9,9 @@
            #:bytes-or-string
            #:callback
 
+           #:*passthrough-errors*
+           #:passthrough-error-p
+
            #:bytes
            #:make-buffer
            #:buffer-output
@@ -70,6 +73,14 @@
 (deftype octet-vector () '(simple-array octet (*)))
 (deftype bytes-or-string () '(or octet-vector string))
 (deftype callback () '(or null function symbol))
+
+(defvar *passthrough-errors* '())
+
+(defun passthrough-error-p (e)
+  "Return true if the specified error condition should not
+  be intercepted by cl-async error handling mechanism."
+  (loop for type in *passthrough-errors*
+          thereis (typep e type)))
 
 (defun bytes (vector)
   "Convert any vector/string into a byte array. Useful for sending direct byte
@@ -159,32 +170,38 @@
 (defvar *evcb-err*)
 
 (defmacro catch-app-errors (event-cb &body body)
-  "Wraps catching of application errors into a simple handler-case (if wanted),
-   otherwise just runs the body with no error/event handling.
+  "Handle error conditions by directing them to the specified event
+   callback or default event handler of the current event loop, if
+   catching app errors is enabled for the current event loop via
+   EVENT-BASE-CATCH-APP-ERRORS, otherwise just evaluate the BODY.
 
-   If event-cbs are called via run-event-cb, makes sure the event-cb is NOT
-   double-called with the same condition twice."
+   If event-cbs are called via run-event-cb, make sure the event-cb
+   is NOT double-called with the same condition twice."
   (alexandria:once-only (event-cb)
-    (alexandria:with-gensyms (evcb)
+    (alexandria:with-gensyms (evcb err thunk-fn blk)
       `(let ((*evcb-err* '()))
-         (if (event-base-catch-app-errors *event-base*)
-             (let ((,evcb (cond ((not (symbolp ,event-cb))
-                                 ,event-cb)
-                                ((fboundp ,event-cb)
-                                 (symbol-function ,event-cb))
-                                ((null ,event-cb)
-                                 (event-base-default-event-handler *event-base*))
-                                (t
-                                 (error "invalid event-cb: ~s" ,event-cb)))))
-               (handler-case
-                   (progn ,@body)
-                 (error (err)
-                   (if (member err *evcb-err*)
-                       ;; error was already sent to eventcb, retrigger
-                       (error err)
-                       ;; what do you know, a new error. send to event-cb =]
-                       (funcall ,evcb err)))))
-             (call-with-callback-restarts #'(lambda () ,@body)))))))
+         (flet ((,thunk-fn ()
+                  (call-with-callback-restarts #'(lambda () ,@body))))
+           (if (event-base-catch-app-errors *event-base*)
+               (let ((,evcb (cond ((not (symbolp ,event-cb))
+                                   ,event-cb)
+                                  ((fboundp ,event-cb)
+                                   (symbol-function ,event-cb))
+                                  ((null ,event-cb)
+                                   (event-base-default-event-handler *event-base*))
+                                  (t
+                                   (error "invalid event-cb: ~s" ,event-cb)))))
+                 (block ,blk
+                   (handler-bind
+                       ((error #'(lambda (,err)
+                                   ;; check whether the error was already sent to eventcb
+                                   (unless (or (member ,err *evcb-err*)
+                                               (passthrough-error-p ,err))
+                                     ;; if that's a new error, handle it by invoking event-cb
+                                     (funcall ,evcb ,err)
+                                     (return-from ,blk)))))
+                     (,thunk-fn))))
+               (,thunk-fn)))))))
 
 (defun run-event-cb (event-cb &rest args)
   "When used in the dynamic context of catch-app-errors, wraps the
@@ -193,15 +210,14 @@
    condition. When used outside the dynamic context of
    catch-app-errors, just invokes event-cb with args."
   (if (boundp '*evcb-err*)
-      (handler-case
+      (handler-bind
+          ;; catch any errors and track them
+          ((error #'(lambda (err)
+                      ;; track the error so we don't re-fire (*evcb-err* is bound in
+                      ;; catch-app-errors)
+                      (pushnew err *evcb-err*))))
           ;; run the event handler
-          (apply event-cb args)
-        ;; catch any errors and track them
-        (error (e)
-          ;; track the error so we don't re-fire (*evcb-err* is bound in
-          ;; catch-app-errors)
-          (pushnew e *evcb-err*)
-          (error e)))
+        (apply event-cb args))
       (apply event-cb args)))
 
 (defmacro define-c-callback (name return-val (&rest args) &body body)

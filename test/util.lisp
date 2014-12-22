@@ -5,6 +5,11 @@
            #:benchmark-client))
 (in-package :cl-async-test)
 
+;; Exclude 5am check failures from normal cl-async error handling.
+;; This makes it possible to use (is ...) and related operations
+;; in cl-async callbacks inside tests.
+(pushnew '5am::check-failure cl-async-util:*passthrough-errors*)
+
 ;; TODO: test all functions in util package
 
 (defmacro async-let ((&rest bindings) &body body)
