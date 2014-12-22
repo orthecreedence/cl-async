@@ -454,6 +454,5 @@
 (defmacro define-condition-alias (alias name)
   "Define an alias for the specified condition."
   `(progn
-     #+ccl
      (deftype ,alias () ',name)
      (setf (find-class ',alias) (find-class ',name))))
