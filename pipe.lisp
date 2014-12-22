@@ -65,7 +65,7 @@
                  :stream stream
                  :fd fd))
 
-(defmethod handle-cleanup ((handle-type (eql :tcp)) handle)
+(defmethod handle-cleanup ((handle-type (eql :named-pipe)) handle)
   (handle-cleanup :async-socket handle))
 
 ;; TBD: export socket/streamish (...closed-p etc. stuff, too)
