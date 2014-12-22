@@ -2,6 +2,7 @@
 
 ;; TBD: separate tcp-stream from async-stream.
 ;; Also, need to rename (?) socket in tcp.lisp
+;; TBD: support inheritance of custom fds
 ;; TBD: utf-8 pipe support
 ;; TBD: check process handles during walk using generic function
 ;; TBD: custom env
@@ -78,6 +79,30 @@
                           (input :ignore)
                           (output :ignore)
                           (error-output :ignore))
+  "Run the program specified by PATH with specified ARGS.
+  ARGS don't include the executable path (argv[0]).  Return process
+  object and pipes or streams for input, output and error output file
+  descriptors of the child process (NIL for file descriptors that
+  aren't redirected via :PIPE or :STREAM, see below).
+
+  EXIT-CB specifies the callback that should be called when the
+  program terminates. It should be a function taking three arguments:
+  process object, exit status and signal number that caused program
+  termination (0 if the program wasn't terminated by signal).
+
+  EVENT-CB specifies error handler to be used.
+
+  INPUT, OUTPUT and ERROR-OUTPUT specify process input/output/error
+  output redirection. For each of these, the following values are
+  supported:
+
+  :IGNORE the corresponding file descriptor isn't used
+  :INHERIT inherit file descriptor from this process
+  (:PIPE [:READ-CB ...] ...) use pipe-based redirection of the
+    corresponding file descriptor (see PIPE-CONNECT for the set
+    of supported keyword arguments).
+  (:STREAM [:READ-CB ...] ...) same as PIPE, but uses async
+    stream instead of a pipe."
   (check-event-loop-running)
   (let ((handle (uv:alloc-handle :process)))
     (cffi:with-foreign-objects ((stdio '(:struct uv:uv-stdio-container-t) 3)
