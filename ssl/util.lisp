@@ -59,7 +59,7 @@
 (defconstant +ssl-op-cookie-exchange+ #x00002000)
 ;; Don't use RFC4507 ticket extension
 (defconstant +ssl-op-no-ticket+ #x00004000)
-;; Use Cisco's "speshul" version of DTLS_BAD_VER (as client) 
+;; Use Cisco's "speshul" version of DTLS_BAD_VER (as client)
 (defconstant +ssl-op-cisco-anyconnect+ #x00008000)
 ;; As server, disallow session resumption on renegotiation
 (defconstant +ssl-op-no-session-resumption-on-renegotiation+ #x00010000)
@@ -129,14 +129,14 @@
   (err :int))
 (cffi:defcfun ("SSL_state_string_long" ssl-state-string-long) :string
   (ssl :pointer))
-(cffi:defcfun ("TLSv1_method" ssl-tlsv1-method) :int)
-(cffi:defcfun ("TLSv1_client_method" ssl-tlsv1-client-method) :int)
-(cffi:defcfun ("TLSv1_server_method" ssl-tlsv1-server-method) :int)
-(cffi:defcfun ("SSLv23_method" ssl-sslv23-method) :int)
-(cffi:defcfun ("SSLv23_client_method" ssl-sslv23-client-method) :int)
-(cffi:defcfun ("SSLv23_server_method" ssl-sslv23-server-method) :int)
+(cffi:defcfun ("TLSv1_method" ssl-tlsv1-method) :pointer)
+(cffi:defcfun ("TLSv1_client_method" ssl-tlsv1-client-method) :pointer)
+(cffi:defcfun ("TLSv1_server_method" ssl-tlsv1-server-method) :pointer)
+(cffi:defcfun ("SSLv23_method" ssl-sslv23-method) :pointer)
+(cffi:defcfun ("SSLv23_client_method" ssl-sslv23-client-method) :pointer)
+(cffi:defcfun ("SSLv23_server_method" ssl-sslv23-server-method) :pointer)
 (cffi:defcfun ("SSL_CTX_new" ssl-ctx-new) :pointer
-  (method :int))
+  (method :pointer))
 (cffi:defcfun ("SSL_CTX_ctrl" ssl-ctx-ctrl) :long
   (ctx :pointer)
   (cmd :int)
@@ -162,7 +162,7 @@
 (cffi:defcfun ("SSL_new" ssl-new) :pointer
   (ctx :pointer))
 (cffi:defcfun ("BIO_new" ssl-bio-new) :pointer
-  (type :int))
+  (type :pointer))
 (cffi:defcfun ("SSL_set_cipher_list" ssl-set-cipher-list) :int
   (ssl :pointer)
   (ciphers :string))
@@ -193,7 +193,7 @@
   (parg :pointer))
 (cffi:defcfun ("BIO_ctrl_pending" ssl-bio-ctrl-pending) :unsigned-int
   (bio :pointer))
-(cffi:defcfun ("BIO_s_mem" ssl-bio-s-mem) :int)
+(cffi:defcfun ("BIO_s_mem" ssl-bio-s-mem) :pointer)
 (cffi:defcfun ("BIO_read" ssl-bio-read) :int
   (bio :pointer)
   (buf :pointer)
@@ -224,4 +224,3 @@
 (defun ssl-ctx-set-options (ctx options)
   "Function version of the openssl macro."
   (ssl-ctx-ctrl ctx +ssl-ctrl-options+ options (cffi:null-pointer)))
-
