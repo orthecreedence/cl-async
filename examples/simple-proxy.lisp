@@ -11,7 +11,7 @@
 ;;;   (simple-proxy:start local-bind local-port
 ;;;                       remote-host remote-port
 ;;;                       &key stats debug)
-;;; 
+;;;
 ;;; Not only does this offer a good example of a more advanced usage of cl-async
 ;;; but is actually really useful for peeking into plaintext TCP protocols. For
 ;;; instance, you could use it to debug HTTP requests or learn what a driver is
@@ -45,7 +45,7 @@
           (format t "---~a(~a)---~%" location (length data))
           (when *verbose*
             (handler-case (format t "~a~%" (babel:octets-to-string data :encoding :utf-8))
-              (t () (format t "~a~%" (to-ascii data))))))
+              (error () (format t "~a~%" (to-ascii data))))))
         (format t "---~a---~%" location))))
 
 (defun socketp (socket)
@@ -85,7 +85,7 @@
     (as:tcp-eof ()
       (as:delay (lambda () (close-paired-socket (as:tcp-socket ev)))))
     ;; just echo the event
-    (t ()
+    (error ()
       (when *debug*
         (format t "ev: ~a (~a)~%" (type-of ev) ev)))))
 
@@ -153,4 +153,3 @@
                      (as:delay #'print-stats :time 2))))
           (print-stats)))))
   (format t "Closed.~%"))
-
