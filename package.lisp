@@ -97,7 +97,8 @@
            #:stop-dns-logging
            #:dns-lookup
 
-           ;; socket&tcp conditions/accessors
+           ;; streamish/socket/tcp/pipe conditions/accessors
+           #:streamish
            #:socket-info
            #:socket-socket
            #:socket-error

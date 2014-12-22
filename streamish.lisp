@@ -65,6 +65,11 @@
    (drain-read-buffer :accessor streamish-drain-read-buffer :initarg :drain-read-buffer :initform t))
   (:documentation "Wraps around a streamish."))
 
+(defgeneric streamish (thing)
+  (:documentation "Returned associated streamish for THING or THING itself
+  if THING is a streamish.")
+  (:method ((streamish streamish)) streamish))
+
 (defmethod errno-event ((streamish streamish) (errno (eql (uv:errval :eof))))
   (make-instance 'streamish-eof :streamish streamish))
 

@@ -1,6 +1,5 @@
 (in-package :cl-async)
 
-;; TBD: support :STREAM besides :PIPE (to get async stream)
 ;; TBD: separate tcp-stream from async-stream.
 ;; Also, need to rename (?) socket in tcp.lisp
 ;; TBD: utf-8 pipe support
@@ -53,7 +52,7 @@
           (ecase type
             (:ignore (v :+uv-ignore+))
             (:inherit (v :+uv-inherit-fd+))
-            (:pipe
+            ((:pipe :stream)
              (logior (v :+uv-create-pipe+)
                      (if out-p
                          (v :+uv-writable-pipe+)
@@ -66,12 +65,13 @@
             'uv::fd)
            fd)
      nil)
-    (:pipe
-     (let ((pipe (apply #'init-client-socket 'pipe
-                        :allow-other-keys t pipe-args)))
+    ((:stream :pipe)
+     (let ((pipe-or-stream (apply #'init-client-socket 'pipe
+                                  :stream (eq :stream type)
+                                  :allow-other-keys t pipe-args)))
        (setf (uv-a:uv-stdio-container-t-data container)
-             (streamish-c pipe))
-       pipe))))
+             (streamish-c (streamish pipe-or-stream)))
+       pipe-or-stream))))
 
 (defun spawn (path args &key exit-cb
                           (event-cb #'error)
@@ -84,7 +84,7 @@
                                 (c-args :pointer (+ 2 (length args))))
       (cffi:with-foreign-strings (#++ (cwd "/tmp")
                                   (file (namestring path)))
-        (let ((pipes
+        (let ((stdios
                 (loop for fd from 0 below 3
                       for (type . other-args) in (mapcar #'alexandria:ensure-list
                                                          (list input output error-output))
@@ -119,18 +119,23 @@
               (cond ((zerop res)
                      (loop for i from 1 upto (length args)
                            do (cffi:foreign-string-free (cffi:mem-aref c-args :pointer i)))
-                     (loop for pipe in pipes
+                     (loop for pipe-or-stream in stdios
                            for in-p = t then nil
-                           when (and pipe (or in-p (streamish-read-start pipe)))
-                             do (setf (socket-connected pipe) t)
-                                (write-pending-socket-data pipe))
+                           when pipe-or-stream
+                             do (let ((pipe (streamish pipe-or-stream)))
+                                  (when (or in-p (streamish-read-start
+                                                  (streamish pipe)))
+                                    (setf (socket-connected (streamish pipe)) t)
+                                (write-pending-socket-data pipe))))
                      (apply #'values
                             (make-instance 'process
                                            :c handle
                                            :exit-cb exit-cb
                                            :event-cb event-cb
-                                           :input (first pipes))
-                            pipes))
+                                           :input (first stdios)
+                                           :output (second stdios)
+                                           :error-output (third stdios))
+                            stdios))
                     (t
                      ;; destroying the handle immediately causes assertion failure
                      ;; (FIXME: why? seems like it shouldn't be so, looking
