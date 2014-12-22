@@ -1,6 +1,7 @@
 (in-package :cl-async)
 
 ;; compatibility
+(define-condition-alias tcp-eof socket-eof)
 (define-condition-alias tcp-info socket-info)
 (define-condition-alias tcp-error socket-error)
 (define-condition-alias tcp-reset socket-reset)
