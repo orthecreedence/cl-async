@@ -99,6 +99,16 @@
 
            ;; streamish/socket/tcp/pipe conditions/accessors
            #:streamish
+           #:close-streamish
+           #:streamish-info
+           #:streamish-error
+           #:streamish-eof
+           #:streamish-closed
+           #:check-streamish-open
+           #:streamish-closed-p
+           #:close-streamish
+           #:streamish-write
+
            #:socket-info
            #:socket-socket
            #:socket-error

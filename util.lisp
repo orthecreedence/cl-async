@@ -66,7 +66,9 @@
            #:addrinfo-to-string
 
            #:set-socket-nonblocking
-           #:fd-connected-p))
+           #:fd-connected-p
+
+           #:define-condition-alias))
 (in-package :cl-async-util)
 
 (deftype octet () '(unsigned-byte 8))
@@ -448,3 +450,10 @@
                                       :pointer len
                                       :int)))
       (zerop res))))
+
+(defmacro define-condition-alias (alias name)
+  "Define an alias for the specified condition."
+  `(progn
+     #+ccl
+     (deftype ,alias () ',name)
+     (setf (find-class ',alias) (find-class ',name))))

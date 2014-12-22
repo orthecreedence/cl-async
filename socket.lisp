@@ -28,9 +28,7 @@
                                  (socket-accept-error-listener c))))
   (:documentation "Passed to a server's event-cb when there's an error accepting a connection."))
 
-(define-condition socket-closed (streamish-closed socket-error) ()
-  (:report (lambda (c s) (format s "Closed socket being operated on: ~a." (socket c))))
-  (:documentation "Thrown when a closed socket is being operated on."))
+(define-condition-alias socket-closed streamish-closed)
 
 (defclass socket (streamish)
   ((c :accessor socket-c)
@@ -61,16 +59,6 @@
    (closed :accessor socket-server-closed :initarg :closed :initform nil)
    (stream :accessor socket-server-stream :initarg :stream :initform nil))
   (:documentation "Wraps around a connection listener."))
-
-(defun socket-closed-p (socket)
-  "Return whether a socket is closed or not.
-  Same as streamish-closed-p."
-  (streamish-closed-p socket))
-
-(defun close-socket (socket &key force)
-  "Free a socket (uvstream) and clear out all associated data.
-  Same as close-streamish."
-  (close-streamish socket :force force))
 
 (defgeneric close-socket-server (socket)
   (:documentation
@@ -155,10 +143,6 @@
                (setf (socket-buffer socket) (make-buffer))))))
         (t
          (call-next-method))))
-
-(defun write-socket-data (socket data &rest args &key &allow-other-keys)
-  "An compatibility alias for STREAMISH-WRITE."
-  (apply #'streamish-write socket data args))
 
 (defgeneric write-pending-socket-data (socket)
   (:documentation
@@ -328,3 +312,27 @@
              (close-socket-server socket/server)))
           ((not (socket-closed-p socket/server))
            (close-socket socket/server :force t)))))
+
+;;;; compatibility
+
+(defun write-socket-data (socket data &rest args &key &allow-other-keys)
+  "An compatibility alias for STREAMISH-WRITE."
+  (apply #'streamish-write socket data args))
+
+(defun check-socket-open (socket)
+  "Compatibility alias for CHECK-STREAMISH-OPEN."
+  (check-streamish-open socket))
+
+(defun socket-closed-p (socket)
+  "Return whether a socket is closed or not.
+  Same as streamish-closed-p."
+  (streamish-closed-p socket))
+
+(defun close-socket (socket &key force)
+  "Free a socket (uvstream) and clear out all associated data.
+  Same as close-streamish."
+  (close-streamish socket :force force))
+
+;; condition accessor
+(defmethod socket ((thing t))
+  (streamish thing))

@@ -38,7 +38,10 @@
 
 ;; TBD: seems like streamish-info/socket-info/tcp-info/event-info isn't actually used?
 (define-condition streamish-info (event-info)
-  ((streamish :initarg :streamish :accessor streamish :initform nil))
+  ;; initarg :socket is added compatibility
+  ((streamish :initarg :streamish
+              :initarg :socket
+              :accessor streamish :initform nil))
   (:report (lambda (c s)
              (print-unreadable-object (c s :type t :identity t)
                (format s "~a" (streamish c)))))

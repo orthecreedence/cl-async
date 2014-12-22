@@ -1,16 +1,12 @@
 (in-package :cl-async)
 
 ;; compatibility
-(macrolet ((define-condition-alias (alias name)
-             `(progn
-                (deftype ,alias () ',name)
-                (setf (find-class ',alias) (find-class ',name)))))
-  (define-condition-alias tcp-info socket-info)
-  (define-condition-alias tcp-error socket-error)
-  (define-condition-alias tcp-reset socket-reset)
-  (define-condition-alias tcp-timeout socket-timeout)
-  (define-condition-alias tcp-refused socket-refused)
-  (define-condition-alias tcp-accept-error socket-accept-error))
+(define-condition-alias tcp-info socket-info)
+(define-condition-alias tcp-error socket-error)
+(define-condition-alias tcp-reset socket-reset)
+(define-condition-alias tcp-timeout socket-timeout)
+(define-condition-alias tcp-refused socket-refused)
+(define-condition-alias tcp-accept-error socket-accept-error)
 
 ;; TBD: tcp-server-bind-error is not actually used currently
 (define-condition tcp-server-bind-error (socket-error)

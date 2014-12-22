@@ -102,3 +102,8 @@
     (setf (stream-buffer stream) (make-buffer (subseq buffer numbytes)))
     (replace sequence bytes)
     (length bytes)))
+
+;;;; compatibility
+
+(defun stream-socket (stream)
+  (streamish stream))
