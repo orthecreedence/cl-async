@@ -167,4 +167,5 @@
            #:spawn
            #:process-input
            #:process-output
-           #:process-error-output))
+           #:process-error-output
+           #:process-kill))

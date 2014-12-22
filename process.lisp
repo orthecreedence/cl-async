@@ -1,11 +1,8 @@
 (in-package :cl-async)
 
-;; TBD: handle errors
-;; TBD: proper exit callback
 ;; TBD: support :STREAM besides :PIPE (to get async stream)
 ;; TBD: separate tcp-stream from async-stream.
 ;; Also, need to rename (?) socket in tcp.lisp
-;; TBD: destroy process handles on exit
 ;; TBD: utf-8 pipe support
 ;; TBD: check process handles during walk using generic function
 ;; TBD: custom env
@@ -13,9 +10,6 @@
 ;; TBD: custom cwd
 ;; TBD: custom string encoding
 ;; TBD: process flags (detached etc.)
-;; TBD: process-kill
-;; TBD: close streams on exit
-;; TBD: make sure process handles are freed automagically when the event loop is finished
 
 ;; TBD: use common superclass for libuv handle wrappers
 
@@ -138,7 +132,11 @@
                                            :input (first pipes))
                             pipes))
                     (t
-                     (process-close handle)
+                     ;; destroying the handle immediately causes assertion failure
+                     ;; (FIXME: why? seems like it shouldn't be so, looking
+                     ;; at libuv tests)
+                     (as:delay #'(lambda ()
+                                   (process-close handle)))
                      (event-handler res event-cb :catch-errors t))))))))))
 
 (defmethod handle-cleanup ((handle-type (eql :process)) handle)
@@ -146,3 +144,15 @@
     (process-close handle)
     (when process
       (setf (process-c process) nil))))
+
+(defun process-kill (process signal &key (event-cb #'error))
+  "If PROCESS is active, send the specified signal (an integer) to it and return true.
+   If PROCESS is not active or an error occurs (and EVENT-CB doesn't
+   signal an error), return false.  If EVENT-CB is specified, use it
+   to handle errors, otherwise signal them via ERROR."
+  (alexandria:when-let ((handle (process-c process)))
+    (let ((res (uv:uv-process-kill handle signal)))
+      (cond ((zerop res) t)
+            (t
+             (event-handler res event-cb :catch-errors t)
+             nil)))))
