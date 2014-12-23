@@ -104,7 +104,7 @@
     (with-test-event-loop ()
       (with-path-under-tmpdir (path "blabla")
         (as:spawn path '() :exit-cb #'never)
-        (as:delay #'(lambda () nil) :time 1)))))
+        (as:with-delay (1) nil)))))
 
 (test process-kill ()
   (with-test-event-loop ()
@@ -119,5 +119,3 @@
                               :input (list :pipe)))
       ;; send SIGINT
       (as:process-kill process 2))))
-
-;; TBD: input/output streams

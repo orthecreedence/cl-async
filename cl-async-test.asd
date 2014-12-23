@@ -29,4 +29,5 @@
                  (:file "filesystem")
                  ;; process tests are currently rather unix-dependent
                  #-(or win32 windows)
-                 (:file "process")))))
+                 (:file "process")
+                 (:file "fsevent")))))

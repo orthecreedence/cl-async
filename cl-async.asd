@@ -50,4 +50,5 @@
    (:file "notify" :depends-on ("streamish"))
    (:file "poll" :depends-on ("streamish"))
    (:file "idle" :depends-on ("package"))
-   (:file "process" :depends-on ("pipe"))))
+   (:file "process" :depends-on ("pipe"))
+   (:file "fsevent" :depends-on ("streamish"))))

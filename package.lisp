@@ -179,4 +179,8 @@
            #:process-input
            #:process-output
            #:process-error-output
-           #:process-kill))
+           #:process-kill
+
+           #:fs-watch
+           #:fs-unwatch
+           #:fs-monitor-close))

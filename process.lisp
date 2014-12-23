@@ -165,8 +165,8 @@
                      ;; destroying the handle immediately causes assertion failure
                      ;; (FIXME: why? seems like it shouldn't be so, looking
                      ;; at libuv tests)
-                     (as:delay #'(lambda ()
-                                   (process-close handle)))
+                     (as:with-delay ()
+                       (process-close handle))
                      (event-handler res event-cb :catch-errors t))))))))))
 
 (defmethod handle-cleanup ((handle-type (eql :process)) handle)
