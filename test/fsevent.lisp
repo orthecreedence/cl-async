@@ -9,7 +9,7 @@
       (let ((got-callback-p nil)
             fs-monitor)
         (setf fs-monitor
-              (as:fs-watch (subseq (namestring dir) 0 (1- (length (namestring dir))))
+              (as:fs-watch dir
                            #'(lambda (monitor path rename-p change-p)
                                ;; Unfortunately uv_fs_event stuff is pretty random,
                                ;; so these arguments aren't supported across all
