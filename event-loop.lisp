@@ -1,45 +1,5 @@
 (in-package :cl-async)
 
-(defun event-handler (error event-cb &key socket catch-errors)
-  "Called when an event (error, mainly) occurs."
-  ;; here we check if errno is actually an event/error object passed in
-  ;; directly. if so, we kindly forward it along to the event-cb.
-  (let* ((errno (when (numberp error) error))
-         (event (unless (numberp error) error))
-         (errstr (when errno (error-str errno))))
-    (macrolet ((do-handle (catch-p)
-                 `(unwind-protect
-                       (cond
-                         ;; if we passed in an event, do nothing
-                         (event nil)
-                         ((= errno (uv:errval :etimedout))
-                          (setf event (make-instance 'tcp-timeout :socket socket :code errno :msg "connection timed out")))
-                         ((= errno (uv:errval :econnreset))
-                          (setf event (make-instance 'tcp-reset :socket socket :code errno :msg "connection reset")))
-                         ((= errno (uv:errval :econnrefused))
-                          (setf event (make-instance 'tcp-refused :socket socket :code errno :msg "connection refused")))
-                         ((= errno (uv:errval :eof))
-                          (setf event (make-instance 'tcp-eof :socket socket)))
-                         ((= errno (uv:errval :eai-noname))
-                          (setf event (make-instance 'dns-error :code errno :msg "DNS lookup fail")))
-                         ((= errno (uv:errval :efault))
-                          (setf event (make-instance 'event-error :code errno :msg "bad address in system call argument")))
-                         (t
-                          (setf event (make-instance 'event-error :code errno :msg errstr))))
-                    (when event
-                      (unwind-protect
-                           (when event-cb
-                             ,(if catch-p
-                                  '(run-event-cb event-cb event)
-                                  '(funcall event-cb event)))
-                        ;; if the app closed the socket in the event cb (perfectly fine),
-                        ;; make sure we don't trigger an error trying to close it again.
-                        (handler-case (and socket (close-socket socket :force t))
-                          (socket-closed () nil)))))))
-      (if catch-errors
-          (catch-app-errors event-cb (do-handle t))
-          (do-handle nil)))))
-
 (defun add-event-loop-exit-callback (fn)
   "Add a function to be run when the event loop exits."
   (push fn (event-base-exit-functions *event-base*)))
@@ -89,31 +49,15 @@
 (defvar *event-base-registry-lock* (bt:make-lock)
   "Locks the event-base registry.")
 
+(defgeneric handle-cleanup (handle-type handle)
+  (:documentation "Perform cleanup for a libuv handle")
+  (:method ((handle-type t) (handle t)) (values)))
+
 (define-c-callback loop-exit-walk-cb :void ((handle :pointer) (arg :pointer))
   "Called when we want to close the loop AND IT WONT CLOSE. So we walk each
    handle and close them."
   (declare (ignore arg))
-  (case (uv:handle-type handle)
-    (:tcp (let* ((data (deref-data-from-pointer handle))
-                 (socket/server (if (listp data)
-                                    (getf data :socket)
-                                    data)))
-            (cond ((null data)
-                   ;; this may happen, for example, when tcp-connect
-                   ;; fails somewhere in the middle due to a bug
-                   (warn "a tcp handle without corresponding object detected")
-                   (do-close-tcp handle :force t))
-                  ((typep socket/server 'tcp-server)
-                   (unless (tcp-server-closed socket/server)
-                     (close-tcp-server socket/server)))
-                  ((not (socket-closed-p socket/server))
-                   (close-socket socket/server :force t)))))
-    (:timer (let ((event (deref-data-from-pointer handle)))
-              (unless (event-freed-p event)
-                (free-event event))))
-    (:async (let ((notifier (deref-data-from-pointer handle)))
-              (unless (notifier-freed-p notifier)
-                (free-notifier notifier))))))
+  (handle-cleanup (uv:handle-type handle) handle))
 
 (defun do-close-loop (evloop &optional (loops 0))
   "Close an event loop by looping over its open handles, closing them, rinsing

@@ -36,7 +36,7 @@
       (free-pointer-data ssl :preserve-pointer t)
       (ssl-free ssl))))
 
-(defmethod close-socket ((socket ssl-socket) &key force)
+(defmethod close-streamish ((socket ssl-socket) &key force)
   (declare (ignore force))
   (setf (socket-ssl-closing socket) t)
   (let* ((as-ssl (socket-as-ssl socket))
@@ -45,7 +45,7 @@
     (ssl-shutdown ssl)
     (close-ssl as-ssl)))
 
-(defmethod close-tcp-server ((tcp-server tcp-ssl-server))
+(defmethod close-socket-server ((tcp-server tcp-ssl-server))
   ;; shut down the listener before freeing the SSL handles
   (call-next-method)
   ;; free the SSL ctx (if it exists)
@@ -65,7 +65,7 @@
     (zero-buffer buff)
     (ssl-run-state ssl)))
 
-(defmethod write-socket-data ((socket ssl-socket) data &key read-cb write-cb event-cb start end force (write-ssl t))
+(defmethod streamish-write ((socket ssl-socket) data &key read-cb write-cb event-cb start end force (write-ssl t))
   (declare (ignore force))
   (cond ((and (not (socket-ssl-connected socket))
               write-ssl)
@@ -77,11 +77,11 @@
                          data)))
            (vom:debug "< write: buffer: ~a~%" (length (subseq data (or start 0) end)))
            (write-to-buffer data (socket-ssl-buffer socket) start end)
-           (return-from write-socket-data nil)))
+           (return-from streamish-write nil)))
         ((not write-ssl)
          ;; we're writing raw socket data (encrypted data), so blast it out
          (vom:debug "< write: raw: ~a (conn ~a)~%" (length (subseq data (or start 0) end)) (socket-connected socket))
-         (return-from write-socket-data (call-next-method))))
+         (return-from streamish-write (call-next-method))))
   (vom:debug "< write: ssl: ~a~%" (length (subseq data (or start 0) end)))
   (let* ((uvstream (socket-c socket))
          (as-ssl (socket-as-ssl socket))

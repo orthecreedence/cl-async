@@ -112,3 +112,8 @@
    This is useful for triggering arbitrary events, and can even be triggered
    from a thread outside the libuv loop."
   (delay callback :event-cb event-cb :time (* 100 31536000)))
+
+(defmethod handle-cleanup ((handle-type (eql :timer)) handle)
+  (let ((event (deref-data-from-pointer handle)))
+    (unless (event-freed-p event)
+      (free-event event))))

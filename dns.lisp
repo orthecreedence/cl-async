@@ -16,7 +16,7 @@
             (if (and addr (not err))
                 ;; got an address, call resolve-cb
                 (funcall resolve-cb addr family)
-                ;; hmm, didn't get an address. either cam back as ipv6 or 
+                ;; hmm, didn't get an address. either cam back as ipv6 or
                 ;; there was some horrible, horrible error.
                 (run-event-cb event-cb
                               (make-instance 'dns-error
@@ -37,15 +37,14 @@
   (assert (member family (list +af-inet+ +af-inet6+ +af-unspec+)))
   (let ((lookup-c (uv:alloc-req :getaddrinfo))
         (loop-c (event-base-c *event-base*)))
-    (make-foreign-type (hints uv:addrinfo :initial #x0)
-                       (('uv::ai-family family)
-                        ('uv::ai-flags 0)    ;#x2000 AI_CANONNAME
-                        ('uv::ai-socktype uv:+sock-stream+)
-                        ('uv::ai-protocol uv:+ipproto-tcp+))
+    (with-foreign-object* (hints uv:addrinfo)
+                          ((uv-a:addrinfo-ai-family family)
+                           (uv-a:addrinfo-ai-flags 0) ;#x2000 AI_CANONNAME
+                           (uv-a:addrinfo-ai-socktype uv:+sock-stream+)
+                           (uv-a:addrinfo-ai-protocol uv:+ipproto-tcp+))
       (save-callbacks lookup-c (list :resolve-cb resolve-cb
                                      :event-cb event-cb))
       (let ((res (uv:uv-getaddrinfo loop-c lookup-c (cffi:callback dns-cb) host (cffi:null-pointer) hints)))
         (if (< res 0)
             (event-handler res event-cb :catch-errors t)
             t)))))
-

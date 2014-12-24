@@ -5,7 +5,7 @@
            #:octet-vector
 
            #:bytes
-           
+
            #:+af-inet+
            #:+af-inet6+
            #:+af-unspec+
@@ -13,7 +13,7 @@
 
            #:*buffer-writes*
            #:*buffer-size*
-           
+
            ;; common conditions/accessors
            #:event-info
            #:event-error
@@ -97,7 +97,28 @@
            #:stop-dns-logging
            #:dns-lookup
 
-           ;; tcp conditions/accessors
+           ;; streamish/socket/tcp/pipe conditions/accessors
+           #:streamish
+           #:close-streamish
+           #:streamish-info
+           #:streamish-error
+           #:streamish-eof
+           #:streamish-closed
+           #:check-streamish-open
+           #:streamish-closed-p
+           #:close-streamish
+           #:streamish-write
+
+           #:socket-info
+           #:socket-socket
+           #:socket-error
+           #:socket-eof
+           #:socket-reset
+           #:socket-timeout
+           #:socket-refused
+           #:socket-accept-error
+           #:socket-accept-error-listener
+           #:socket-accept-error-tcp-server
            #:tcp-info
            #:tcp-socket
            #:tcp-error
@@ -106,8 +127,6 @@
            #:tcp-timeout
            #:tcp-refused
            #:tcp-accept-error
-           #:tcp-accept-error-listener
-           #:tcp-accept-error-tcp-server
            #:socket-closed
            #:tcp-server-bind-error
            ;; socket class/accessors
@@ -117,6 +136,7 @@
            ;; tcp functions
            #:socket-closed-p
            #:close-socket
+           #:close-socket-server
            #:close-tcp-server
            #:write-socket-data
            #:set-socket-timeouts
@@ -126,6 +146,10 @@
            #:connect-tcp-socket
            #:tcp-connect
            #:tcp-server
+
+           #:pipe-connect
+           #:pipe-server
+           #:pipe-not-found
 
            ;; tcp stream
            #:async-stream
@@ -139,9 +163,24 @@
            #:idler-freed-p
            #:free-idler
            #:idle
-           
+
            #:poller
            #:poller-freed-p
            #:free-poller
-           #:poll))
+           #:poll
 
+           #:mkdtemp
+           #:filesystem-error
+           #:filesystem-enoent
+           #:filesystem-eacces
+           #:filesystem-eperm
+
+           #:spawn
+           #:process-input
+           #:process-output
+           #:process-error-output
+           #:process-kill
+
+           #:fs-watch
+           #:fs-unwatch
+           #:fs-monitor-close))

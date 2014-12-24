@@ -1,9 +1,9 @@
 (in-package :cl-async)
 
 (defclass async-stream (trivial-gray-stream-mixin)
-  ((socket :accessor stream-socket :initarg :socket :initform nil)
+  ((streamish :accessor streamish :initarg :streamish :initarg :socket :initform nil)
    (buffer :accessor stream-buffer :initform (make-buffer)))
-  (:documentation "The underlying class for async streams. Wraps a tcp socket class."))
+  (:documentation "The underlying class for async streams. Wraps a streamish."))
 (defclass async-output-stream (async-stream fundamental-binary-output-stream) ()
   (:documentation "Async output stream."))
 (defclass async-input-stream (async-stream fundamental-binary-input-stream) ()
@@ -27,9 +27,8 @@
   'cl-async-util:octet)
 
 (defmethod open-stream-p ((stream async-stream))
-  "Test the underlying socket to see if this stream is open."
-  (let ((socket (stream-socket stream)))
-    (not (as:socket-closed-p socket))))
+  "Test the underlying streamish to see if this stream is open."
+  (not (streamish-closed-p (streamish stream))))
 
 (defmethod close ((stream async-stream) &key abort)
   "Close the stream. If aborting, attempt to clear out remaining data in the
@@ -39,7 +38,7 @@
       (clear-output stream))
     (when (input-stream-p stream)
       (clear-input stream)))
-  (as:close-socket (stream-socket stream)))
+  (close-streamish (streamish stream)))
 
 ;; -----------------------------------------------------------------------------
 ;; output stream
@@ -61,22 +60,23 @@
   (stream-force-output stream))
 
 (defmethod stream-write-sequence ((stream async-output-stream) sequence start end &key)
-  "Write a sequence of bytes to the underlying socket."
+  "Write a sequence of bytes to the underlying streamish."
   (when (open-stream-p stream)
     (let ((seq (subseq sequence start end)))
-      (write-socket-data (stream-socket stream) seq)
+      (streamish-write (streamish stream) seq)
       seq)))
 
 (defmethod stream-write-byte ((stream async-output-stream) byte)
-  "Write one byte to the underlying socket."
-  (stream-write-sequence stream (vector byte) 0 1))
+  "Write one byte to the underlying streamish."
+  (stream-write-sequence stream (make-array 1 :element-type 'octet
+					      :initial-element byte) 0 1))
 
 (defmethod send-buffered-data ((stream async-output-stream))
-  "Take data we've buffered between initial sending and actual socket connection
+  "Take data we've buffered between initial sending and actual streamish
    and send it out."
   (let ((data (buffer-output (stream-buffer stream))))
     (setf (stream-buffer stream) (make-buffer))
-    (write-socket-data (stream-socket stream) data))
+    (streamish-write (streamish stream) data))
   nil)
 
 ;; -----------------------------------------------------------------------------
@@ -88,7 +88,7 @@
     (setf (stream-buffer stream) (make-buffer))))
 
 (defmethod stream-read-byte ((stream async-input-stream))
-  "Read one byte from the underlying socket."
+  "Read one byte from the underlying streamish."
   (let* ((buff (make-array 1 :element-type '(unsigned-byte 8)))
          (num (stream-read-sequence stream buff 0 1)))
     (if (= num 1)
@@ -96,10 +96,15 @@
         :eof)))
 
 (defmethod stream-read-sequence ((stream async-input-stream) sequence start end &key)
-  "Attempt to read a sequence of bytes from the underlying socket."
+  "Attempt to read a sequence of bytes from the underlying streamish."
   (let* ((buffer (buffer-output (stream-buffer stream)))
          (numbytes (min (length buffer) (- end start)))
          (bytes (subseq buffer start (min (length buffer) numbytes))))
     (setf (stream-buffer stream) (make-buffer (subseq buffer numbytes)))
     (replace sequence bytes)
     (length bytes)))
+
+;;;; compatibility
+
+(defun stream-socket (stream)
+  (streamish stream))

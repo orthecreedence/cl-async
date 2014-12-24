@@ -9,6 +9,9 @@
            #:bytes-or-string
            #:callback
 
+           #:*passthrough-errors*
+           #:passthrough-error-p
+
            #:bytes
            #:make-buffer
            #:buffer-output
@@ -31,7 +34,7 @@
 
            #:define-c-callback
 
-           #:make-foreign-type
+           #:with-foreign-object*
 
            #:with-lock
 
@@ -63,13 +66,23 @@
            #:addrinfo-to-string
 
            #:set-socket-nonblocking
-           #:fd-connected-p))
+           #:fd-connected-p
+
+           #:define-condition-alias))
 (in-package :cl-async-util)
 
 (deftype octet () '(unsigned-byte 8))
 (deftype octet-vector () '(simple-array octet (*)))
 (deftype bytes-or-string () '(or octet-vector string))
 (deftype callback () '(or null function symbol))
+
+(defvar *passthrough-errors* '())
+
+(defun passthrough-error-p (e)
+  "Return true if the specified error condition should not
+  be intercepted by cl-async error handling mechanism."
+  (loop for type in *passthrough-errors*
+          thereis (typep e type)))
 
 (defun bytes (vector)
   "Convert any vector/string into a byte array. Useful for sending direct byte
@@ -156,48 +169,58 @@
       (format *debug-io* "~&;; exiting the event loop.~%")
       (uv:uv-stop (event-base-c *event-base*)))))
 
+(defvar *evcb-err*)
+
 (defmacro catch-app-errors (event-cb &body body)
-  "Wraps catching of application errors into a simple handler-case (if wanted),
-   otherwise just runs the body with no error/event handling.
+  "Handle error conditions by directing them to the specified event
+   callback or default event handler of the current event loop, if
+   catching app errors is enabled for the current event loop via
+   EVENT-BASE-CATCH-APP-ERRORS, otherwise just evaluate the BODY.
 
-   If event-cbs are called via run-event-cb, makes sure the event-cb is NOT
-   double-called with the same condition twice."
-  (let ((evcb (gensym "evcb")))
-    ;; define a binding for tracking already-fired errors. run-event-cb will
-    ;; use this binding
-    `(let ((_evcb-err nil))
-       (if (event-base-catch-app-errors *event-base*)
-           (let* ((,evcb (cond ((not (symbolp ,event-cb))
-                                ,event-cb)
-                               ((fboundp ,event-cb)
-                                (symbol-function ,event-cb))
-                               (t nil)))
-                  (,evcb (if (functionp ,evcb)
-                             ,evcb
-                             (event-base-default-event-handler *event-base*))))
-             (handler-case
-               (progn ,@body)
-               (t (err)
-                 (if (equal err _evcb-err)
-                     ;; error was already sent to eventcb, retrigger
-                     (error err)
-                     ;; what do you know, a new error. send to event-cb =]
-                     (funcall ,evcb err)))))
-           (call-with-callback-restarts #'(lambda () ,@body))))))
+   If event-cbs are called via run-event-cb, make sure the event-cb
+   is NOT double-called with the same condition twice."
+  (alexandria:once-only (event-cb)
+    (alexandria:with-gensyms (evcb err thunk-fn blk)
+      `(let ((*evcb-err* '()))
+         (flet ((,thunk-fn ()
+                  (call-with-callback-restarts #'(lambda () ,@body))))
+           (if (event-base-catch-app-errors *event-base*)
+               (let ((,evcb (cond ((not (symbolp ,event-cb))
+                                   ,event-cb)
+                                  ((fboundp ,event-cb)
+                                   (symbol-function ,event-cb))
+                                  ((null ,event-cb)
+                                   (event-base-default-event-handler *event-base*))
+                                  (t
+                                   (error "invalid event-cb: ~s" ,event-cb)))))
+                 (block ,blk
+                   (handler-bind
+                       ((error #'(lambda (,err)
+                                   ;; check whether the error was already sent to eventcb
+                                   (unless (or (member ,err *evcb-err*)
+                                               (passthrough-error-p ,err))
+                                     ;; if that's a new error, handle it by invoking event-cb
+                                     (funcall ,evcb ,err)
+                                     (return-from ,blk)))))
+                     (,thunk-fn))))
+               (,thunk-fn)))))))
 
-(defmacro run-event-cb (event-cb &rest args)
-  "Used inside of catch-app-errors, wraps the calling of an event-cb such that
-   errors are caught and saved, making it so an event-cb isn't called twice with
-   the same condition."
-  `(handler-case
-     ;; run the event handler
-     (funcall ,event-cb ,@args)
-     ;; catch any errors and track them
-     (t (e)
-       ;; track the error so we don't re-fire (_evcb-err is defined in
-       ;; catch-app-errors)
-       (setf _evcb-err e)
-       (error e))))
+(defun run-event-cb (event-cb &rest args)
+  "When used in the dynamic context of catch-app-errors, wraps the
+   calling of an event-cb with args such that errors are caught and
+   saved, ensuring that an event-cb isn't called twice with the same
+   condition. When used outside the dynamic context of
+   catch-app-errors, just invokes event-cb with args."
+  (if (boundp '*evcb-err*)
+      (handler-bind
+          ;; catch any errors and track them
+          ((error #'(lambda (err)
+                      ;; track the error so we don't re-fire (*evcb-err* is bound in
+                      ;; catch-app-errors)
+                      (pushnew err *evcb-err*))))
+          ;; run the event handler
+        (apply event-cb args))
+      (apply event-cb args)))
 
 (defmacro define-c-callback (name return-val (&rest args) &body body)
   "Define a top-level function with the given and also define a C callback that
@@ -211,7 +234,7 @@
        (cffi:defcallback ,name ,return-val ,args
          (,name ,@arg-names)))))
 
-(defmacro make-foreign-type ((var type &key initial) bindings &body body)
+(defmacro with-foreign-object* ((var type &key (zero t) (initial (when zero #x0))) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."
   (let ((type (if (eq type 'uv:addrinfo)
@@ -224,7 +247,7 @@
        ,(when initial
           `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size '(:struct ,type)))))
        ,@(loop for binding in bindings collect
-           `(setf (cffi:foreign-slot-value ,var '(:struct ,type) ,(car binding)) ,(cadr binding)))
+           `(setf (,(car binding) ,var) ,(cadr binding)))
        ,@body)))
 
 (defmacro with-lock (&body body)
@@ -427,3 +450,9 @@
                                       :pointer len
                                       :int)))
       (zerop res))))
+
+(defmacro define-condition-alias (alias name)
+  "Define an alias for the specified condition."
+  `(progn
+     (deftype ,alias () ',name)
+     (setf (find-class ',alias) (find-class ',name))))

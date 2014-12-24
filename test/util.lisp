@@ -5,6 +5,11 @@
            #:benchmark-client))
 (in-package :cl-async-test)
 
+;; Exclude 5am check failures from normal cl-async error handling.
+;; This makes it possible to use (is ...) and related operations
+;; in cl-async callbacks inside tests.
+(pushnew '5am::check-failure cl-async-util:*passthrough-errors*)
+
 ;; TODO: test all functions in util package
 
 (defmacro async-let ((&rest bindings) &body body)
@@ -41,19 +46,95 @@
   "Shortens string concatenation because I'm lazy and really who the hell wants
    to type out (concatenate 'string ...) seriously, I mispell concatentate like
    90% of the time I type it out."
-  (apply #'concatenate (append '(string) args)))
+  (apply #'concatenate 'string args))
 
 (defun id (val)
   "Returns val. Yes, yes. I know that the identity function exists, but
    seriously I'm not going to waste precious time out of my life typing identity
    when I can just type id. The idea is the same, and everybody KNOWS what I'm
    trying to express.
-   
+
    Oh one more thing: the only reason I NEED identi...err, id is because Eos
    can't use its `is` macro around another macro. So I need a function to wrap
    it. Lame. BUT such is life."
   val)
-  
+
+(defun call-with-temporary-directory (thunk)
+  (as:mkdtemp (uiop:merge-pathnames*
+               "as-tst-XXXXXX"
+               (uiop:temporary-directory))
+              #'(lambda (dir)
+                  (as:add-event-loop-exit-callback
+                   #'(lambda ()
+                       (uiop:delete-directory-tree
+                             dir
+                             :validate #'(lambda (path)
+                                           (uiop:subpathp path (uiop:temporary-directory))))))
+                  (funcall thunk dir))))
+
+(defmacro with-temporary-directory ((dir) &body body)
+  `(call-with-temporary-directory #'(lambda (,dir) ,@body)))
+
+(defmacro with-path-under-tmpdir ((path-var subpath) &body body)
+  (alexandria:with-gensyms (dir)
+    `(with-temporary-directory (,dir)
+       (let ((,path-var (uiop:merge-pathnames* ,subpath ,dir)))
+         ,@body))))
+
+(defvar *later-list*)
+
+(defun later (function)
+  "Execute the specified FUNCTION after event loop of WITH-TEST-EVENT-LOOP
+   terminates."
+  ;; using as:add-event-loop-exit-callback depends on event loop
+  ;; actually calling it, which may not be a good assumption
+  ;; for tests
+  (push function *later-list*))
+
+(defmacro with-test-event-loop ((&key (catch-app-errors t)) &body body)
+  "Run BODY within event loop, executing functions specified via LATER
+   after it terminates. Can be used with CALLED-ONCE and NEVER."
+  (alexandria:with-gensyms (fn)
+    `(let ((*later-list* '()))
+       (as:with-event-loop (:catch-app-errors ,catch-app-errors)
+         ,@body)
+       (dolist (,fn (nreverse *later-list*))
+         (funcall ,fn)))))
+
+(defun called-once (function)
+  "Wrap FUNCTION to make sure that it's called exactly once during
+   execution of WITH-TEST-EVENT-LOOP body."
+  (let ((count 0))
+    (later #'(lambda ()
+               (is (= 1 count)
+                   "callback is expected to be called once, ~
+                        but it was called ~d time~:p" count)))
+    #'(lambda (&rest args)
+        (incf count)
+        (apply function args))))
+
+(defun never (&rest args)
+  "NEVER function is for use as a callback that should be never
+   called. Use in the dynamic context of WITH-TEST-EVENT-LOOP."
+  (declare (ignore args))
+  (fail "'never' function called (unexpected callbacl)"))
+
+(defparameter *wait-interval* 0.05)
+
+(defun %wait (pred)
+  (let ((wait-successful-p nil))
+    (labels ((wait-for-it ()
+               (if (funcall pred)
+                   (setf wait-successful-p t)
+                   (as:delay #'wait-for-it :time *wait-interval*))))
+      (wait-for-it)
+      (unless wait-successful-p
+        (later #'(lambda ()
+                   (is-true wait-successful-p "WAIT failed")))))))
+
+(defmacro wait (expr)
+  `(%wait #'(lambda () ,expr)))
+
 ;; define the test suite
 (def-suite cl-async-test :description "cl-async test suite")
 (def-suite cl-async-test-core :in cl-async-test :description "cl-async test suite")
@@ -138,4 +219,3 @@
     (free-pointer-data data-pointer)
     (is (null (deref-data-from-pointer data-pointer)))
     (is (= data-size (hash-table-count (event-base-data-registry *event-base*))))))
-
