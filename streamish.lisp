@@ -41,7 +41,9 @@
   ;; initarg :socket is added compatibility
   ((streamish :initarg :streamish
               :initarg :socket
-              :accessor streamish :initform nil))
+              :accessor streamish
+              :accessor tcp-socket ;; compatibility
+              :initform nil))
   (:report (lambda (c s)
              (print-unreadable-object (c s :type t :identity t)
                (format s "~a" (streamish c)))))
