@@ -19,17 +19,17 @@
 
 (test catch-app-errors
   "Test the global event handler works appropriately"
-  (is (subtypep
-        (let ((err nil))
-          (as:start-event-loop
-            (lambda ()
-              (error "Test"))
-            :catch-app-errors t
-            :default-event-cb
-              (lambda (ev)
-                (setf err ev)))
-            (type-of err))
-        'error)))
+  (let ((err nil))
+    (handler-case
+      (as:with-event-loop (:catch-app-errors nil)
+        (error "lool"))
+      (error (e) (setf err e)))
+    (is (subtypep (type-of err) 'error)))
+  (let ((err nil))
+    (as:with-event-loop (:catch-app-errors t
+                         :caught-errors (lambda (e) (setf err e)))
+      (error "oh noo"))
+    (is (subtypep (type-of err) 'error))))
 
 (test data-and-fn-pointers
   "Test for the correct number of data/function pointers for a set of operations"

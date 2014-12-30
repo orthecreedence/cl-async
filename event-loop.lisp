@@ -71,7 +71,7 @@
       (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+))
       (do-close-loop evloop (1+ loops)))))
 
-(defun start-event-loop (start-fn &key default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
+(defun start-event-loop (start-fn &key default-event-cb (catch-app-errors nil catch-app-errors-supplied-p) caught-errors)
   "Simple wrapper function that starts an event loop which runs the given
    callback, most likely to init your server/client."
   (when *event-base*
@@ -88,6 +88,8 @@
                                         :id *event-base-next-id*)
                                   (when catch-app-errors-supplied-p
                                     (list :catch-app-errors catch-app-errors))
+                                  (when caught-errors
+                                    (list :caught-errors caught-errors))
                                   (when (functionp default-event-cb)
                                     (list :default-event-handler default-event-cb)))))
            (*buffer-writes* *buffer-writes*)
@@ -118,7 +120,7 @@
           (remhash (event-base-id *event-base*) *event-base-registry*))
         (setf *event-base* nil)))))
 
-(defmacro with-event-loop ((&key default-event-cb (catch-app-errors nil catch-app-errors-supplied-p))
+(defmacro with-event-loop ((&key default-event-cb (catch-app-errors nil catch-app-errors-supplied-p) caught-errors)
                            &body body)
   "Makes starting an event loop a tad less annoying. I really couldn't take
    typing out `(start-event-loop (lambda () ...) ...) every time. Example:
@@ -131,7 +133,9 @@
     `(as:start-event-loop (lambda () ,@body)
        :default-event-cb ,default-event-cb)
     (when catch-app-errors-supplied-p
-      `(:catch-app-errors ,catch-app-errors))))
+      `(:catch-app-errors ,catch-app-errors))
+    (when caught-errors
+      `(:caught-errors ,caught-errors))))
 
 (defun exit-event-loop ()
   "Exit the event loop if running."

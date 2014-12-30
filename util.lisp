@@ -184,26 +184,34 @@
       `(let ((*evcb-err* '()))
          (flet ((,thunk-fn ()
                   (call-with-callback-restarts #'(lambda () ,@body))))
-           (if (event-base-catch-app-errors *event-base*)
-               (let ((,evcb (cond ((not (symbolp ,event-cb))
-                                   ,event-cb)
-                                  ((fboundp ,event-cb)
-                                   (symbol-function ,event-cb))
-                                  ((null ,event-cb)
-                                   (event-base-default-event-handler *event-base*))
-                                  (t
-                                   (error "invalid event-cb: ~s" ,event-cb)))))
-                 (block ,blk
-                   (handler-bind
-                       ((error #'(lambda (,err)
-                                   ;; check whether the error was already sent to eventcb
-                                   (unless (or (member ,err *evcb-err*)
-                                               (passthrough-error-p ,err))
-                                     ;; if that's a new error, handle it by invoking event-cb
-                                     (funcall ,evcb ,err)
-                                     (return-from ,blk)))))
-                     (,thunk-fn))))
-               (,thunk-fn)))))))
+           (let ((,evcb (cond ((not (symbolp ,event-cb))
+                               ,event-cb)
+                              ((fboundp ,event-cb)
+                               (symbol-function ,event-cb))
+                              ((null ,event-cb)
+                               (event-base-default-event-handler *event-base*))
+                              (t
+                               (error "invalid event-cb: ~s" ,event-cb)))))
+             (block ,blk
+               (handler-bind
+                   ((error #'(lambda (,err)
+                               ;; check whether the error was already sent to eventcb
+                               (unless (or (member ,err *evcb-err*)
+                                           (passthrough-error-p ,err))
+                                 ;; if that's a new error, handle it by invoking event-cb
+                                 (when (typep ,err 'event-info)
+                                   (funcall ,evcb ,err))
+                                 (when (event-base-catch-app-errors *event-base*)
+                                   (let* ((caught-errors (event-base-caught-errors *event-base*))
+                                          (caught-errors (cond ((and (symbolp caught-errors)
+                                                                     (fboundp caught-errors))
+                                                                (symbol-function caught-errors))
+                                                               ((functionp caught-errors)
+                                                                caught-errors))))
+                                     (when caught-errors
+                                       (funcall caught-errors ,err))
+                                     (return-from ,blk)))))))
+                 (,thunk-fn)))))))))
 
 (defun run-event-cb (event-cb &rest args)
   "When used in the dynamic context of catch-app-errors, wraps the
