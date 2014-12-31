@@ -43,7 +43,7 @@
         ;; this shouldn't actually occur as no libuv backends return
         ;; non-zero result for uv_fs_event_init()
         (uv:free-handle handle)
-        (event-handler res event-cb :catch-errors t)
+        (event-handler res event-cb :throw t)
         (return-from fs-watch))
       (when (zerop res)
         (attach-data-to-pointer handle fs-monitor)
@@ -58,7 +58,7 @@
               (t
                (as:with-delay ()
                  (fs-monitor-close handle))
-               (event-handler res event-cb :catch-errors t)
+               (event-handler res event-cb :throw t)
                nil))))))
 
 ;; FIXME: is this really needed?

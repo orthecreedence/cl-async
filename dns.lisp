@@ -46,5 +46,5 @@
                                      :event-cb event-cb))
       (let ((res (uv:uv-getaddrinfo loop-c lookup-c (cffi:callback dns-cb) host (cffi:null-pointer) hints)))
         (if (< res 0)
-            (event-handler res event-cb :catch-errors t)
+            (event-handler res event-cb :throw t)
             t)))))

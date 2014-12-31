@@ -58,7 +58,7 @@
                                             :single-shot single-shot)))
     (let ((r (uv:uv-async-init (event-base-c *event-base*) async-c (cffi:callback async-cb))))
       (if (< r 0)
-          (event-handler r event-cb :catch-errors t)
+          (event-handler r event-cb :throw t)
           (progn
             (save-callbacks async-c (list :main-cb callback
                                           :event-cb event-cb))

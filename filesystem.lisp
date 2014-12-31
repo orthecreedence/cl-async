@@ -51,4 +51,4 @@
             (t
              (uv:uv-fs-req-cleanup req)
              (uv:free-req req)
-             (event-handler res event-cb :catch-errors t))))))
+             (event-handler res event-cb :throw t))))))

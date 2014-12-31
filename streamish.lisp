@@ -12,7 +12,7 @@
 (defmethod errno-event ((streamish t) (errno (eql (uv:errval :efault))))
   (make-instance 'event-error :code errno :msg "bad address in system call argument"))
 
-(defun event-handler (error event-cb &key streamish catch-errors)
+(defun event-handler (error event-cb &key streamish throw)
   "Called when an event (error, mainly) occurs."
   ;; here we check if errno is actually an event/error object passed in
   ;; directly. if so, we kindly forward it along to the event-cb.
@@ -27,14 +27,11 @@
                     ;; make sure we don't trigger an error trying to close it again.
                     (when (and streamish (not (streamish-closed-p streamish)))
                       (close-streamish streamish :force t)))))
-      (if catch-errors
-          (catch-app-errors event-cb
-            (closing-streamish-afterwards
-             (when event-cb
-               (run-event-cb event-cb event))))
+      (if throw
+          (error event)
           (closing-streamish-afterwards
-           (when event-cb
-             (funcall event-cb event)))))))
+            (when event-cb
+              (funcall event-cb event)))))))
 
 ;; TBD: seems like streamish-info/socket-info/tcp-info/event-info isn't actually used?
 (define-condition streamish-info (event-info)

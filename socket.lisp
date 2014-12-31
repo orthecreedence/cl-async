@@ -284,7 +284,7 @@
     (when (or (< r-bind 0)
               (< r-listen 0))
       (close-socket-server server-instance)
-      (event-handler (or r-listen r-bind) event-cb :catch-errors t)
+      (event-handler (or r-listen r-bind) event-cb :throw t)
       (return-from socket-server))
     ;; make sure the server is closed/freed on exit
     (add-event-loop-exit-callback (lambda ()

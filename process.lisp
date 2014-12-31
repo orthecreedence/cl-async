@@ -167,7 +167,7 @@
                      ;; at libuv tests)
                      (as:with-delay ()
                        (process-close handle))
-                     (event-handler res event-cb :catch-errors t))))))))))
+                     (event-handler res event-cb :throw t))))))))))
 
 (defmethod handle-cleanup ((handle-type (eql :process)) handle)
   (let ((process (deref-data-from-pointer handle)))
@@ -184,5 +184,5 @@
     (let ((res (uv:uv-process-kill handle signal)))
       (cond ((zerop res) t)
             (t
-             (event-handler res event-cb :catch-errors t)
+             (event-handler res event-cb :throw t)
              nil)))))
