@@ -14,6 +14,7 @@
   :description "Internal utilities for cl-async."
   :depends-on (#:cffi
                #:fast-io
+               #:vom
                #:cl-libuv
                #:cl-ppcre
                #:cl-async-base)

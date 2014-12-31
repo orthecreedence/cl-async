@@ -226,7 +226,7 @@
                       ;; track the error so we don't re-fire (*evcb-err* is bound in
                       ;; catch-app-errors)
                       (pushnew err *evcb-err*))))
-          ;; run the event handler
+        ;; run the event handler
         (apply event-cb args))
       (apply event-cb args)))
 
