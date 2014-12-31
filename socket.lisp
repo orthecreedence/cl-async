@@ -20,6 +20,9 @@
 (define-condition socket-refused (socket-error) ()
   (:documentation "Passed to an event callback when a socket connection is refused."))
 
+(define-condition socket-aborted (socket-error) ()
+  (:documentation "Passed to an event callback when a socket connection is aborted."))
+
 ;; TBD: socket-accept-error is not actually used currently
 (define-condition socket-accept-error (socket-error)
   ((listener :accessor socket-accept-error-listener :initarg :listener :initform (cffi:null-pointer))
@@ -53,6 +56,9 @@
 
 (defmethod errno-event ((socket socket) (errno (eql (uv:errval :econnrefused))))
   (make-instance 'socket-refused :socket socket :code errno :msg "connection refused"))
+
+(defmethod errno-event ((socket socket) (errno (eql (uv:errval :econnaborted))))
+  (make-instance 'socket-aborted :socket socket :code errno :msg "connection aborted"))
 
 (defclass socket-server ()
   ((c :accessor socket-server-c :initarg :c :initform (cffi:null-pointer))

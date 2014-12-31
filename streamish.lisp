@@ -22,7 +22,9 @@
                     error)))
     (macrolet ((closing-streamish-afterwards (&body body)
                  `(unwind-protect
-                       (progn ,@body)
+                      (if (subtypep (type-of event) 'streamish-error)
+                          (as:delay (lambda () ,@body))
+                          (progn ,@body))
                     ;; if the app closed the streamish in the event cb (perfectly fine),
                     ;; make sure we don't trigger an error trying to close it again.
                     (when (and streamish (not (streamish-closed-p streamish)))

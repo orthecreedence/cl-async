@@ -116,6 +116,7 @@
            #:socket-reset
            #:socket-timeout
            #:socket-refused
+           #:socket-aborted
            #:socket-accept-error
            #:socket-accept-error-listener
            #:socket-accept-error-tcp-server
