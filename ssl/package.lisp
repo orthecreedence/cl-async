@@ -1,6 +1,7 @@
 (defpackage :cl-async-ssl
   (:use :cl :cl-async-base :cl-async :cl-async-util)
   (:nicknames :as-ssl)
+  (:shadow cl-async-util:exit-event-loop)
   (:export #:+ssl-op-all+
            #:+ssl-op-no-query-mtu+
            #:+ssl-op-cookie-exchange+

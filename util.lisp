@@ -28,6 +28,9 @@
            #:+sockaddr6-size+
            #:+addrinfo-size+
 
+           #:abort-callback
+           #:exit-event-loop
+           #:continue-event-loop
            #:call-with-callback-restarts
            #:catch-app-errors
            #:run-event-cb
@@ -137,7 +140,7 @@
 (defconstant +sockaddr6-size+ (cffi:foreign-type-size '(:struct uv:sockaddr-in-6)))
 (defconstant +addrinfo-size+ (cffi:foreign-type-size '(:struct uv:addrinfo)))
 
-(defun call-with-callback-restarts (thunk &optional (abort-restart-description "Abort cl-async callback."))
+(defun call-with-callback-restarts (thunk &optional continue-fn (abort-restart-description "Abort cl-async callback."))
   "Call thunk with restarts that make it possible to ignore the callback
   in case of an error or safely terminate the event loop.
 
@@ -160,6 +163,11 @@
                    (funcall thunk)
                 (setf (symbol-value quit-restart-sym) old-quit-restart)))
             (funcall thunk)))
+    (continue-event-loop ()
+      :report "Continue the event loop, passing the error to :caught-errors"
+      (format *debug-io* "~&;; event loop continued~%")
+      (funcall continue-fn)
+      (values))
     (abort-callback ()
       :report (lambda (stream) (write-string abort-restart-description stream))
       (format *debug-io* "~&;; callback aborted~%")
@@ -180,10 +188,22 @@
    If event-cbs are called via run-event-cb, make sure the event-cb
    is NOT double-called with the same condition twice."
   (alexandria:once-only (event-cb)
-    (alexandria:with-gensyms (evcb err thunk-fn blk)
-      `(let ((*evcb-err* '()))
-         (flet ((,thunk-fn ()
-                  (call-with-callback-restarts #'(lambda () ,@body))))
+    (alexandria:with-gensyms (evcb err last-err thunk-fn caught-fn blk)
+      `(let ((*evcb-err* '())
+             (,last-err nil))
+         (labels ((,caught-fn (error)
+                    (let* ((caught-errors (event-base-caught-errors *event-base*))
+                           (caught-errors (cond ((and (symbolp caught-errors)
+                                                      (fboundp caught-errors))
+                                                 (symbol-function caught-errors))
+                                                ((functionp caught-errors)
+                                                 caught-errors))))
+                      (when (and caught-errors error)
+                        (funcall caught-errors error))))
+                  (,thunk-fn ()
+                    (call-with-callback-restarts
+                      #'(lambda () ,@body)
+                      #'(lambda () (,caught-fn ,last-err)))))
            (let ((,evcb (cond ((not (symbolp ,event-cb))
                                ,event-cb)
                               ((fboundp ,event-cb)
@@ -195,22 +215,13 @@
              (block ,blk
                (handler-bind
                    ((error #'(lambda (,err)
+                               (setf ,last-err ,err)
                                ;; check whether the error was already sent to eventcb
                                (unless (or (member ,err *evcb-err*)
                                            (passthrough-error-p ,err))
-                                 ;; if that's a new error, handle it by invoking event-cb
-                                 (when (typep ,err 'event-info)
-                                   (funcall ,evcb ,err))
                                  (when (event-base-catch-app-errors *event-base*)
-                                   (let* ((caught-errors (event-base-caught-errors *event-base*))
-                                          (caught-errors (cond ((and (symbolp caught-errors)
-                                                                     (fboundp caught-errors))
-                                                                (symbol-function caught-errors))
-                                                               ((functionp caught-errors)
-                                                                caught-errors))))
-                                     (when caught-errors
-                                       (funcall caught-errors ,err))
-                                     (return-from ,blk)))))))
+                                   (,caught-fn ,err)
+                                   (return-from ,blk))))))
                  (,thunk-fn)))))))))
 
 (defun run-event-cb (event-cb &rest args)

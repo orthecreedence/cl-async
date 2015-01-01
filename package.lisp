@@ -1,6 +1,7 @@
 (defpackage :cl-async
   (:use :cl :cl-async-base :cl-async-util :trivial-gray-streams)
   (:nicknames :as)
+  (:shadow cl-async-util:exit-event-loop)
   (:export #:octet
            #:octet-vector
 
