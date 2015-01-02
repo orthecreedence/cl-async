@@ -46,6 +46,7 @@
                 #:write-pending-socket-data
                 #:init-incoming-socket
                 #:stream-append-bytes))
+(in-package :cl-async-ssl)
 
 ;; NOTE: the loading code is verbatim from cl+ssl
 
@@ -75,8 +76,4 @@
   (cffi:define-foreign-library libeay32
     (:windows "libeay32.dll"))
 
-  (cffi:use-foreign-library libeay32)
-
-  (cffi:foreign-funcall "SSL_library_init" :void)
-  (cffi:foreign-funcall "SSL_load_error_strings" :void)
-  (cffi:foreign-funcall "ERR_load_BIO_strings" :void))
+  (cffi:use-foreign-library libeay32))

@@ -23,6 +23,18 @@
   ((as-ssl :accessor tcp-server-as-ssl :initarg :as-ssl :initform nil))
   (:documentation "Wraps around an SSL server/listener"))
 
+(eval-when (:compile-toplevel :load-toplevel)
+  (defvar *ssl-init* nil
+    "Holds whether or not we've been init.")
+
+  (defun ensure-init (&key from-load)
+    (unless *ssl-init*
+      (cffi:foreign-funcall ("SSL_library_init") :void)
+      (cffi:foreign-funcall ("SSL_load_error_strings") :void)
+      (cffi:foreign-funcall ("ERR_load_BIO_strings") :void)
+      (unless from-load
+        (setf *ssl-init* t)))))
+
 (defun close-ssl (as-ssl)
   "Close up a cl-async SSL object."
   (when (as-ssl-freed as-ssl)
@@ -217,6 +229,7 @@
 
 (defun create-ssl-ctx (&key (method :sslv23) options)
   "Simplifies some common CTX setup stuff."
+  (ensure-init)
   (let ((ctx (ssl-ctx-new (case method
                             (:sslv23-client (ssl-sslv23-client-method))
                             (:sslv23-server (ssl-sslv23-server-method))
@@ -379,3 +392,6 @@
     (let ((as-ssl (make-instance 'as-ssl :ctx (unless ssl-ctx ctx))))
       (setf (tcp-server-as-ssl server) as-ssl))
     server))
+
+(eval-when (:compile-toplevel :load-toplevel)
+  (ensure-init :from-load t))
