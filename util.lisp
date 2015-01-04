@@ -419,7 +419,7 @@
       ;; defined in util.lisp
       (let ((ai-addr (cffi:foreign-slot-value addrinfo (list :struct type) 'uv::ai-addr)))
         (if (cffi:null-pointer-p ai-addr)
-            (setf err "the addrinfo->ai_addr object was null (stinks of a memory alignment issue)")
+            (error "the addrinfo->ai_addr object was null (stinks of a memory alignment issue)")
             (cond ((eq family +af-inet+)
                    (let ((sin-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in) 'uv::sin-addr)))
                      (uv:uv-inet-ntop family sin-addr buf 128)))

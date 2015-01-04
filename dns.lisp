@@ -16,7 +16,7 @@
             (if (and addr (not err))
                 ;; got an address, call resolve-cb
                 (funcall resolve-cb addr family)
-                ;; hmm, didn't get an address. either cam back as ipv6 or
+                ;; hmm, didn't get an address. either came back as ipv6 or
                 ;; there was some horrible, horrible error.
                 (run-event-cb event-cb
                               (make-instance 'dns-error
