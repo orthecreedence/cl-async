@@ -128,11 +128,9 @@
         (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback streamish-write-cb))))
           (uv:free-uv-buf buf)
           (unless (zerop res)
-            (let ((streamish (getf (deref-data-from-pointer uvstream) :streamish))
-                  (event-cb (getf (get-callbacks uvstream) :event-cb)))
+            (let ((streamish (getf (deref-data-from-pointer uvstream) :streamish)))
               (uv:free-req req)
-              (event-handler res event-cb :streamish streamish)
-              (return-from write-to-uvstream)))
+              (error (make-instance (errno-event streamish res)))))
           (attach-data-to-pointer req uvstream))))
     :start start
     :end end))
