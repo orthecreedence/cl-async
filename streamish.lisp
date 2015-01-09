@@ -130,7 +130,7 @@
           (unless (zerop res)
             (let ((streamish (getf (deref-data-from-pointer uvstream) :streamish)))
               (uv:free-req req)
-              (error (make-instance (errno-event streamish res)))))
+              (error (errno-event streamish res))))
           (attach-data-to-pointer req uvstream))))
     :start start
     :end end))
