@@ -39,7 +39,7 @@
         (free-pointer-data req :preserve-pointer t)
         (uv:free-req req)))))
 
-(defun mkdtemp (template cb &optional (event-cb #'error))
+(defun mkdtemp (template cb &key (event-cb #'error))
   (check-event-loop-running)
   (cffi:with-foreign-string (tpl (namestring template))
     (let* ((req (uv:alloc-req :fs))

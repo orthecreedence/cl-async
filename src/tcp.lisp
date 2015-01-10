@@ -71,22 +71,22 @@
             :family +af-inet+))))
   socket/stream)
 
-(defun tcp-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun tcp-connect (host port read-cb &key data stream event-cb connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
   (check-type data (or null (simple-array octet (*)) string))
-  (let ((socket/stream (apply #'init-client-socket
-                              'tcp-socket
-                              (append (list :read-cb read-cb
-                                            :event-cb event-cb
-                                            :data data
-                                            :stream stream
-                                            :connect-cb connect-cb
-                                            :write-cb write-cb
-                                            :read-timeout read-timeout
-                                            :write-timeout write-timeout)
-                                      (when dont-drain-read-buffer-supplied-p
-                                        (list :dont-drain-read-buffer dont-drain-read-buffer))))))
+  (let* ((socket/stream (apply #'init-client-socket
+                               'tcp-socket
+                               (append (list :read-cb read-cb
+                                             :event-cb event-cb
+                                             :data data
+                                             :stream stream
+                                             :connect-cb connect-cb
+                                             :write-cb write-cb
+                                             :read-timeout read-timeout
+                                             :write-timeout write-timeout)
+                                       (when dont-drain-read-buffer-supplied-p
+                                         (list :dont-drain-read-buffer dont-drain-read-buffer))))))
     (connect-tcp-socket socket/stream host port :event-cb event-cb)
     socket/stream))
 
@@ -97,11 +97,12 @@
         (with-ip-to-sockaddr ((sockaddr) bind-address port)
           (uv:uv-tcp-bind (socket-server-c server) sockaddr 0)))))
 
-(defun tcp-server (bind-address port read-cb event-cb &key connect-cb backlog stream fd)
+(defun tcp-server (bind-address port read-cb &key event-cb connect-cb backlog stream fd)
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (socket-server 'tcp-server
-                 (list bind-address port) read-cb event-cb
+                 (list bind-address port) read-cb nil
+                 :event-cb event-cb
                  :connect-cb connect-cb
                  :backlog backlog
                  :stream stream

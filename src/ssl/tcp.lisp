@@ -296,7 +296,7 @@
                                                     :bio-write bio-write))
         socket/stream))))
 
-(defun tcp-ssl-connect (host port read-cb event-cb &key data stream connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) ssl-ctx ssl-options ciphers)
+(defun tcp-ssl-connect (host port read-cb &key data stream event-cb connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) ssl-ctx ssl-options ciphers)
   "Create and return an SSL-activated socket."
   (check-event-loop-running)
   (let* ((socket/stream (apply #'as:tcp-connect
@@ -338,8 +338,8 @@
       (write-socket-data socket data))
     socket/stream))
 
-(defun tcp-ssl-server (bind-address port read-cb event-cb
-                       &key connect-cb (backlog -1) stream fd
+(defun tcp-ssl-server (bind-address port read-cb
+                       &key event-cb connect-cb (backlog -1) stream fd
                             ssl-ctx
                             certificate key (keytype :pem) ssl-options ciphers)
   "Wraps a tcp server in SSL."

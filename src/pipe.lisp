@@ -33,8 +33,8 @@
       (uv:uv-pipe-connect req uvstream name (cffi:callback socket-connect-cb))
       socket/stream)))
 
-(defun pipe-connect (name read-cb event-cb
-                     &key data stream connect-cb write-cb
+(defun pipe-connect (name read-cb
+                     &key data stream event-cb connect-cb write-cb
                        (read-timeout -1)
                        (write-timeout -1)
                        (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
@@ -55,11 +55,12 @@
                                         (list :dont-drain-read-buffer dont-drain-read-buffer))))))
     (%pipe-connect socket/stream (namestring name))))
 
-(defun pipe-server (name read-cb event-cb &key connect-cb backlog stream fd)
+(defun pipe-server (name read-cb &key event-cb connect-cb backlog stream fd)
   "Start a pipe listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (socket-server 'pipe-server
-                 (namestring name) read-cb event-cb
+                 (namestring name) read-cb nil
+                 :event-cb event-cb
                  :connect-cb connect-cb
                  :backlog backlog
                  :stream stream

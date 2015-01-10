@@ -273,7 +273,7 @@
   libuv errno. Specify FD to bind the server to an existing
   file descriptor."))
 
-(defun socket-server (server-class address read-cb event-cb &key connect-cb backlog stream fd)
+(defun socket-server (server-class address read-cb &key event-cb connect-cb backlog stream fd)
   "Start a socket listener on the current event loop. Returns a socket-server instance
    which can be closed with close-socket-server"
   (check-event-loop-running)
