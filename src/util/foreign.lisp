@@ -41,7 +41,7 @@
 
 (defun error-str (uv-errno)
   "Given a libuv error number, return the error string."
-  (if (find uv-errno '(102400 537661987))
+  (if (find uv-errno '(102400 537661987 537133603))
       "(unknown error)"
       (uv:uv-err-name uv-errno)))
 
