@@ -26,8 +26,7 @@
       (error (e) (setf err e)))
     (is (subtypep (type-of err) 'error)))
   (let ((err nil))
-    (as:with-event-loop (:catch-app-errors t
-                         :caught-errors (lambda (e) (setf err e)))
+    (as:with-event-loop (:catch-app-errors (lambda (e) (setf err e)))
       (error "oh noo"))
     (is (subtypep (type-of err) 'error))))
 

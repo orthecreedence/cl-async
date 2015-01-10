@@ -18,8 +18,6 @@
            #:event-base-dns-base
            #:event-base-dns-ref-count
            #:event-base-catch-app-errors
-           #:event-base-caught-errors
-           #:event-base-default-event-handler
            #:event-base-lock
            #:event-base-num-connections-in
            #:event-base-num-connections-out
@@ -72,21 +70,7 @@
      :documentation "Tracks how many open requests are pending on the dns base.")
    ;; error handling
    (catch-app-errors :accessor event-base-catch-app-errors :initarg :catch-app-errors :initform nil
-     :documentation "If true, attemps to trap all errors produced in the event loop and process them internally")
-   (caught-errors :accessor event-base-caught-errors :initarg :caught-errors :initform nil
-     :documentation "If set to a function, will be called with top-level caught errors.")
-   (default-event-handler :accessor event-base-default-event-handler
-                          :initarg :default-event-handler
-                          :initform (lambda (err)
-                                      (block exit
-                                        (handler-bind
-                                            (((and event-info
-                                                   (not event-error))
-                                              (lambda (e)
-                                                (declare (ignore e))
-                                                (return-from exit))))
-                                          (error err))))
-     :documentation "Used as the default event handler if one is not specified.")
+     :documentation "If t (or a function) will trap all errors produced in the event loop and process them internally")
    (lock :accessor event-base-lock :initarg :lock :initform (bt:make-lock)
      :documentation "Holds *the* lock for this event base.")
    ;; stats

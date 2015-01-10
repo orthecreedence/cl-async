@@ -34,7 +34,8 @@
   "Wrap ACTION (a function) by establishing ABORT-CALLBACK and EXIT-EVENT-LOOP restarts."
   #'(lambda ()
       (cl-async-util:call-with-callback-restarts
-       action "Abort the current action.")))
+        action 
+        :abort-restart-description "Abort the current action.")))
 
 (defun schedule-action (action)
   "Asynchronously schedule the action to be executed in the

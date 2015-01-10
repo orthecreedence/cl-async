@@ -16,7 +16,7 @@
   "Wrap an async op inside of a let/start-event-loop block to mimick a blocking
    action. Bindings must be set from withing the block via setf."
   `(let ,bindings
-     (as:with-event-loop (:catch-app-errors t)
+     (as:with-event-loop (:catch-app-errors nil)
        ,@body)
      (values ,@(loop for (binding . nil) in bindings collect binding))))
 
@@ -91,7 +91,7 @@
   ;; for tests
   (push function *later-list*))
 
-(defmacro with-test-event-loop ((&key (catch-app-errors t)) &body body)
+(defmacro with-test-event-loop ((&key (catch-app-errors nil)) &body body)
   "Run BODY within event loop, executing functions specified via LATER
    after it terminates. Can be used with CALLED-ONCE and NEVER."
   (alexandria:with-gensyms (fn)
@@ -178,15 +178,6 @@
   (is (not (ipv6-address-p "ge80::")))
   (is (not (ipv6-address-p "fe80:0000:0000:0000:02046:61ff:fe9d:f156")))
   (is (not (ipv6-address-p "f:80:0000:0000:0000:0204:61ff:fe9d:f156"))))
-
-(test append-array
-  "Test appending of arrays"
-  (let ((arr1 "well i hope you leave enough room for my fist, because i'm going to RAM IT INTO YOUR STOMACH!!! ")
-        (arr2 "i will, bye."))
-    (let ((str (babel:octets-to-string
-                 (append-array (babel:string-to-octets arr1)
-                               (babel:string-to-octets arr2)))))
-      (is (string= str "well i hope you leave enough room for my fist, because i'm going to RAM IT INTO YOUR STOMACH!!! i will, bye.")))))
 
 (test pointer-callbacks
   "Test that pointer callbacks are assigned and also cleared correctly"
