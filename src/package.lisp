@@ -5,6 +5,8 @@
   (:export #:octet
            #:octet-vector
 
+           #:handle-error
+           
            #:bytes
 
            #:+af-inet+
