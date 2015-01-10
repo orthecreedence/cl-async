@@ -27,6 +27,7 @@
            #:handle-error
            #:abort-callback
            #:exit-event-loop
+           #:send-to-eventcb
            #:continue-event-loop
            #:call-with-callback-restarts
            #:catch-app-errors
