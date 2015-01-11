@@ -5,4 +5,4 @@
   :description "REPL integration for CL-ASYNC."
   :depends-on (#:cl-async #:bordeaux-threads)
   :components
-  ((:file "repl")))
+  ((:file "src/repl")))
