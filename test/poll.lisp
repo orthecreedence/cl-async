@@ -28,7 +28,7 @@
                          (lambda (sock data)
                            (as:write-socket-data sock (concat (babel:octets-to-string data) " lol"))
                            (as:close-tcp-server server))
-                         (lambda (ev) (declare (ignore ev)))))
+                         :event-cb (lambda (ev) (declare (ignore ev)))))
           (as:delay
             (lambda ()
               (let* ((sock (usocket:socket-connect "127.0.0.1" 31311 :element-type 'octet))
@@ -49,4 +49,3 @@
                 (force-output stream)))
             :time .1)))
     (is (string= response "omg lol"))))
-

@@ -18,7 +18,6 @@
             (incf server-reqs)
             (setf server-data (concat server-data (babel:octets-to-string data)))
             (as:write-socket-data sock "thxlol "))
-          nil
           :connect-cb (lambda (sock)
                         (declare (ignore sock))
                         (incf connect-num)))
@@ -31,8 +30,8 @@
                           (unless (as:socket-closed-p sock)
                             (as:close-socket sock))
                           (setf client-data (concat client-data (babel:octets-to-string data))))
-                        (lambda (ev)
-                          (error ev))
+                        :event-cb (lambda (ev)
+                                    (error ev))
                         :data "ha")))
             (as:write-socket-data sock "i ")))
 
@@ -55,9 +54,9 @@
         (test-timeout 2)
         (as:tcp-connect "1.24.3.4" 9090
           (lambda (sock data) (declare (ignore sock data)))
-          (lambda (ev)
-            (incf num-err)
-            (error ev))
+          :event-cb (lambda (ev)
+                      (incf num-err)
+                      (error ev))
           :data "hai"
           :read-timeout 1))
       (as:tcp-timeout ()
@@ -74,11 +73,11 @@
         (test-timeout 3)
         (let* ((server (as:tcp-server nil 41818
                          (lambda (sock data) (declare (ignore sock data)))
-                         (lambda (ev) (declare (ignore ev))))))
+                         :event-cb (lambda (ev) (declare (ignore ev))))))
           (assert server () "failed to listen at port 41818")
           (as:tcp-connect "127.0.0.1" 41818
             (lambda (sock data) (declare (ignore sock data)))
-            (lambda (ev) (declare (ignore ev)))
+            :event-cb (lambda (ev) (declare (ignore ev)))
             :connect-cb
               (lambda (sock)
                 (as:delay
@@ -106,11 +105,11 @@
                 (setf server-data (concat server-data (babel:octets-to-string (subseq buff 0 n))))))
             (as:close-socket sock)
             (as:exit-event-loop))
-          (lambda (ev) (declare (ignore ev)))
+          :event-cb (lambda (ev) (declare (ignore ev)))
           :stream t)
         (as:tcp-connect "127.0.0.1" 41818
           (lambda (sock data) (declare (ignore sock data)))
-          (lambda (ev) (declare (ignore ev)))
+          :event-cb (lambda (ev) (declare (ignore ev)))
           :data "HELLO!"))
     (is (string= server-data "HELLO!"))))
 
@@ -130,7 +129,6 @@
                 (let ((res (make-array 500000 :initial-element (getf (as:socket-data sock) :id)
                                               :element-type 'as:octet)))
                   (as:write-socket-data sock res))))
-            nil
             :connect-cb (lambda (sock)
                           (setf (as:socket-data sock) (list :id counter :bytes 0))
                           (incf counter))))
@@ -140,7 +138,6 @@
               (lambda (sock data)
                 (declare (ignorable sock))
                 (push data (gethash x res)))
-              nil
               :data (make-array (+ as:*buffer-size* 20000)
                                 :initial-element x
                                 :element-type '(unsigned-byte 8))))))

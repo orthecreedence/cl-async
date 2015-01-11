@@ -28,7 +28,7 @@
   (let ((err nil))
     (as:with-event-loop (:catch-app-errors (lambda (e) (setf err e)))
       (error "oh noo"))
-    (is (subtypep (type-of err) 'error))))
+    (is-true (subtypep (type-of err) 'error))))
 
 (test data-and-fn-pointers
   "Test for the correct number of data/function pointers for a set of operations"
@@ -53,4 +53,3 @@
             (setf yes-ran :omglolwtf)))
         (as:delay (lambda () nil) :time .2))
     (is (eq yes-ran :omglolwtf))))
-
