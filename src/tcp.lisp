@@ -94,7 +94,8 @@
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
   (let ((event-cb-dep (car args)))
-    (unless (keywordp event-cb-dep)
+    (unless (or (keywordp event-cb-dep)
+                (null event-cb-dep))
       (push :event-cb args)
       (warn "Passing event-cb as the fourth argument to tcp-connect is now deprecated. Please use the :event-cb keyword instead."))
     (apply 'tcp-connect-new
@@ -123,11 +124,12 @@
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
   (let ((event-cb-dep (car args)))
-    (unless (keywordp event-cb-dep)
+    (unless (or (keywordp event-cb-dep)
+                (null event-cb-dep))
       (push :event-cb args)
       (warn "Passing event-cb as the fourth argument to tcp-server is now deprecated. Please use the :event-cb keyword instead."))
     (apply 'tcp-server-new
-           bind-address port read-cb 
+           bind-address port read-cb
            args)))
 
 ;; compatiblity funcs
