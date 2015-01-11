@@ -108,16 +108,27 @@
         (with-ip-to-sockaddr ((sockaddr) bind-address port)
           (uv:uv-tcp-bind (socket-server-c server) sockaddr 0)))))
 
-(defun tcp-server (bind-address port read-cb &key event-cb connect-cb backlog stream fd)
+(defun tcp-server-new (bind-address port read-cb &key event-cb connect-cb backlog stream fd)
   "Start a TCP listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (socket-server 'tcp-server
-                 (list bind-address port) read-cb nil
+                 (list bind-address port) read-cb
                  :event-cb event-cb
                  :connect-cb connect-cb
                  :backlog backlog
                  :stream stream
                  :fd fd))
+
+(defun tcp-server (bind-address port read-cb &rest args)
+  "Open a TCP connection asynchronously. Optionally send data out once connected
+   via the :data keyword (can be a string or byte array)."
+  (let ((event-cb-dep (car args)))
+    (unless (keywordp event-cb-dep)
+      (push :event-cb args)
+      (warn "Passing event-cb as the fourth argument to tcp-server is now deprecated. Please use the :event-cb keyword instead."))
+    (apply 'tcp-server-new
+           bind-address port read-cb 
+           args)))
 
 ;; compatiblity funcs
 (defun close-tcp-server (server)
