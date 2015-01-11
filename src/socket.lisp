@@ -63,7 +63,8 @@
 (defmethod errno-event ((socket socket) (errno (eql (uv:errval :econnaborted))))
   (make-instance 'socket-aborted :socket socket :code errno :msg "connection aborted"))
 
-(defmethod errno-event ((socket socket) (errno (eql (uv:errval :eaddrinuse))))
+;; applicable both to sockets and socket-servers
+(defmethod errno-event ((socket t) (errno (eql (uv:errval :eaddrinuse))))
   (make-instance 'socket-address-in-use :socket socket :code errno
                                         :msg "address already in use"))
 
@@ -296,8 +297,9 @@
     ;; check that our listener instantiated properly
     (when (or (< r-bind 0)
               (< r-listen 0))
-      (close-socket-server server-instance)
-      (event-handler (or r-listen r-bind) event-cb :throw t)
+      (unwind-protect
+           (event-handler (or r-listen r-bind) event-cb :throw t :streamish server-instance)
+        (close-socket-server server-instance))
       (return-from socket-server))
     ;; make sure the server is closed/freed on exit
     (add-event-loop-exit-callback (lambda ()
