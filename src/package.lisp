@@ -7,7 +7,7 @@
 
            #:*send-errors-to-eventcb*
            #:handle-error
-           
+
            #:bytes
 
            #:+af-inet+
@@ -121,6 +121,7 @@
            #:socket-timeout
            #:socket-refused
            #:socket-aborted
+           #:socket-address-in-use
            #:socket-accept-error
            #:socket-accept-error-listener
            #:socket-accept-error-tcp-server
