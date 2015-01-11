@@ -1,6 +1,6 @@
 (in-package :cl-async-util)
 
-(defvar *send-errors-to-eventcb* nil
+(defvar *send-errors-to-eventcb* t
   "If t, will pass caught errors to the given event-cb instead of the
    user-supplied global error handler when catching errors.")
 
