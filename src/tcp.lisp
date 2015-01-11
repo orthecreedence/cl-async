@@ -71,7 +71,7 @@
             :family +af-inet+))))
   socket/stream)
 
-(defun tcp-connect (host port read-cb &key data stream event-cb connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
+(defun tcp-connect-new (host port read-cb &key data stream event-cb connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p))
   "Open a TCP connection asynchronously. Optionally send data out once connected
    via the :data keyword (can be a string or byte array)."
   (check-type data (or null (simple-array octet (*)) string))
@@ -89,6 +89,17 @@
                                          (list :dont-drain-read-buffer dont-drain-read-buffer))))))
     (connect-tcp-socket socket/stream host port :event-cb event-cb)
     socket/stream))
+
+(defun tcp-connect (host port read-cb &rest args)
+  "Open a TCP connection asynchronously. Optionally send data out once connected
+   via the :data keyword (can be a string or byte array)."
+  (let ((event-cb-dep (car args)))
+    (unless (keywordp event-cb-dep)
+      (push :event-cb args)
+      (warn "Passing event-cb as the fourth argument to tcp-connect is now deprecated. Please use the :event-cb keyword instead."))
+    (apply 'tcp-connect-new
+           host port read-cb
+           args)))
 
 (defmethod socket-server-bind ((server tcp-server) address fd)
   (destructuring-bind (bind-address port) address
