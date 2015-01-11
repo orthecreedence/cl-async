@@ -67,7 +67,7 @@
             (lambda (ip family)
               (declare (ignore family))
               (do-connect ip port))
-            event-cb
+            :event-cb event-cb
             :family +af-inet+))))
   socket/stream)
 
