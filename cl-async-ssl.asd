@@ -7,6 +7,6 @@
                #:cl-async
                #:vom)
   :components
-  ((:file "ssl/package")
-   (:file "ssl/util" :depends-on ("ssl/package"))
-   (:file "ssl/tcp" :depends-on ("ssl/package" "ssl/util"))))
+  ((:file "src/ssl/package")
+   (:file "src/ssl/util" :depends-on ("src/ssl/package"))
+   (:file "src/ssl/tcp" :depends-on ("src/ssl/package" "src/ssl/util"))))
