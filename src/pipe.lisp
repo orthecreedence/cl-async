@@ -59,7 +59,7 @@
   "Start a pipe listener on the current event loop. Returns a tcp-server class
    which can be closed with close-tcp-server"
   (socket-server 'pipe-server
-                 (namestring name) read-cb nil
+                 (namestring name) read-cb
                  :event-cb event-cb
                  :connect-cb connect-cb
                  :backlog backlog
