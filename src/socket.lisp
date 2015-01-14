@@ -177,12 +177,12 @@
          (event-cb (getf callbacks :event-cb))
          (connect-cb (getf callbacks :connect-cb)))
     (catch-app-errors event-cb
+      (free-pointer-data req :preserve-pointer t)
+      (uv:free-req req)
       (unless (zerop status)
         (unless (socket-closed-p socket)
           (run-event-cb 'event-handler status event-cb :streamish socket))
         (return-from socket-connect-cb))
-      (free-pointer-data req :preserve-pointer t)
-      (uv:free-req req)
       (setf (socket-connected socket) t)
       (when (and (not (socket-closed-p socket))
                  ;; start reading on the socket
