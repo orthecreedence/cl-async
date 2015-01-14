@@ -320,7 +320,7 @@
     (cond ((null data)
            ;; this may happen, for example, when tcp-connect
            ;; fails somewhere in the middle due to a bug
-           (warn "an uv handle without corresponding object detected")
+           (warn (format nil "an uv handle without corresponding object detected (~s)" (uv:handle-type handle)))
            (do-close-streamish handle :force t))
           ((typep socket/server 'socket-server)
            (unless (socket-server-closed socket/server)
