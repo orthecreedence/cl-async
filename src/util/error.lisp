@@ -15,7 +15,7 @@
 (defmethod handle-error ((error t))
   (vom:warn "handle-error: ~a" error))
 
-(defun call-with-callback-restarts (thunk &key eventcb-fn continue-fn (abort-restart-description "Abort cl-async callback."))
+(defun call-with-callback-restarts (thunk &key continue-fn (abort-restart-description "Abort cl-async callback."))
   "Call thunk with restarts that make it possible to ignore the callback
   in case of an error or safely terminate the event loop.
 
@@ -38,11 +38,6 @@
                    (funcall thunk)
                 (setf (symbol-value quit-restart-sym) old-quit-restart)))
             (funcall thunk)))
-    (send-to-eventcb ()
-      :report "Continue the event loop, passing the error to the nearest event-cb."
-      (format *debug-io* "~&;; event loop continued (event-cb)~%")
-      (funcall eventcb-fn)
-      (values))
     (continue-event-loop ()
       :report "Continue the event loop, passing the error to the default handler."
       (format *debug-io* "~&;; event loop continued (main handler)~%")
@@ -68,38 +63,21 @@
    If event-cbs are called via run-event-cb, make sure the event-cb
    is NOT double-called with the same condition twice."
   (alexandria:once-only (event-cb)
-    (alexandria:with-gensyms (evcb err last-err thunk-fn caught-eventcb caught-global blk)
+    (alexandria:with-gensyms (evcb err last-err thunk-fn continue-fn blk)
       `(let ((*evcb-err* '())
-             (,last-err nil)
-             (,evcb (cond ((not (symbolp ,event-cb))
-                           ,event-cb)
-                          ((fboundp ,event-cb)
-                           (symbol-function ,event-cb))
-                          ((null ,event-cb)
-                           'handle-error)
-                          (t
-                           (error "invalid event-cb: ~s" ,event-cb)))))
-         (labels ((,caught-global (error)
-                    (let* ((caught-errors (event-base-catch-app-errors *event-base*))
-                           (caught-errors (cond ((typep caught-errors 'boolean)
-                                                 nil)
-                                                ((and (symbolp caught-errors)
-                                                      (fboundp caught-errors))
-                                                 (symbol-function caught-errors))
-                                                ((functionp caught-errors)
-                                                 caught-errors)))
-                           (caught-errors (or caught-errors 'handle-error)))
-                      (when (and caught-errors error)
-                        (funcall caught-errors error))))
-                  (,caught-eventcb (error)
-                    (let ((event-cb (or ,evcb 'handle-error)))
-                      (when (and event-cb error)
-                        (funcall event-cb error))))
+             (,last-err nil))
+         (labels ((,continue-fn (error)
+                    (let* ((handler (when (event-base-send-errors-to-eventcb *event-base*)
+                                      ,event-cb))
+                           (handler (or handler
+                                        (event-base-catch-app-errors *event-base*)))
+                           (handler (or handler 'handle-error)))
+                      (when (and handler error)
+                        (funcall handler error))))
                   (,thunk-fn ()
                     (call-with-callback-restarts
                       (lambda () ,@body)
-                      :eventcb-fn (lambda () (,caught-eventcb ,last-err))
-                      :continue-fn (lambda () (,caught-global ,last-err)))))
+                      :continue-fn (lambda () (,continue-fn ,last-err)))))
            (block ,blk
              (handler-bind
                  ((error (lambda (,err)
@@ -108,9 +86,7 @@
                            (unless (or (member ,err *evcb-err*)
                                        (passthrough-error-p ,err))
                              (when (event-base-catch-app-errors *event-base*)
-                               (if (event-base-send-errors-to-eventcb *event-base*)
-                                   (,caught-eventcb ,err)
-                                   (,caught-global ,err))
+                               (,continue-fn ,err)
                                (return-from ,blk))))))
                (,thunk-fn))))))))
 
