@@ -296,7 +296,7 @@
                                                     :bio-write bio-write))
         socket/stream))))
 
-(defun tcp-ssl-connect (host port read-cb &key data stream event-cb connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) ssl-ctx ssl-options ciphers)
+(defun tcp-ssl-connect-new (host port read-cb &key data stream event-cb connect-cb write-cb (read-timeout -1) (write-timeout -1) (dont-drain-read-buffer nil dont-drain-read-buffer-supplied-p) ssl-ctx ssl-options ciphers)
   "Create and return an SSL-activated socket."
   (check-event-loop-running)
   (let* ((socket/stream (apply #'as:tcp-connect
@@ -338,10 +338,22 @@
       (write-socket-data socket data))
     socket/stream))
 
-(defun tcp-ssl-server (bind-address port read-cb
-                       &key event-cb connect-cb (backlog -1) stream fd
-                            ssl-ctx
-                            certificate key (keytype :pem) ssl-options ciphers)
+(defun tcp-ssl-connect (host port read-cb &rest args)
+  "Open a TCP connection asynchronously. Optionally send data out once connected
+   via the :data keyword (can be a string or byte array)."
+  (let ((event-cb-dep (car args)))
+    (unless (or (keywordp event-cb-dep)
+                (null event-cb-dep))
+      (push :event-cb args)
+      (warn "Passing event-cb as the fourth argument to tcp-ssl-connect is now deprecated. Please use the :event-cb keyword instead."))
+    (apply 'tcp-ssl-connect-new
+           host port read-cb
+           args)))
+
+(defun tcp-ssl-server-new (bind-address port read-cb
+                            &key event-cb connect-cb (backlog -1) stream fd
+                                 ssl-ctx
+                                 certificate key (keytype :pem) ssl-options ciphers)
   "Wraps a tcp server in SSL."
   (let* ((ctx (or ssl-ctx
                   (let ((ctx (create-ssl-ctx :method :sslv23-server :options ssl-options)))
@@ -392,6 +404,18 @@
     (let ((as-ssl (make-instance 'as-ssl :ctx (unless ssl-ctx ctx))))
       (setf (tcp-server-as-ssl server) as-ssl))
     server))
+
+(defun tcp-ssl-server (bind-address port read-cb &rest args)
+  "Open a TCP connection asynchronously. Optionally send data out once connected
+   via the :data keyword (can be a string or byte array)."
+  (let ((event-cb-dep (car args)))
+    (unless (or (keywordp event-cb-dep)
+                (null event-cb-dep))
+      (push :event-cb args)
+      (warn "Passing event-cb as the fourth argument to tcp-ssl-server is now deprecated. Please use the :event-cb keyword instead."))
+    (apply 'tcp-ssl-server-new
+           bind-address port read-cb
+           args)))
 
 (eval-when (:compile-toplevel :load-toplevel)
   (ensure-init :from-load t))
