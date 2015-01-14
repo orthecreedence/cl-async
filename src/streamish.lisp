@@ -93,6 +93,8 @@
 
 (defun do-close-streamish (uvstream &key force)
   "Close an UV stream."
+  (unless (zerop (uv:uv-is-closing uvstream))
+    (return-from do-close-streamish))
   (uv:uv-read-stop uvstream)
   (cond ((or force (zerop (uv:uv-is-writable uvstream)))
          (uv:uv-close uvstream (cffi:callback streamish-close-cb)))
