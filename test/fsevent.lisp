@@ -2,6 +2,11 @@
 
 (in-suite cl-async-test-core)
 
+(as:with-event-loop ()
+  (vom:config t :debug)
+  (with-temporary-directory (dir)
+    (format t "dir is: ~a~%" dir)))
+
 (test fs-monitor
   (with-test-event-loop ()
     (test-timeout 3)

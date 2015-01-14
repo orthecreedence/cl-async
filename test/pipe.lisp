@@ -17,7 +17,6 @@
              (incf server-reqs)
              (setf server-data (concat server-data (babel:octets-to-string data)))
              (as:write-socket-data sock "thxlol "))
-           nil
            :connect-cb (lambda (sock)
                          (declare (ignore sock))
                          (incf connect-num)))
@@ -31,8 +30,7 @@
                                   (unless (as:socket-closed-p sock)
                                     (as:close-socket sock))
                                   (setf client-data (concat client-data (babel:octets-to-string data))))
-                                (lambda (ev)
-                                  (error ev))
+                                :event-cb (lambda (ev) (error ev))
                                 :data "ha")))
                      (as:write-socket-data sock "i "))))
 
@@ -52,13 +50,13 @@
         (test-timeout 2)
         (with-path-under-tmpdir (path "nosuchpipe")
           (as:pipe-connect
-           path
-           (lambda (sock data) (declare (ignore sock data)))
-           (lambda (ev)
-             (incf num-err)
-             (error ev))
-           :data "hai"
-           :read-timeout 1))))
+            path
+            (lambda (sock data) (declare (ignore sock data)))
+            :event-cb (lambda (ev)
+                        (incf num-err)
+                        (error ev))
+            :data "hai"
+            :read-timeout 1))))
     (is (= num-err 1))))
 
 (test pipe-server-close
@@ -68,14 +66,14 @@
         (test-timeout 3)
         (with-path-under-tmpdir (path "blabla")
           (let* ((server (as:pipe-server
-                          path
-                          (lambda (sock data) (declare (ignore sock data)))
-                          (lambda (ev) (declare (ignore ev))))))
+                           path
+                           (lambda (sock data) (declare (ignore sock data)))
+                           :event-cb (lambda (ev) (declare (ignore ev))))))
             (assert server () "failed to listen at port 41818")
             (as:pipe-connect
              path
              (lambda (sock data) (declare (ignore sock data)))
-             (lambda (ev) (declare (ignore ev)))
+             :event-cb (lambda (ev) (declare (ignore ev)))
              :connect-cb
              (lambda (sock)
                (as:delay
@@ -105,11 +103,11 @@
                        (setf server-data (concat server-data (babel:octets-to-string (subseq buff 0 n))))))
              (as:close-socket sock)
              (as:exit-event-loop))
-           (lambda (ev) (declare (ignore ev)))
+           :event-cb (lambda (ev) (declare (ignore ev)))
            :stream t)
           (as:pipe-connect
            path
            (lambda (sock data) (declare (ignore sock data)))
-           (lambda (ev) (declare (ignore ev)))
+           :event-cb (lambda (ev) (declare (ignore ev)))
            :data "HELLO!")))
     (is (string= server-data "HELLO!"))))

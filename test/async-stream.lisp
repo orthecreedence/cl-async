@@ -17,8 +17,7 @@
                           (setf server-data (babel:octets-to-string data))
                           ;; for good measure, test writing to a new stream from server
                           (write-sequence (babel:string-to-octets "don't say that")
-                                          (make-instance 'as:async-io-stream :socket sock)))
-                        nil)))
+                                          (make-instance 'as:async-io-stream :socket sock))))))
           ;; launch a client, which will write its data to a stream
           (as:with-delay ()
             (let ((stream (as:tcp-connect "127.0.0.1" 31388
@@ -28,7 +27,6 @@
                                 (setf client-data (babel:octets-to-string (subseq *stream-buffer* 0 num-bytes)))
                                 (as:close-socket sock)
                                 (as:close-tcp-server server)))
-                            nil
                             :stream t)))
               (write-sequence (babel:string-to-octets "can i have your coat?") stream)))))
     (is (string= server-data "can i have your coat?"))
