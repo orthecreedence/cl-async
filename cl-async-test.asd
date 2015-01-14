@@ -5,6 +5,7 @@
   :description "TESTS FOR Asynchronous operations for Common Lisp."
   :depends-on (#:cffi
                #:cl-async
+               #:cl-async-ssl
                #:fiveam
                #:bordeaux-threads
                #:usocket
@@ -20,14 +21,12 @@
                  (:file "pipe")
                  (:file "async-stream")
                  (:file "threading")
-                 ;(:file "tcp-ssl")
+                 (:file "tcp-ssl")
                  (:file "signal")
                  (:file "idle")
                  (:file "poll")
                  (:file "benchmarks")
                  (:file "run")
                  (:file "filesystem")
-                 ;; process tests are currently rather unix-dependent
-                 #-(or win32 windows)
                  (:file "process")
                  (:file "fsevent")))))
