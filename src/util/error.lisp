@@ -1,9 +1,5 @@
 (in-package :cl-async-util)
 
-(defvar *send-errors-to-eventcb* t
-  "If t, will pass caught errors to the given event-cb instead of the
-   user-supplied global error handler when catching errors.")
-
 (defvar *passthrough-errors* '())
 
 (defun passthrough-error-p (e)
@@ -72,7 +68,7 @@
    If event-cbs are called via run-event-cb, make sure the event-cb
    is NOT double-called with the same condition twice."
   (alexandria:once-only (event-cb)
-    (alexandria:with-gensyms (evcb err last-err thunk-fn caught-eventcb caught-fn blk)
+    (alexandria:with-gensyms (evcb err last-err thunk-fn caught-eventcb caught-global blk)
       `(let ((*evcb-err* '())
              (,last-err nil)
              (,evcb (cond ((not (symbolp ,event-cb))
@@ -83,7 +79,7 @@
                            'handle-error)
                           (t
                            (error "invalid event-cb: ~s" ,event-cb)))))
-         (labels ((,caught-fn (error)
+         (labels ((,caught-global (error)
                     (let* ((caught-errors (event-base-catch-app-errors *event-base*))
                            (caught-errors (cond ((typep caught-errors 'boolean)
                                                  nil)
@@ -103,7 +99,7 @@
                     (call-with-callback-restarts
                       (lambda () ,@body)
                       :eventcb-fn (lambda () (,caught-eventcb ,last-err))
-                      :continue-fn (lambda () (,caught-fn ,last-err)))))
+                      :continue-fn (lambda () (,caught-global ,last-err)))))
            (block ,blk
              (handler-bind
                  ((error (lambda (,err)
@@ -112,9 +108,9 @@
                            (unless (or (member ,err *evcb-err*)
                                        (passthrough-error-p ,err))
                              (when (event-base-catch-app-errors *event-base*)
-                               (if *send-errors-to-eventcb*
+                               (if (event-base-send-errors-to-eventcb *event-base*)
                                    (,caught-eventcb ,err)
-                                   (,caught-fn ,err))
+                                   (,caught-global ,err))
                                (return-from ,blk))))))
                (,thunk-fn))))))))
 

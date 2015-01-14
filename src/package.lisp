@@ -5,7 +5,6 @@
   (:export #:octet
            #:octet-vector
 
-           #:*send-errors-to-eventcb*
            #:handle-error
 
            #:bytes

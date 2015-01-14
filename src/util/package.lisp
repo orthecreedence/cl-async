@@ -21,7 +21,6 @@
            #:+sockaddr6-size+
            #:+addrinfo-size+
 
-           #:*send-errors-to-eventcb*
            #:*passthrough-errors*
            #:passthrough-error-p
            #:handle-error

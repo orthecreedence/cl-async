@@ -71,7 +71,7 @@
       (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :run-default))
       (do-close-loop evloop (1+ loops)))))
 
-(defun start-event-loop (start-fn &key default-event-cb (catch-app-errors nil catch-app-errors-supplied-p) caught-errors)
+(defun start-event-loop (start-fn &key catch-app-errors (send-errors-to-eventcb t))
   "Simple wrapper function that starts an event loop which runs the given
    callback, most likely to init your server/client."
   (when *event-base*
@@ -81,17 +81,12 @@
     ;; note the binding of these variable via (let), which means they are thread-
     ;; local... so this function can be called in different threads, and the bound
     ;; variables won't interfere with each other.
-    (let* ((*event-base* (apply #'make-instance
-                                (append
-                                  (list 'event-base
-                                        :c loop
-                                        :id *event-base-next-id*)
-                                  (when catch-app-errors-supplied-p
-                                    (list :catch-app-errors catch-app-errors))
-                                  (when caught-errors
-                                    (list :caught-errors caught-errors))
-                                  (when (functionp default-event-cb)
-                                    (list :default-event-handler default-event-cb)))))
+    (let* ((*event-base* (make-instance
+                           'event-base
+                           :c loop
+                           :id *event-base-next-id*
+                           :catch-app-errors catch-app-errors
+                           :send-errors-to-eventcb send-errors-to-eventcb))
            (*buffer-writes* *buffer-writes*)
            (*buffer-size* *buffer-size*)
            (*output-buffer* (static-vectors:make-static-vector *buffer-size* :element-type 'octet))
@@ -120,7 +115,7 @@
           (remhash (event-base-id *event-base*) *event-base-registry*))
         (setf *event-base* nil)))))
 
-(defmacro with-event-loop ((&key default-event-cb (catch-app-errors nil catch-app-errors-supplied-p) caught-errors)
+(defmacro with-event-loop ((&key catch-app-errors (send-errors-to-eventcb t))
                            &body body)
   "Makes starting an event loop a tad less annoying. I really couldn't take
    typing out `(start-event-loop (lambda () ...) ...) every time. Example:
@@ -129,13 +124,9 @@
        (do-something-one-does-when-an-event-loop-is-running))
 
    See how nice that is?"
-  (append
-    `(as:start-event-loop (lambda () ,@body)
-       :default-event-cb ,default-event-cb)
-    (when catch-app-errors-supplied-p
-      `(:catch-app-errors ,catch-app-errors))
-    (when caught-errors
-      `(:caught-errors ,caught-errors))))
+   `(as:start-event-loop (lambda () ,@body)
+       :catch-app-errors ,catch-app-errors
+       :send-errors-to-eventcb ,send-errors-to-eventcb))
 
 (defun exit-event-loop ()
   "Exit the event loop if running."

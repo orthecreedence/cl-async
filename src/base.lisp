@@ -18,6 +18,7 @@
            #:event-base-dns-base
            #:event-base-dns-ref-count
            #:event-base-catch-app-errors
+           #:event-base-send-errors-to-eventcb
            #:event-base-lock
            #:event-base-num-connections-in
            #:event-base-num-connections-out
@@ -71,6 +72,8 @@
    ;; error handling
    (catch-app-errors :accessor event-base-catch-app-errors :initarg :catch-app-errors :initform nil
      :documentation "If t (or a function) will trap all errors produced in the event loop and process them internally")
+   (send-errors-to-eventcb :accessor event-base-send-errors-to-eventcb :initarg :send-errors-to-eventcb :initform nil
+     :documentation "If t, will send caught errors to the event-cb instead of handle-error")
    (lock :accessor event-base-lock :initarg :lock :initform (bt:make-lock)
      :documentation "Holds *the* lock for this event base.")
    ;; stats
