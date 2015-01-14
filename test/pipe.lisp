@@ -42,6 +42,7 @@
     (is (= client-replies 2) "number of replies sent to client")
     (is (string= client-data "thxlol thxlol ") "received client data")))
 
+#|
 (test pipe-connect-fail
   "Make sure a pipe connection fails"
   (let ((num-err 0))
@@ -58,6 +59,7 @@
             :data "hai"
             :read-timeout 1))))
     (is (= num-err 1))))
+|#
 
 (test pipe-server-close
   "Make sure a pipe-server closes gracefully"
