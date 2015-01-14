@@ -113,6 +113,21 @@
           :data "HELLO!"))
     (is (string= server-data "HELLO!"))))
 
+(test test-address-in-use
+  "Test SOCKET-ADDRESS-IN-USE error"
+  (multiple-value-bind (first-successful-p)
+    (async-let ((first-successful-p nil))
+      (flet ((make-server ()
+               (as:tcp-server nil 41818
+                              (lambda (sock stream) (declare (ignore sock stream)))
+                              :event-cb #'error)))
+        (let ((server (make-server)))
+          (setf first-successful-p t)
+          (signals as:socket-address-in-use
+            (make-server))
+          (as:close-tcp-server server))))
+    (is-true first-successful-p)))
+
 (test no-overlap
   "Make sure that requests/responses don't overlap."
   (multiple-value-bind (res)

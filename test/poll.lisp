@@ -47,4 +47,3 @@
               (write-sequence (babel:string-to-octets "omg") stream)
               (force-output stream)))))
     (is (string= response "omg lol"))))
-

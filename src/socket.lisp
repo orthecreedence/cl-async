@@ -9,19 +9,22 @@
   (:documentation "Describes a general socket connection error."))
 
 (define-condition socket-eof (streamish-eof socket-error) ()
-  (:documentation "Passed to an event callback when a peer closes a socket connection."))
+  (:documentation "Peer closes a socket connection."))
 
 (define-condition socket-reset (socket-error) ()
-  (:documentation "Passed to an event callback when a socket connection times out."))
+  (:documentation "Connection reset."))
 
 (define-condition socket-timeout (socket-error) ()
-  (:documentation "Passed to an event callback when a socket connection times out."))
+  (:documentation "Socket connection timed out."))
 
 (define-condition socket-refused (socket-error) ()
-  (:documentation "Passed to an event callback when a socket connection is refused."))
+  (:documentation "Connection refused."))
 
 (define-condition socket-aborted (socket-error) ()
-  (:documentation "Passed to an event callback when a socket connection is aborted."))
+  (:documentation "Connection aborted."))
+
+(define-condition socket-address-in-use (socket-error) ()
+  (:documentation "Address is already in use."))
 
 ;; TBD: socket-accept-error is not actually used currently
 (define-condition socket-accept-error (socket-error)
@@ -59,6 +62,11 @@
 
 (defmethod errno-event ((socket socket) (errno (eql (uv:errval :econnaborted))))
   (make-instance 'socket-aborted :socket socket :code errno :msg "connection aborted"))
+
+;; applicable both to sockets and socket-servers
+(defmethod errno-event ((socket t) (errno (eql (uv:errval :eaddrinuse))))
+  (make-instance 'socket-address-in-use :socket socket :code errno
+                                        :msg "address already in use"))
 
 (defclass socket-server ()
   ((c :accessor socket-server-c :initarg :c :initform (cffi:null-pointer))
@@ -289,8 +297,9 @@
     ;; check that our listener instantiated properly
     (when (or (< r-bind 0)
               (< r-listen 0))
-      (close-socket-server server-instance)
-      (event-handler (or r-listen r-bind) event-cb :throw t)
+      (unwind-protect
+           (event-handler (or r-listen r-bind) event-cb :throw t :streamish server-instance)
+        (close-socket-server server-instance))
       (return-from socket-server))
     ;; make sure the server is closed/freed on exit
     (add-event-loop-exit-callback (lambda ()

@@ -31,4 +31,3 @@
               (write-sequence (babel:string-to-octets "can i have your coat?") stream)))))
     (is (string= server-data "can i have your coat?"))
     (is (string= client-data "don't say that"))))
-
