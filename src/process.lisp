@@ -51,13 +51,13 @@
         (flet ((v (name)
                  (cffi:foreign-enum-value 'uv:uv-stdio-flags name)))
           (ecase type
-            (:ignore (v :+uv-ignore+))
-            (:inherit (v :+uv-inherit-fd+))
+            (:ignore (v :ignore))
+            (:inherit (v :inherit-fd))
             ((:pipe :stream)
-             (logior (v :+uv-create-pipe+)
+             (logior (v :create-pipe)
                      (if out-p
-                         (v :+uv-writable-pipe+)
-                         (v :+uv-readable-pipe+)))))))
+                         (v :writable-pipe)
+                         (v :readable-pipe)))))))
   (case type
     (:inherit
      (setf (cffi:foreign-slot-value

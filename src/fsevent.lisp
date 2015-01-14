@@ -17,8 +17,8 @@
       (if (zerop status)
           (funcall fs-cb
                    fs-monitor path
-                   (plusp (logand events (cffi:foreign-enum-value 'uv:uv-fs-event :+uv-rename+)))
-                   (plusp (logand events (cffi:foreign-enum-value 'uv:uv-fs-event :+uv-change+))))
+                   (plusp (logand events (cffi:foreign-enum-value 'uv:uv-fs-event :rename)))
+                   (plusp (logand events (cffi:foreign-enum-value 'uv:uv-fs-event :change))))
           (run-event-cb 'event-handler status event-cb)))))
 
 ;; Fixme: copy & paste. Need common handle wrapper superclass

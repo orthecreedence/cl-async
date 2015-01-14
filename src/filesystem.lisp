@@ -28,20 +28,19 @@
          (cb (getf callbacks :fs-cb))
          (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
-      (uv-a:uv-fs-s-fs-type req)
       (unwind-protect
-           (let ((res (uv-a:uv-fs-s-result req)))
-             (if (zerop res)
-                 (funcall cb (uiop:ensure-directory-pathname
+          (let ((res (uv-a:uv-fs-s-result req)))
+            (if (zerop res)
+                (funcall cb (uiop:ensure-directory-pathname
                               (uv-a:uv-fs-s-path req)))
-                 (run-event-cb 'event-handler res event-cb)))
+                (run-event-cb 'event-handler res event-cb)))
         (uv:uv-fs-req-cleanup req)
         (free-pointer-data req :preserve-pointer t)
         (uv:free-req req)))))
 
 (defun mkdtemp (template cb &key (event-cb #'error))
   (check-event-loop-running)
-  (cffi:with-foreign-string (tpl (namestring template))
+  (let ((tpl (namestring template)))
     (let* ((req (uv:alloc-req :fs))
            (res (uv:uv-fs-mkdtemp (event-base-c *event-base*)
                                   req tpl (cffi:callback fs-cb))))
@@ -52,3 +51,4 @@
              (uv:uv-fs-req-cleanup req)
              (uv:free-req req)
              (event-handler res event-cb :throw t))))))
+

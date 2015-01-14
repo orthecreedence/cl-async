@@ -67,8 +67,8 @@
     (unless (zerop res)
       (uv:uv-stop evloop)
       (uv:uv-walk evloop (cffi:callback loop-exit-walk-cb) (cffi:null-pointer))
-      (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+))
-      (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+))
+      (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :run-default))
+      (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :run-default))
       (do-close-loop evloop (1+ loops)))))
 
 (defun start-event-loop (start-fn &key default-event-cb (catch-app-errors nil catch-app-errors-supplied-p) caught-errors)
@@ -110,7 +110,7 @@
       (unwind-protect
         (progn
           ;; this will block until all events are processed
-          (uv:uv-run (event-base-c *event-base*) (cffi:foreign-enum-value 'uv:uv-run-mode :+uv-run-default+)))
+          (uv:uv-run (event-base-c *event-base*) (cffi:foreign-enum-value 'uv:uv-run-mode :run-default)))
         ;; cleanup
         (do-close-loop (event-base-c *event-base*))
         (static-vectors:free-static-vector *output-buffer*)

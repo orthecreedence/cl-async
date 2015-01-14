@@ -30,9 +30,9 @@
           (event-handler status event-cb)
           ;; kewl, forward the event(s) along
           (let ((events-named nil))
-            (when (< 0 (logand events (cffi:foreign-enum-value 'uv:uv-poll-event :+uv-readable+)))
+            (when (< 0 (logand events (cffi:foreign-enum-value 'uv:uv-poll-event :readable)))
               (push :readable events-named))
-            (when (< 0 (logand events (cffi:foreign-enum-value 'uv:uv-poll-event :+uv-writable+)))
+            (when (< 0 (logand events (cffi:foreign-enum-value 'uv:uv-poll-event :writable)))
               (push :writable events-named))
             (funcall poll-cb events-named))))))
 
@@ -48,8 +48,8 @@
     (let ((events 0))
       (dolist (event poll-for)
         (let ((event-val (case event
-                           (:readable (cffi:foreign-enum-value 'uv:uv-poll-event :+uv-readable+))
-                           (:writable (cffi:foreign-enum-value 'uv:uv-poll-event :+uv-writable+)))))
+                           (:readable (cffi:foreign-enum-value 'uv:uv-poll-event :readable))
+                           (:writable (cffi:foreign-enum-value 'uv:uv-poll-event :writable)))))
           (setf events (logior events event-val))))
       (save-callbacks poll-c (list :poll-cb poll-cb
                                    :event-cb event-cb))

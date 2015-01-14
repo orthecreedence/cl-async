@@ -5,12 +5,6 @@
 (defconstant +af-unspec+ uv:+af-unspec+)
 (defconstant +af-unix+ uv:+af-unix+)
 
-;; define some cached values to save CFFI calls. believe it or not, this does
-;; make a performance difference
-(defconstant +sockaddr-size+ (cffi:foreign-type-size '(:struct uv:sockaddr-in)))
-(defconstant +sockaddr6-size+ (cffi:foreign-type-size '(:struct uv:sockaddr-in-6)))
-(defconstant +addrinfo-size+ (cffi:foreign-type-size '(:struct uv:addrinfo)))
-
 (defmacro define-c-callback (name return-val (&rest args) &body body)
   "Define a top-level function with the given and also define a C callback that
    calls the function directly. The idea is that CFFI callbacks aren't directly
@@ -27,9 +21,7 @@
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."
   (let ((type (if (eq type 'uv:addrinfo)
-                  (progn
-                    #+windows 'uv:addrinfo-w
-                    #-windows 'uv:addrinfo)
+                  'uv:addrinfo
                   type))
         (type-size (cffi:foreign-type-size (list :struct type))))
     `(cffi:with-foreign-object (,var :unsigned-char ,type-size)
@@ -41,7 +33,10 @@
 
 (defun error-str (uv-errno)
   "Given a libuv error number, return the error string."
-  (if (find uv-errno '(102400 537661987 537133603))
+  ;; a lot of times errors come through that aren't known by libuv, and if we
+  ;; ask libuv about it, it aborts (in all its wisdom). these errors seems to
+  ;; always be > 0, while the libuv error codes always seem to be < 0.
+  (if (< 0 uv-errno)
       "(unknown error)"
       (uv:uv-err-name uv-errno)))
 
@@ -55,7 +50,7 @@
        (uv:uv-ip-4-addr (or address "0.0.0.0") port sockaddr)
        sockaddr))
     ((ipv6-address-p address)
-     (let ((sockaddr (cffi:foreign-alloc '(:struct uv:sockaddr-in-6))))
+     (let ((sockaddr (cffi:foreign-alloc '(:struct uv:sockaddr-in6))))
        (uv:uv-ip-6-addr address port sockaddr)
        sockaddr))
     (t
@@ -72,20 +67,18 @@
 (defun addrinfo-to-string (addrinfo)
   "Given a (horrible) addrinfo C object pointer, grab either an IP4 or IP6
    address and return is as a string."
-  (let* ((type (progn #+windows 'uv:addrinfo-w #-windows 'uv:addrinfo))
-         (family (cffi:foreign-slot-value addrinfo (list :struct type) 'uv::ai-family))
+  (let* ((type 'uv:addrinfo)
+         (family (uv-a:addrinfo-ai-family addrinfo))
          (err nil))
     (cffi:with-foreign-object (buf :unsigned-char 128)
-      ;; note here, we use the OS-dependent addrinfo-ai-addr macro
-      ;; defined in util.lisp
-      (let ((ai-addr (cffi:foreign-slot-value addrinfo (list :struct type) 'uv::ai-addr)))
+      (let ((ai-addr (uv-a:addrinfo-ai-addr addrinfo)))
         (if (cffi:null-pointer-p ai-addr)
             (error "the addrinfo->ai_addr object was null (stinks of a memory alignment issue)")
             (cond ((eq family +af-inet+)
-                   (let ((sin-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in) 'uv::sin-addr)))
+                   (let ((sin-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in) 'uv:sin-addr)))
                      (uv:uv-inet-ntop family sin-addr buf 128)))
                   ((eq family +af-inet6+)
-                   (let ((sin6-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in-6) 'uv::sin-6-addr-0)))
+                   (let ((sin6-addr (cffi:foreign-slot-pointer ai-addr '(:struct uv:sockaddr-in6) 'uv:sin6-addr)))
                      (uv:uv-inet-ntop family sin6-addr buf 128)))
                   (t
                    (setf err (format nil "unsupported DNS family: ~a" family))))))
