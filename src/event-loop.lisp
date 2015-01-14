@@ -1,5 +1,8 @@
 (in-package :cl-async)
 
+(defparameter *loop-close-iters* 100000
+  "Maximum number of event loop cleanup iterations")
+
 (defun add-event-loop-exit-callback (fn)
   "Add a function to be run when the event loop exits."
   (push fn (event-base-exit-functions *event-base*)))
@@ -40,7 +43,8 @@
   "Return the status of the event loop. Really a debug function more than
    anything else."
   (check-event-loop-running)
-  (uv:uv-walk (event-base-c *event-base*) (cffi:callback walk-cb) (cffi:null-pointer)))
+  (uv:uv-walk (event-base-c *event-base*) (cffi:callback walk-cb) (cffi:null-pointer))
+  (values))
 
 (defvar *event-base-registry* (make-hash-table :test 'eq)
   "Holds ID -> event-base lookups for every active event loop. Mainly used when
@@ -59,17 +63,25 @@
   (declare (ignore arg))
   (handle-cleanup (uv:handle-type handle) handle))
 
-(defun do-close-loop (evloop &optional (loops 0))
+(defun do-close-loop (evloop)
   "Close an event loop by looping over its open handles, closing them, rinsing
-   and repeating until uv-loop-close returns 0."
+   and repeating until uv-loop-close returns 0, but at most *LOOP-CLOSE-ITERS*
+   times."
   (process-event-loop-exit-callbacks)
-  (let ((res (uv:uv-loop-close evloop)))
-    (unless (zerop res)
-      (uv:uv-stop evloop)
-      (uv:uv-walk evloop (cffi:callback loop-exit-walk-cb) (cffi:null-pointer))
-      (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :run-default))
-      (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :run-default))
-      (do-close-loop evloop (1+ loops)))))
+  (loop repeat *loop-close-iters*
+        for res = (uv:uv-loop-close evloop)
+        when (zerop res)
+          return (values)
+        else
+          do (progn
+               (uv:uv-stop evloop)
+               (uv:uv-walk evloop (cffi:callback loop-exit-walk-cb) (cffi:null-pointer))
+               (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :run-default))
+               (uv:uv-run evloop (cffi:foreign-enum-value 'uv:uv-run-mode :run-default)))
+        end
+        finally
+           (vom:error "failed to do loop cleanup in ~d iterations" *loop-close-iters*)
+           (dump-event-loop-status)))
 
 (defun start-event-loop (start-fn &key catch-app-errors (send-errors-to-eventcb t))
   "Simple wrapper function that starts an event loop which runs the given
