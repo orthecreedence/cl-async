@@ -36,9 +36,8 @@
   ;; a lot of times errors come through that aren't known by libuv, and if we
   ;; ask libuv about it, it aborts (in all its wisdom). these errors seems to
   ;; always be > 0, while the libuv error codes always seem to be < 0.
-  (if (< 0 uv-errno)
-      "(unknown error)"
-      (uv:uv-err-name uv-errno)))
+  (or (ignore-errors (cffi:foreign-enum-keyword 'uv:uv-errno-t uv-errno))
+      "(unknown error)"))
 
 (defun ip-str-to-sockaddr (address port)
   "Convert a string IP address and port into a sockaddr-in struct. Must be freed
