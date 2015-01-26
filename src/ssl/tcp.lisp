@@ -301,7 +301,8 @@
   (check-event-loop-running)
   (let* ((socket/stream (apply #'as:tcp-connect
                                (append (list host port
-                                             read-cb event-cb
+                                             read-cb
+                                             :event-cb event-cb
                                              ;; we pass nil data otherwise it will be sent out
                                              ;; raw when we connect (bad)
                                              :data nil
