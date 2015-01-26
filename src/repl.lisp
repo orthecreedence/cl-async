@@ -1,7 +1,9 @@
 (defpackage :cl-async-repl
   (:use :cl)
   (:nicknames :as-repl)
-  (:export #:start-async-repl
+  (:export #:event-thread-running-p
+           #:start-async-repl
+           #:ensure-async-repl
            #:stop-async-repl))
 
 (in-package :cl-async-repl)
@@ -34,7 +36,7 @@
   "Wrap ACTION (a function) by establishing ABORT-CALLBACK and EXIT-EVENT-LOOP restarts."
   #'(lambda ()
       (cl-async-util:call-with-callback-restarts
-        action 
+        action
         :abort-restart-description "Abort the current action.")))
 
 (defun schedule-action (action)
@@ -52,8 +54,10 @@
   (schedule-action #'as:exit-event-loop)
   (values))
 
-(defun start-event-thread (&key exit-callback)
-  "Start event thread"
+(defun start-event-thread (&key exit-callback on-startup)
+  "Start event thread. ON-STARTUP is called in the event loop thread
+  after it's started. EXIT-CALLBACK is called upon the event loop
+  termination."
   (assert (not *event-thread*) () "event thread already started")
   (let ((global-values (mapcar #'symbol-value *globals*))
         (loop-ready-lock (bt:make-lock))
@@ -85,7 +89,9 @@
                                                         (shiftf *pending-actions* '()))))
                                                 (mapc #'funcall actions)))
                                           :single-shot nil))
-                        (bt:condition-notify loop-ready)))
+                        (bt:condition-notify loop-ready))
+                      (when on-startup
+                        (funcall on-startup)))
                  (format *debug-io* "~&;; event thread exited.~%")))
            :name "event-thread"))
     (bt:with-lock-held (loop-ready-lock)
@@ -137,16 +143,33 @@
   (setf (symbol-value (repl-hook-sym))
         (delete func (symbol-value (repl-hook-sym)))))
 
-(defun start-async-repl ()
+(defun event-thread-running-p ()
+  "Returns true if the event thread used by async REPL is running"
+  (bt:with-lock-held (*lock*)
+    (when *event-thread* t)))
+
+(defun start-async-repl (&optional on-startup)
   "Start event thread and install SLIME REPL hook so that everything is
   evaluated in that thread. Stopping the event loop via (as:stop-event-thread)
   removes the hook.
+  If ON-STARTUP function is specified, it's executed in the event loop
+  thread after it's started.
 
   Sets *safe-sldb-quit-restart* to true."
-  (start-event-thread :exit-callback #'(lambda () (uninstall-repl-hook 'sync-eval)))
+  (start-event-thread :on-startup on-startup
+                      :exit-callback #'(lambda () (uninstall-repl-hook 'sync-eval)))
   (install-repl-hook 'sync-eval)
   (setf cl-async-base:*safe-sldb-quit-restart* t)
   (values))
+
+(defun ensure-async-repl (&optional on-startup)
+  "If event loop is not started, calls START-ASYNC-REPL
+  passing ON-STARTUP to it. If it's already started,
+  calls ON-STARTUP if it's not null."
+  (cond ((not (event-thread-running-p))
+         (start-async-repl on-startup))
+        (on-startup
+         (funcall on-startup))))
 
 (defun stop-async-repl ()
   "Stop event thread and uninstall SLIME REPL hook.
