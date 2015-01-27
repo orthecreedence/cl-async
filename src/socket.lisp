@@ -298,7 +298,7 @@
     (when (or (< r-bind 0)
               (< r-listen 0))
       (unwind-protect
-           (event-handler (or r-listen r-bind) event-cb :throw t :streamish server-instance)
+           (event-handler (if (zerop r-bind) r-listen r-bind) event-cb :throw t :streamish server-instance)
         (close-socket-server server-instance))
       (return-from socket-server))
     ;; make sure the server is closed/freed on exit
