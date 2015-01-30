@@ -168,3 +168,29 @@
               (setf is-eq nil)
               (return)))
           (is (eq is-eq t)))))))
+
+(test write-seq-with-offset
+  "Make sure writing subsequences to a socket works properly"
+  (with-test-event-loop ()
+    (test-timeout 3)
+    (let* ((server-data "")
+           (server
+             (as:tcp-server nil 31388
+                            (lambda (sock data)
+                              (declare (ignore sock))
+                              (setf server-data (concat server-data (babel:octets-to-string data))))))
+           (sock
+             (as:tcp-connect "localhost" 31388
+                             (lambda (sock data)
+                               (declare (ignore sock data)))
+                             :event-cb (lambda (ev) (error ev))
+                             :connect-cb (lambda (socket)
+                                           ;; avoid flushing the data after the delay
+                                           (as:with-delay ()
+                                             (as:write-socket-data socket "qqqabcddd"
+                                                                   :start 3 :end 6)
+                                             (as:write-socket-data socket "def"))))))
+      (wait (when (string= "abcdef" server-data)
+              (as:close-socket sock)
+              (as:close-tcp-server server)
+              t)))))

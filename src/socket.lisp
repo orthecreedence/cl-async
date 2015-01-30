@@ -153,7 +153,7 @@
              (unless (socket-closed-p socket)
                (setf (socket-buffering-p socket) nil)
                (write-to-uvstream (socket-c socket)
-                                  (buffer-output (socket-buffer socket)) :start start :end end)
+                                  (buffer-output (socket-buffer socket)))
                (setf (socket-buffer socket) (make-buffer))))))
         (t
          (call-next-method))))
@@ -166,6 +166,11 @@
   (let ((pending (buffer-output (socket-buffer socket))))
     (setf (socket-buffer socket) (make-buffer))
     (write-socket-data socket pending :force t)))
+
+(defmethod close-streamish ((socket socket) &key force &allow-other-keys)
+  (when (and (not force) (socket-buffering-p socket))
+    (write-pending-socket-data socket))
+  (call-next-method))
 
 (define-c-callback socket-connect-cb :void ((req :pointer) (status :int))
   "Called when an outgoing socket connects."
