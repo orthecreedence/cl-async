@@ -93,8 +93,9 @@
                  (setf event (as:delay #'main :time time :event-cb event-cb)))))
       (setf event (as:delay #'main :time time :event-cb event-cb))
       (lambda ()
-        (remove-event event)
-        (setf event nil)))))
+        (when event
+          (remove-event event)
+          (setf event nil))))))
 
 (defmacro with-interval ((seconds) &body body)
   "Nicer syntax for interval function."

@@ -61,6 +61,14 @@
   (:report (lambda (c s) (format s "Closed streamish being operated on: ~a." (streamish c))))
   (:documentation "Thrown when a closed streamish is being operated on."))
 
+(define-condition streamish-broken-pipe (streamish-error) ()
+  (:report (lambda (c s) (format s "Broken pipe: ~a" (streamish c))))
+  (:documentation "Broken pipe."))
+
+(define-condition streamish-canceled (streamish-error) ()
+  (:report (lambda (c s) (format s "Operation canceled: ~a" (streamish c))))
+  (:documentation "Operation canceled."))
+
 (defclass streamish ()
   ((c :accessor streamish-c :initarg :c :initform (cffi:null-pointer))
    (data :accessor streamish-data :initarg data :initform nil
@@ -76,6 +84,12 @@
 
 (defmethod errno-event ((streamish streamish) (errno (eql (uv:errval :eof))))
   (make-instance 'streamish-eof :streamish streamish))
+
+(defmethod errno-event ((streamish streamish) (errno (eql (uv:errval :epipe))))
+  (make-instance 'streamish-broken-pipe :streamish streamish))
+
+(defmethod errno-event ((streamish streamish) (errno (eql (uv:errval :ecanceled))))
+  (make-instance 'streamish-canceled :streamish streamish))
 
 (defun check-streamish-open (streamish)
   "Throw a streamish-closed condition if given a streamish that's closed."

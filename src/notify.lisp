@@ -22,7 +22,8 @@
   (setf (notifier-freed notifier) t)
   (let ((async-c (notifier-c notifier)))
     (when (zerop (uv:uv-is-closing async-c))
-      (uv:uv-close async-c (cffi:callback async-close-cb)))))
+      (uv:uv-close async-c (cffi:callback async-close-cb))
+      (setf (notifier-c notifier) nil))))
 
 (defmethod ref ((handle notifier))
   (uv:uv-ref (notifier-c handle)))
@@ -67,6 +68,7 @@
 
 (defun trigger-notifier (notifier)
   "Fires the callback attached to a notifier. Can be called from any thread."
+  (check-notifier-unfreed notifier)
   (let ((async-c (notifier-c notifier)))
     (uv:uv-async-send async-c)))
 
