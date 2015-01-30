@@ -106,6 +106,8 @@
            #:streamish-info
            #:streamish-error
            #:streamish-eof
+           #:streamish-broken-pipe
+           #:streamish-canceled
            #:streamish-closed
            #:check-streamish-open
            #:streamish-closed-p
