@@ -138,16 +138,17 @@
 (defun write-to-uvstream (uvstream data &key start end)
   "Util function to write data directly to a uv stream object."
   (do-chunk-data data *output-buffer*
-    (lambda (buffer-c bufsize)
+    (lambda (buffer bufsize)
       (let ((req (uv:alloc-req :write))
-            (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer buffer-c) bufsize)))
+            (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer buffer) bufsize)))
         (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback streamish-write-cb))))
           (uv:free-uv-buf buf)
           (unless (zerop res)
             (let ((streamish (getf (deref-data-from-pointer uvstream) :streamish)))
               (uv:free-req req)
               (error (errno-event streamish res))))
-          (attach-data-to-pointer req uvstream))))
+          (attach-data-to-pointer req (list :uvstream uvstream :buffer buffer)))))
+    :new-buffer t
     :start start
     :end end))
 
@@ -245,12 +246,15 @@
 
 (define-c-callback streamish-write-cb :void ((req :pointer) (status :int))
   "Called when data is finished being written to a streamish."
-  (let* ((uvstream (deref-data-from-pointer req))
+  (let* ((data (deref-data-from-pointer req))
+         (uvstream (getf data :uvstream))
+         (buffer (getf data :buffer))
          (streamish (getf (deref-data-from-pointer uvstream) :streamish))
          (callbacks (get-callbacks uvstream))
          (write-cb (getf callbacks :write-cb))
          (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
+      (static-vectors:free-static-vector buffer)
       (free-pointer-data req :preserve-pointer t)
       (uv:free-req req)
       (if (zerop status)

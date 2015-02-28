@@ -85,7 +85,7 @@
      One object to rule them all, one object to find them.
      One object to bring them in and in the darkness bind them."))
 
-(defvar *buffer-writes* nil
+(defvar *buffer-writes* t
   "If T, will buffer writes on the socket until the next loop. This is mainly to
    cut down on calls to uv_write, which is fairly slow.")
 
