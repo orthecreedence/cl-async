@@ -9,7 +9,8 @@
                #:fiveam
                #:bordeaux-threads
                #:usocket
-               #:flexi-streams)
+               #:flexi-streams
+               #:ironclad)
   :components
   ((:module test
     :serial t

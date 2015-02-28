@@ -128,35 +128,64 @@
           (as:close-tcp-server server))))
     (is-true first-successful-p)))
 
+(defun sha256 (byte-array)
+  (let ((byte-array (if (typep byte-array '(simple-array (unsigned-byte 8) (*)))
+                        byte-array
+                        (coerce byte-array '(simple-array (unsigned-byte 8) (*)))))
+        (hasher (ironclad:make-digest :sha256)))
+    (ironclad:update-digest hasher byte-array)
+    (ironclad:byte-array-to-hex-string (ironclad:produce-digest hasher))))
+
+#|
 (test no-overlap
   "Make sure that requests/responses don't overlap."
+  (format t "~%---~%")
   (multiple-value-bind (res)
-      (async-let ((res (make-hash-table :test 'eq)))
-        (test-timeout 3)
+      (async-let ((res (make-hash-table :test #'eq))
+                  (size (+ as:*buffer-size* 20000))
+                  (num-clients 4)
+                  (num-recv 0)
+                  (server nil))
+        (test-timeout 20)
 
-        (let ((counter 1))
+        (setf server
           (as:tcp-server nil 31389
             (lambda (sock data)
-              (dotimes (i (length data))
-                (assert (= (aref data 0) (aref data i))))
-              (incf (getf (as:socket-data sock) :bytes) (length data))
-              (when (<= (+ as:*buffer-size* 20000) (getf (as:socket-data sock) :bytes))
-                (let ((res (make-array 500000 :initial-element (getf (as:socket-data sock) :id)
-                                              :element-type 'as:octet)))
-                  (as:write-socket-data sock res))))
-            :connect-cb (lambda (sock)
-                          (setf (as:socket-data sock) (list :id counter :bytes 0))
-                          (incf counter))))
-        (dotimes (i 4)
-          (let ((x i))
+              (unless (getf (as:socket-data sock) :id)
+                (setf (getf (as:socket-data sock) :id) (aref data 0)))
+              (unless (getf (as:socket-data sock) :bytes)
+                (setf (getf (as:socket-data sock) :bytes) 0))
+              (let ((id (getf (as:socket-data sock) :id))
+                    (undupe (remove-duplicates data)))
+                (assert (and (= (length undupe) 1)
+                             (= (aref undupe 0) id)))
+                (incf (getf (as:socket-data sock) :bytes) (length data))
+                (when (<= size (getf (as:socket-data sock) :bytes))
+                  (format t "server: send: ~a ~a~%" id (* size 1))
+                  (as:write-socket-data
+                    sock
+                    (make-array (* size 1) :initial-element id :element-type 'as:octet))
+                  (incf num-recv)
+                  (when (<= num-clients num-recv)
+                    (as:with-delay ()
+                      (format t "close server: t~%")
+                      (as:close-tcp-server server))))))))
+
+        (dotimes (i num-clients)
+          (let* ((x i)
+                 (data (make-array size
+                                   :initial-element x
+                                   :element-type '(unsigned-byte 8))))
+            (format t "client: send: ~a ~a~%" x (length data))
             (as:tcp-connect "127.0.0.1" 31389
               (lambda (sock data)
                 (declare (ignorable sock))
-                (push data (gethash x res)))
-              :data (make-array (+ as:*buffer-size* 20000)
-                                :initial-element x
-                                :element-type '(unsigned-byte 8))))))
-    (loop ;for k being the hash-keys of res
+                (push data (gethash x res))
+                (format t "client: recv: ~a ~a ~a~%" x (length data)
+                        (reduce (lambda (acc x) (+ acc (length x))) (gethash x res) :initial-value 0)))
+              :data data))))
+    (format t "res done~%")(force-output)
+    (loop for x being the hash-keys of res
           for v being the hash-values of res do
       (let ((stream (flexi-streams:make-in-memory-output-stream :element-type '(unsigned-byte 8))))
         (dolist (part v)
@@ -168,6 +197,10 @@
               (setf is-eq nil)
               (return)))
           (is (eq is-eq t)))))))
+
+(setf *debug-on-error* t)
+(run! 'no-overlap)
+|#
 
 (test write-seq-with-offset
   "Make sure writing subsequences to a socket works properly"

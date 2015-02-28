@@ -25,14 +25,14 @@
    do this itself without skewing results. Uses event base IDs to make sure it
    doesn't cancel an event loop that test-timeout wasn't called inside of."
   (let ((cancel nil)
-        (notifier (as:make-notifier 'as:exit-event-loop)))
+        (notifier (as:make-notifier (lambda () (error "test timeout")))))
     (as:unref notifier)
     ;; if the event loop exits naturally, cancel the break
     (as:add-event-loop-exit-callback
       (lambda ()
+        (setf cancel t)
         (unless (as:notifier-freed-p notifier)
-          (as:free-notifier notifier))
-        (setf cancel t)))
+          (as:free-notifier notifier))))
     ;; spawn the thread to kill the event loop
     (handler-case
       (bt:make-thread (lambda ()
