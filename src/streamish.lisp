@@ -140,7 +140,7 @@
   (do-chunk-data data *output-buffer*
     (lambda (buffer-c bufsize)
       (let ((req (uv:alloc-req :write))
-            (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer buffer-c) bufsize)))
+            (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer (copy-seq buffer-c)) bufsize)))
         (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback streamish-write-cb))))
           (uv:free-uv-buf buf)
           (unless (zerop res)
