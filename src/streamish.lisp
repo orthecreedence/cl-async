@@ -137,20 +137,18 @@
 
 (defun write-to-uvstream (uvstream data &key start end)
   "Util function to write data directly to a uv stream object."
-  (do-chunk-data data *output-buffer*
-    (lambda (buffer bufsize)
-      (let ((req (uv:alloc-req :write))
-            (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer buffer) bufsize)))
-        (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback streamish-write-cb))))
-          (uv:free-uv-buf buf)
-          (unless (zerop res)
-            (let ((streamish (getf (deref-data-from-pointer uvstream) :streamish)))
-              (uv:free-req req)
-              (error (errno-event streamish res))))
-          (attach-data-to-pointer req (list :uvstream uvstream :buffer buffer)))))
-    :new-buffer t
-    :start start
-    :end end))
+  (let* ((bufsize (length data))
+         (buffer (static-vectors:make-static-vector bufsize)))
+    (replace buffer data)
+    (let ((req (uv:alloc-req :write))
+          (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer buffer) bufsize)))
+      (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback streamish-write-cb))))
+        (uv:free-uv-buf buf)
+        (unless (zerop res)
+          (let ((streamish (getf (deref-data-from-pointer uvstream) :streamish)))
+            (uv:free-req req)
+            (error (errno-event streamish res))))
+        (attach-data-to-pointer req (list :uvstream uvstream :buffer buffer))))))
 
 (define-c-callback streamish-shutdown-cb :void ((req :pointer) (status :int))
   "Called when a streamish shuts down."
