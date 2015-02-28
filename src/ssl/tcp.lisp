@@ -254,13 +254,13 @@
    Note that this function *really* should be called before the passed socket
    is connected, and certainly before any data is exchanged over it."
   (labels ((read-cb (sock data)
-             (vom:debug "> read: raw: ~a~%" (length data))
              (let* ((as-ssl (socket-as-ssl sock))
                     (ssl (as-ssl-ssl as-ssl))
                     (bio-read (as-ssl-bio-read as-ssl))
                     (buff *input-buffer*))
                (do-chunk-data data buff
                  (lambda (buffer bufsize)
+                   (vom:debug "> read: raw: ~a~%" (length buffer))
                    (ssl-bio-write bio-read (static-vectors:static-vector-pointer buffer) bufsize)))
                (ssl-run-state ssl)
                (as:with-delay () (ssl-run-state ssl)))))
@@ -323,18 +323,21 @@
                     (ssl-ctx-set-verify ctx +ssl-verify-none+ (cffi:null-pointer))
                     ctx))))
     (attach-ssl-to-socket ctx socket/stream
-                          (lambda (sock)
-                            (setf (socket-ssl-function sock) 'ssl-connect)
-                            (let ((ssl (as-ssl-ssl (socket-as-ssl sock))))
-                              (ssl-connect ssl)
-                              (ssl-run-state ssl))
-                            (when connect-cb
-                              (funcall connect-cb sock)))
+                          (lambda (sock/stream)
+                            (let ((sock (if (typep sock/stream 'as:async-stream)
+                                            (as:stream-socket sock/stream)
+                                            sock/stream)))
+                              (setf (socket-ssl-function sock) 'ssl-connect)
+                              (let ((ssl (as-ssl-ssl (socket-as-ssl sock))))
+                                (ssl-connect ssl)
+                                (ssl-run-state ssl))
+                              (when connect-cb
+                                (funcall connect-cb sock/stream))))
                           (lambda (ssl)
                             (ssl-set-connect-state ssl))
                           :ciphers ciphers)
     ;; now that the 'socket class was replaced with 'ssl-socket, we can safely
-    ;; write out our data and it till be buffered properly.
+    ;; write out our data and it will be buffered properly.
     (when data
       (write-socket-data socket data))
     socket/stream))

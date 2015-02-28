@@ -34,23 +34,31 @@
 (defun do-chunk-data (data buffer write-cb &key start end new-buffer)
   "Util function that splits data into the (length buffer) chunks and calls
    write-cb for each chunk."
-  (let* ((len (length data))
-         (start (or start 0))
-         (end (min (or end len) len))
-         (data-length (- end start))
-         (data-index start)
-         (buffer-length (length buffer)))
-    (loop while (< 0 data-length) do
-      (let ((bufsize (min data-length buffer-length))
-            ;; create a new buffer if we ask for one.
-            ;; NOTE: the newly created buffer MUST be freed elsewhere
-            (buffer (if new-buffer
-                        (static-vectors:make-static-vector buffer-length)
-                        buffer)))
-        (replace buffer data :start2 data-index :end2 end)
-        (funcall write-cb buffer bufsize)
-        (decf data-length bufsize)
-        (incf data-index bufsize)))))
+  (cond ((streamp data)
+         (loop for read-buffer = (if new-buffer
+                                     (static-vectors:make-static-vector (length buffer))
+                                     buffer)
+               for n = (read-sequence read-buffer data)
+               while (< 0 n) do
+           (funcall write-cb read-buffer n)))
+        (t
+          (let* ((len (length data))
+                 (start (or start 0))
+                 (end (min (or end len) len))
+                 (data-length (- end start))
+                 (data-index start)
+                 (buffer-length (length buffer)))
+            (loop while (< 0 data-length) do
+              (let ((bufsize (min data-length buffer-length))
+                    ;; create a new buffer if we ask for one.
+                    ;; NOTE: the newly created buffer MUST be freed elsewhere
+                    (read-buffer (if new-buffer
+                                     (static-vectors:make-static-vector buffer-length)
+                                     buffer)))
+                (replace read-buffer data :start2 data-index :end2 end)
+                (funcall write-cb read-buffer bufsize)
+                (decf data-length bufsize)
+                (incf data-index bufsize)))))))
 
 (defmacro with-lock (&body body)
   "If threading is enabled, locks the current event loop before processing body
