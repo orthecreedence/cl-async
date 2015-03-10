@@ -56,7 +56,10 @@
                (let ((req (uv:alloc-req :connect)))
                  ;; make sure we can grab the original uvstream from the req
                  (attach-data-to-pointer req uvstream)
-                 (uv:uv-tcp-connect req uvstream sockaddr (cffi:callback socket-connect-cb))))))
+                 (if (zerop (uv:uv-is-closing uvstream))
+                     (uv:uv-tcp-connect req uvstream sockaddr (cffi:callback socket-connect-cb))
+                     (warn "aborting connection to ~a:~s on a tcp socket that is being closed: ~
+                            ~s (uvstream ~s)~%" host port socket/stream uvstream))))))
       (if (ip-address-p host)
           ;; got an IP so just connect directly
           (do-connect host port)
