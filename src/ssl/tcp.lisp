@@ -189,14 +189,14 @@
                                                         :code code
                                                         :msg str
                                                         :socket socket)
-                                         event-cb
-                                         :socket socket)
+                                         event-cb)
                            (vom:debug "! err(~a): ~a~%" err str))))
                     ((and (< 0 ret) read-cb drain-read)
                      (funcall read-cb socket (subseq buff 0 ret)))
                     ((and (< 0 ret) stream)
                      (stream-append-bytes stream (subseq buff 0 ret))
-                     (when read-cb (funcall read-cb socket stream))))
+                     (when read-cb (funcall read-cb socket stream))
+                     (ssl-run-state ssl)))
               ;; zero that shit
               (zero-buffer buff)))
           (funcall (socket-ssl-function socket) ssl)))))
