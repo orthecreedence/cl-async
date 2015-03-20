@@ -71,7 +71,10 @@
                                       ,event-cb))
                            (handler (or handler
                                         (event-base-catch-app-errors *event-base*)))
-                           (handler (or handler 'handle-error)))
+                           (handler (if (and handler
+                                             (not (typep handler 'boolean)))
+                                         handler
+                                         'handle-error)))
                       (when (and handler error)
                         (funcall handler error))))
                   (,thunk-fn ()
