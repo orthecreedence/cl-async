@@ -73,3 +73,29 @@
                       (incf num-err)
                       (error ev)))))
     (is (= num-err 1))))
+
+(test reverse-dns-lookup-ipv4
+  "Test IPV4 family"
+  (multiple-value-bind (host)
+      (async-let ((host nil))
+        (test-timeout 3)
+        (as:reverse-dns-lookup "8.8.8.8"
+          (lambda (host* service)
+            (declare (ignore service))
+            (setf host host*))
+          :event-cb (lambda (ev) (error ev))))
+    (is (string= host "google-public-dns-a.google.com"))))
+
+(test reverse-dns-lookup-ipv6
+  "Test IPV6 family"
+  (multiple-value-bind (host)
+      (handler-case
+        (async-let ((host nil))
+          (test-timeout 3)
+          (as:reverse-dns-lookup "2001:4860:4860::8888"
+            (lambda (host* service)
+              (declare (ignore service))
+              (setf host host*))
+            :event-cb (lambda (ev) (error ev))))
+        (error (e) (format nil "(~a) ~a" (as:event-errcode e) (as:event-errmsg e))))
+    (is (string= host "google-public-dns-a.google.com"))))

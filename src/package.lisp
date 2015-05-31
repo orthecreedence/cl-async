@@ -96,9 +96,8 @@
            ;; dns conditions
            #:dns-error
            ;; dns functions
-           #:start-dns-logging
-           #:stop-dns-logging
            #:dns-lookup
+           #:reverse-dns-lookup
 
            ;; streamish/socket/tcp/pipe conditions/accessors
            #:streamish
