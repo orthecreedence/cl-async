@@ -94,17 +94,22 @@
          (read-sec (and read-sec (< 0 read-sec) read-sec))
          (write-sec (and write-sec (< 0 write-sec) write-sec))
          (socket-data (deref-data-from-pointer uvstream))
-         (event-cb (getf (get-callbacks uvstream) :event-cb))
          (socket (getf socket-data :streamish))
          (cur-read-timeout (getf (getf socket-data :read-timeout) :event))
          (cur-write-timeout (getf (getf socket-data :write-timeout) :event))
          (read-timeout (when read-sec
-                         (delay (lambda () (event-handler (uv:errval :etimedout) event-cb
-                                                          :streamish socket))
+                         (delay (lambda ()
+                                  (event-handler (uv:errval :etimedout)
+                                                 ;; don't cache the event-cb, it may change
+                                                 (getf (get-callbacks uvstream) :event-cb)
+                                                 :streamish socket))
                                 :time read-sec)))
          (write-timeout (when write-sec
-                          (delay (lambda () (event-handler (uv:errval :etimedout) event-cb
-                                                           :streamish socket))
+                          (delay (lambda ()
+                                   (event-handler (uv:errval :etimedout)
+                                                  ;; don't cache the event-cb, it may change
+                                                  (getf (get-callbacks uvstream) :event-cb)
+                                                  :streamish socket))
                                  :time write-sec))))
     ;; clear the timeouts
     (when (and cur-read-timeout (not read-sec) (not (event-freed-p cur-read-timeout)))
