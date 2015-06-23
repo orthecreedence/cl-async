@@ -89,7 +89,7 @@
 (defconstant +ssl-op-no-tlsv1-2+ #x08000000)
 (defconstant +ssl-op-no-tlsv1-1+ #x10000000)
 
-(defconstant +ssl-ctrl-options+ 3)
+(defconstant +ssl-ctrl-options+ 32)
 
 (defconstant +bio-ctrl-reset+ 1)
 (defconstant +bio-ctrl-eof+ 2)
