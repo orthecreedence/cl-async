@@ -49,3 +49,36 @@
             (event-handler res event-cb :throw t)
             t)))))
 
+(define-c-callback reverse-dns-cb :void ((req :pointer) (status :int) (hostname :string) (service :string))
+  "Callback for reverse DNS lookups."
+  (let* ((callbacks (get-callbacks req))
+         (resolve-cb (getf callbacks :resolve-cb))
+         (event-cb (getf callbacks :event-cb)))
+    (catch-app-errors event-cb
+      (if (zerop status)
+          (funcall resolve-cb hostname service)
+          (run-event-cb 'event-handler status event-cb))
+      (uv:free-req req))))
+
+(defun reverse-dns-lookup (ip resolve-cb &key event-cb)
+  "Perform reverse DNS lookup on IP specifier as string.  Call RESOLVE-CB with
+   resolved HOST and SERVICE as strings.  The callback is called once with one
+   host, even if multiple hosts match the query."
+  (check-event-loop-running)
+  (let ((lookup-c (uv:alloc-req :getnameinfo))
+        (loop-c (event-base-c *event-base*)))
+    (flet ((lookup (addr)
+             (save-callbacks lookup-c (list :resolve-cb resolve-cb :event-cb event-cb))
+             (let ((res (uv:uv-getnameinfo loop-c lookup-c (cffi:callback reverse-dns-cb) addr 0)))
+               (if (< res 0)
+                   (event-handler res event-cb :throw t)
+                   t))))
+      (if (and ip (find #\: ip))
+          (with-foreign-object* (addr uv:sockaddr-in6)
+                                ((uv-a:sockaddr-in-sin-family +af-inet6+))
+            (uv:uv-inet-pton +af-inet6+ ip (cffi:foreign-slot-pointer addr '(:struct uv:sockaddr-in6) 'uv:sin6-addr))
+            (lookup addr))
+          (with-foreign-object* (addr uv:sockaddr-in)
+                                ((uv-a:sockaddr-in-sin-family +af-inet+))
+            (uv:uv-inet-pton +af-inet+ ip (cffi:foreign-slot-pointer addr '(:struct uv:sockaddr-in) 'uv:sin-addr))
+            (lookup addr))))))

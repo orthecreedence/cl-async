@@ -20,10 +20,7 @@
 (defmacro with-foreign-object* ((var type &key (zero t) (initial (when zero #x0))) bindings &body body)
   "Convenience macro, makes creation and initialization of CFFI types easier.
    Emphasis on initialization."
-  (let ((type (if (eq type 'uv:addrinfo)
-                  'uv:addrinfo
-                  type))
-        (type-size (cffi:foreign-type-size (list :struct type))))
+  (let ((type-size (cffi:foreign-type-size (list :struct type))))
     `(cffi:with-foreign-object (,var :unsigned-char ,type-size)
        ,(when initial
           `(cffi:foreign-funcall "memset" :pointer ,var :unsigned-char ,initial :unsigned-char ,(if type-size type-size `(cffi:foreign-type-size '(:struct ,type)))))
