@@ -51,8 +51,8 @@ Let's integrate what we just did with [promises](http://orthecreedence.github.io
 
 {% highlight cl %}
 (defun work (operation)
-  "Run `operation` in a background thread, and finish the returned future with
-   the result(s) of the operation once complete. The future will be finished on
+  "Run `operation` in a background thread, and resolve the returned promise with
+   the result(s) of the operation once complete. The promise will be resolved on
    the same thread `(work ...)` was spawned from (your event-loop thread)."
   (bb:with-promise (resolve reject :resolve-fn resolver)
     (let* ((err nil)
@@ -75,7 +75,7 @@ Let's integrate what we just did with [promises](http://orthecreedence.github.io
     (t (e) (format t "err: ~a~%" e))))
 {% endhighlight %}
 
-Notice that we're catching and forwarding errors to our future.
+Notice that we're catching and forwarding errors to our promise.
 
 This is a toy example: you shouldn't spawn a thread every time you need a
 background job done (it makes more sense to use a thread pool or something like
