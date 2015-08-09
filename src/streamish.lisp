@@ -121,6 +121,8 @@
 
 (defmethod close-streamish ((streamish streamish) &key force)
   "Close and free a streamish and all of it's underlying structures."
+  (when (streamish-closed-p streamish)
+    (return-from close-streamish))
   (check-streamish-open streamish)
   (let* ((uvstream (streamish-c streamish))
          (data (deref-data-from-pointer uvstream))
