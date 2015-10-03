@@ -243,6 +243,10 @@
                              ;; default is more secure (TLS >= 1)
                              (logior +ssl-op-no-sslv2+
                                      +ssl-op-no-sslv3+)))))
+    (when (cffi:null-pointer-p ctx)
+      (let* ((errcode (ssl-err-get-error))
+             (str (ssl-err-reason-error-string errcode)))
+        (error (make-instance 'tcp-ssl-error :code -1 :msg (format nil "error creating SSL context: ~a" str)))))
     (ssl-ctx-set-options ctx options)
     ctx))
 
