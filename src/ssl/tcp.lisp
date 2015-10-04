@@ -246,7 +246,7 @@
     (when (cffi:null-pointer-p ctx)
       (let* ((errcode (ssl-err-get-error))
              (str (ssl-err-reason-error-string errcode)))
-        (error (make-instance 'tcp-ssl-error :code -1 :msg (format nil "error creating SSL context: ~a" str)))))
+        (error (make-instance 'tcp-ssl-error :code errcode :msg (format nil "error creating SSL context: ~a" str)))))
     (ssl-ctx-set-options ctx options)
     ctx))
 
