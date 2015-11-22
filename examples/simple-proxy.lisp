@@ -10,7 +10,7 @@
 ;;;
 ;;;   (simple-proxy:start local-bind local-port
 ;;;                       remote-host remote-port
-;;;                       &key stats debug)
+;;;                       &key stats debug ascii verbose)
 ;;;
 ;;; Not only does this offer a good example of a more advanced usage of cl-async
 ;;; but is actually really useful for peeking into plaintext TCP protocols. For
@@ -120,13 +120,13 @@
                      local-bind local-port
                      (lambda (sock-local data)
                        (proxy-local-data sock-local data))
-                     #'proxy-event-handler
+                     :event-cb #'proxy-event-handler
                      :connect-cb (lambda (sock-local)
                                    (output-data "connection")
                                    ;; on local connect, establish the remote connection
                                    (let ((sock-remote (as:tcp-connect remote-host remote-port
                                                                       #'proxy-remote-response
-                                                                      #'proxy-event-handler)))
+                                                                      :event-cb #'proxy-event-handler)))
                                      ;; pair the local and remote sockets. if
                                      ;; one closes, so does the other.
                                      (pair-sockets sock-local sock-remote)))

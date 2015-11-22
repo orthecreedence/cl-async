@@ -39,6 +39,7 @@
 (defclass socket (streamish)
   ((c :accessor socket-c)
    (data :accessor socket-data)
+   (address :accessor socket-address)
    (closed :accessor socket-closed)
    (buffer :accessor socket-buffer :initarg :buffer :initform (make-buffer)
      :documentation "Holds data sent on the socket that hasn't been sent yet.")
@@ -239,6 +240,9 @@
                 (progn
                   (attach-data-to-pointer uvstream (list :streamish socket :stream stream))
                   (save-callbacks uvstream (list :read-cb read-cb :event-cb event-cb))
+                  ;; TODO: uv_tcp_getpeername
+                  ;(case (uv:handle-type socket)
+                  ;  (:tcp t))
                   (when connect-cb (funcall connect-cb socket))
                   (uv:uv-read-start uvstream
                                     (cffi:callback streamish-alloc-cb)
