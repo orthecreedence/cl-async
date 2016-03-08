@@ -98,11 +98,10 @@
 (defmethod stream-read-sequence ((stream async-input-stream) sequence start end &key)
   "Attempt to read a sequence of bytes from the underlying streamish."
   (let* ((buffer (buffer-output (stream-buffer stream)))
-         (numbytes (min (length buffer) (- end start)))
-         (bytes (subseq buffer 0 numbytes)))
+         (numbytes (min (length buffer) (- end start))))
     (setf (stream-buffer stream) (make-buffer (subseq buffer numbytes)))
-    (replace sequence bytes :start1 start :end1 end)
-    (length bytes)))
+    (replace sequence buffer :start1 start :end1 end)
+    numbytes))
 
 ;;;; compatibility
 
