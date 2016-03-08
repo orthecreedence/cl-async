@@ -99,9 +99,9 @@
   "Attempt to read a sequence of bytes from the underlying streamish."
   (let* ((buffer (buffer-output (stream-buffer stream)))
          (numbytes (min (length buffer) (- end start)))
-         (bytes (subseq buffer start numbytes)))
+         (bytes (subseq buffer 0 numbytes)))
     (setf (stream-buffer stream) (make-buffer (subseq buffer numbytes)))
-    (replace sequence bytes)
+    (replace sequence bytes :start1 start :end1 end)
     (length bytes)))
 
 ;;;; compatibility
