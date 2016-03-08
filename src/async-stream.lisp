@@ -69,7 +69,7 @@
 (defmethod stream-write-byte ((stream async-output-stream) byte)
   "Write one byte to the underlying streamish."
   (stream-write-sequence stream (make-array 1 :element-type 'octet
-					      :initial-element byte) 0 1))
+                                              :initial-element byte) 0 1))
 
 (defmethod send-buffered-data ((stream async-output-stream))
   "Take data we've buffered between initial sending and actual streamish
@@ -99,7 +99,7 @@
   "Attempt to read a sequence of bytes from the underlying streamish."
   (let* ((buffer (buffer-output (stream-buffer stream)))
          (numbytes (min (length buffer) (- end start)))
-         (bytes (subseq buffer start (min (length buffer) numbytes))))
+         (bytes (subseq buffer start numbytes)))
     (setf (stream-buffer stream) (make-buffer (subseq buffer numbytes)))
     (replace sequence bytes)
     (length bytes)))
