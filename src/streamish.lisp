@@ -157,6 +157,7 @@
   (declare (ignore status))
   (uv:free-req req)
   (let ((uvstream (car (deref-data-from-pointer req))))
+    (free-pointer-data req :preserve-pointer t)
     (when (zerop (uv:uv-is-closing uvstream))
       (uv:uv-close uvstream (cffi:callback streamish-close-cb)))))
 
