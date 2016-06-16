@@ -340,6 +340,7 @@
                                 (funcall connect-cb sock/stream))))
                           (lambda (ssl)
                             (ssl-set-connect-state ssl))
+                          :store-ctx (not ssl-ctx)
                           :ciphers ciphers)
     ;; now that the 'socket class was replaced with 'ssl-socket, we can safely
     ;; write out our data and it will be buffered properly.
