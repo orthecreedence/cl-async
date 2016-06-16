@@ -25,6 +25,7 @@
           ;; error, signal
           (run-event-cb 'event-handler status event-cb))
       (uv:free-req req)
+      (free-pointer-data req :preserve-pointer t)
       (uv:uv-freeaddrinfo addrinfo))))
 
 (defun dns-lookup (host resolve-cb &key event-cb (family +af-inet+))
@@ -58,7 +59,8 @@
       (if (zerop status)
           (funcall resolve-cb hostname service)
           (run-event-cb 'event-handler status event-cb))
-      (uv:free-req req))))
+      (uv:free-req req)
+      (free-pointer-data req :preserve-pointer t))))
 
 (defun reverse-dns-lookup (ip resolve-cb &key event-cb)
   "Perform reverse DNS lookup on IP specifier as string.  Call RESOLVE-CB with
