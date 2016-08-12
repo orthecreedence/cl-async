@@ -322,7 +322,7 @@
                      (stream-socket socket/stream)
                      socket/stream))
          (ctx (or ssl-ctx
-                  (let ((ctx (create-ssl-ctx :method :tlsv1-client :options ssl-options)))
+                  (let ((ctx (create-ssl-ctx :options ssl-options)))
                     (ssl-ctx-set-default-verify-paths ctx)
                     ;; TODO better verify support
                     (ssl-ctx-set-verify ctx +ssl-verify-none+ (cffi:null-pointer))
