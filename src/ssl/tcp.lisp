@@ -378,7 +378,7 @@
                                      (:pem +ssl-filetype-pem+)
                                      (:asn1 +ssl-filetype-asn1+)
                                      (t +ssl-x509-filetype-default+)))
-                             (res (ssl-ctx-use-privatekey-file ctx (namestring certificate) type)))
+                             (res (ssl-ctx-use-privatekey-file ctx (namestring key) type)))
                         (when (<= res 0)
                           (let* ((code (ssl-err-get-error))
                                  (msg (ssl-err-error-string code (cffi:null-pointer))))
