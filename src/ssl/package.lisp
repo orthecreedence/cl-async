@@ -51,13 +51,14 @@
 ;; NOTE: the loading code is verbatim from cl+ssl
 
 (eval-when (:compile-toplevel :load-toplevel)
-  ;; OpenBSD needs to load libcrypto before libssl
-  #+openbsd
+  #+(or openbsd linux)
   (progn
     (cffi:define-foreign-library libcrypto
       (:openbsd (:or "libcrypto.so.20.1"
                      "libcrypto.so.19.0"
-                     "libcrypto.so.18.0")))
+                     "libcrypto.so.18.0"))
+      (:linux (:or "libcrypto.so.1.1"
+                   "libcrypto.so.1.0.2")))
     (cffi:use-foreign-library libcrypto))
 
   (cffi:define-foreign-library libssl
