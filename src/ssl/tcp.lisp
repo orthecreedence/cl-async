@@ -29,9 +29,12 @@
 
   (defun ensure-init (&key from-load)
     (unless *ssl-init*
-      (cffi:foreign-funcall ("SSL_library_init") :void)
-      (cffi:foreign-funcall ("SSL_load_error_strings") :void)
-      (cffi:foreign-funcall ("ERR_load_BIO_strings") :void)
+      (if (cffi:foreign-symbol-pointer "SSL_library_init" )
+          (cffi:foreign-funcall "SSL_library_init" :void)
+          (cffi:foreign-funcall "OPENSSL_init_ssl" :int 0 :int 0))
+      (when (cffi:foreign-symbol-pointer "SSL_load_error_strings")
+        (cffi:foreign-funcall "SSL_load_error_strings" :void))
+      (cffi:foreign-funcall "ERR_load_BIO_strings" :void)
       (unless from-load
         (setf *ssl-init* t)))))
 
