@@ -239,7 +239,7 @@
                 (progn
                   (attach-data-to-pointer uvstream (list :streamish socket :stream stream))
                   (save-callbacks uvstream (list :read-cb read-cb :event-cb event-cb))
-                  (when connect-cb (funcall connect-cb socket))
+                  (when connect-cb (funcall connect-cb (or stream socket)))
                   (uv:uv-read-start uvstream
                                     (cffi:callback streamish-alloc-cb)
                                     (cffi:callback streamish-read-cb)))
