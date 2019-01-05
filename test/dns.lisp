@@ -99,3 +99,34 @@
             :event-cb (lambda (ev) (error ev))))
         (error (e) (format nil "(~a) ~a" (as:event-errcode e) (as:event-errmsg e))))
     (is (string= host "google-public-dns-a.google.com"))))
+
+(test dns-lookup-mem-leak
+  "Test dns-lookup memory leaks"
+  (is (async-let ((counts-equal nil))
+        (test-timeout 3)
+        (let ((old-count (hash-table-count cl-async-base:*function-registry*)))
+          (as:dns-lookup "localhost"
+            (lambda (addr fam)
+              (declare (ignore addr fam))
+              (as:delay
+                (lambda ()
+                  (setf counts-equal
+                        (= old-count
+                           (hash-table-count cl-async-base:*function-registry*))))))
+            :event-cb (lambda (ev) (error ev))
+            :family as:+af-inet+)))))
+
+(test reverse-dns-lookup-mem-leak
+  "Test reverse-dns-lookup memory leaks"
+  (is (async-let ((counts-equal nil))
+        (test-timeout 3)
+        (let ((old-count (hash-table-count cl-async-base:*function-registry*)))
+          (as:reverse-dns-lookup "8.8.8.8"
+            (lambda (host service)
+              (declare (ignore host service))
+              (as:delay
+                (lambda ()
+                  (setf counts-equal
+                        (= old-count
+                           (hash-table-count cl-async-base:*function-registry*))))))
+            :event-cb (lambda (ev) (error ev)))))))

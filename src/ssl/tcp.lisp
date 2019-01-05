@@ -29,9 +29,12 @@
 
   (defun ensure-init (&key from-load)
     (unless *ssl-init*
-      (cffi:foreign-funcall ("SSL_library_init") :void)
-      (cffi:foreign-funcall ("SSL_load_error_strings") :void)
-      (cffi:foreign-funcall ("ERR_load_BIO_strings") :void)
+      (if (cffi:foreign-symbol-pointer "SSL_library_init" )
+          (cffi:foreign-funcall "SSL_library_init" :void)
+          (cffi:foreign-funcall "OPENSSL_init_ssl" :int 0 :int 0))
+      (when (cffi:foreign-symbol-pointer "SSL_load_error_strings")
+        (cffi:foreign-funcall "SSL_load_error_strings" :void))
+      (cffi:foreign-funcall "ERR_load_BIO_strings" :void)
       (unless from-load
         (setf *ssl-init* t)))))
 
@@ -322,7 +325,7 @@
                      (stream-socket socket/stream)
                      socket/stream))
          (ctx (or ssl-ctx
-                  (let ((ctx (create-ssl-ctx :method :tlsv1-client :options ssl-options)))
+                  (let ((ctx (create-ssl-ctx :options ssl-options)))
                     (ssl-ctx-set-default-verify-paths ctx)
                     ;; TODO better verify support
                     (ssl-ctx-set-verify ctx +ssl-verify-none+ (cffi:null-pointer))
@@ -340,6 +343,7 @@
                                 (funcall connect-cb sock/stream))))
                           (lambda (ssl)
                             (ssl-set-connect-state ssl))
+                          :store-ctx (not ssl-ctx)
                           :ciphers ciphers)
     ;; now that the 'socket class was replaced with 'ssl-socket, we can safely
     ;; write out our data and it will be buffered properly.
@@ -377,7 +381,7 @@
                                      (:pem +ssl-filetype-pem+)
                                      (:asn1 +ssl-filetype-asn1+)
                                      (t +ssl-x509-filetype-default+)))
-                             (res (ssl-ctx-use-privatekey-file ctx (namestring certificate) type)))
+                             (res (ssl-ctx-use-privatekey-file ctx (namestring key) type)))
                         (when (<= res 0)
                           (let* ((code (ssl-err-get-error))
                                  (msg (ssl-err-error-string code (cffi:null-pointer))))
