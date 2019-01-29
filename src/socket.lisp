@@ -240,14 +240,7 @@
                 (progn
                   (attach-data-to-pointer uvstream (list :streamish socket :stream stream))
                   (save-callbacks uvstream (list :read-cb read-cb :event-cb event-cb))
-<<<<<<< HEAD
-                  ;; TODO: uv_tcp_getpeername
-                  ;(case (uv:handle-type socket)
-                  ;  (:tcp t))
-                  (when connect-cb (funcall connect-cb socket))
-=======
                   (when connect-cb (funcall connect-cb (or stream socket)))
->>>>>>> d33207c6f2ef698547e862e0c258b7453834080b
                   (uv:uv-read-start uvstream
                                     (cffi:callback streamish-alloc-cb)
                                     (cffi:callback streamish-read-cb)))
