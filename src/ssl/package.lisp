@@ -56,7 +56,8 @@
     (cffi:define-foreign-library libcrypto
       (:openbsd "libcrypto.so")
       (:linux (:or "libcrypto.so.1.1"
-                   "libcrypto.so.1.0.2")))
+                   "libcrypto.so.1.0.2"
+                   "libcrypto.so")))
     (cffi:use-foreign-library libcrypto))
 
   (cffi:define-foreign-library libssl
