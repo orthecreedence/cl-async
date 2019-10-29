@@ -148,10 +148,8 @@
                            for in-p = t then nil
                            when pipe-or-stream
                              do (let ((pipe (streamish pipe-or-stream)))
-                                  (when (or in-p (streamish-read-start
-                                                  (streamish pipe)))
-                                    (setf (socket-connected (streamish pipe)) t)
-                                (write-pending-socket-data pipe))))
+                                  (when (or in-p (streamish-read-start pipe))
+                                    (setf (socket-connected (streamish pipe)) t))))
                      (apply #'values
                             (make-instance 'process
                                            :c handle
