@@ -78,7 +78,9 @@
                           (event-cb #'error)
                           (input :ignore)
                           (output :ignore)
-                          (error-output :ignore))
+                          (error-output :ignore)
+                          env
+                          working-directory)
   "Run the program specified by PATH with specified ARGS.
   ARGS don't include the executable path (argv[0]).  Return process
   object and pipes or streams for input, output and error output file
@@ -93,7 +95,7 @@
   EVENT-CB specifies error handler to be used.
 
   INPUT, OUTPUT and ERROR-OUTPUT specify process input/output/error
-  output redirection. For each of these, the following values are
+  redirection. For each of these, the following values are
   supported:
 
   :IGNORE the corresponding file descriptor isn't used
@@ -102,36 +104,49 @@
     corresponding file descriptor (see PIPE-CONNECT for the set
     of supported keyword arguments).
   (:STREAM [:READ-CB ...] ...) same as PIPE, but uses async
-    stream instead of a pipe."
+    stream instead of a pipe.
+
+ ENV is an alist of (VAR . VALUE) pairs specifying the environment variables
+  of the spawned process. Note that both VAR and VALUE must be strings.
+
+  WORKING-DIRECTORY specifies the current working directory of the spawned
+  program. Defaults to the current working directory of its parent process
+  (viz. the process SPAWN is called from)."
   (check-event-loop-running)
   (let ((handle (uv:alloc-handle :process)))
     (cffi:with-foreign-objects ((stdio '(:struct uv:uv-stdio-container-t) 3)
                                 (c-args :pointer (+ 2 (length args))))
-      (cffi:with-foreign-strings (#++ (cwd "/tmp")
-                                  (file (namestring path)))
+      (cffi:with-foreign-strings ((file (namestring path)))
         (let ((stdios
                 (loop for fd from 0 below 3
                       for (type . other-args) in (mapcar #'alexandria:ensure-list
                                                          (list input output error-output))
                       for out-p = nil then t
-                      collect
-                      (init-stdio-container
-                       (cffi:mem-aptr stdio '(:struct uv:uv-stdio-container-t) fd)
-                       out-p type fd other-args))))
+                      collect (init-stdio-container
+                               (cffi:mem-aptr stdio '(:struct uv:uv-stdio-container-t) fd)
+                               out-p type fd other-args)))
+              (c-env (cffi:null-pointer))
+              (cwd (cffi:null-pointer)))
           (setf (cffi:mem-aref c-args :pointer) file
                 (cffi:mem-aref c-args :pointer (1+ (length args))) (cffi:null-pointer))
           (loop for i from 1
                 for arg in args
                 do (setf (cffi:mem-aref c-args :pointer i)
                          (cffi:foreign-string-alloc arg)))
+          (when env
+            (setf c-env (cffi:foreign-alloc :pointer :count (length env) :null-terminated-p t))
+            (loop for i from 0
+                  for (var . value) in env
+                  do (setf (cffi:mem-aref c-env :pointer i)
+                           (cffi:foreign-string-alloc (concatenate 'string var "=" value)))))
+          (when working-directory
+            (setf cwd (cffi:foreign-string-alloc (namestring (truename working-directory)))))
           (with-foreign-object* (options uv:uv-process-options-t)
                                 ((uv-a:uv-process-options-t-exit-cb (cffi:callback process-exit-cb))
                                  (uv-a:uv-process-options-t-file file)
                                  (uv-a:uv-process-options-t-args c-args)
-                                 #++
-                                 (uv-a:uv-process-options-t-env (cffi:null-pointer))
-                                 #++
-                                 (uv-a:uv-process-options-t-cwd (cffi:null-pointer))
+                                 (uv-a:uv-process-options-t-env c-env)
+                                 (uv-a:uv-process-options-t-cwd cwd)
                                  #++
                                  (uv-a:uv-process-options-t-flags 0)
                                  (uv-a:uv-process-options-t-stdio-count 3)
@@ -144,6 +159,12 @@
               (cond ((zerop res)
                      (loop for i from 1 upto (length args)
                            do (cffi:foreign-string-free (cffi:mem-aref c-args :pointer i)))
+                     (when env
+                       (loop for i from 0 to (1- (length env))
+                             do (cffi:foreign-string-free (cffi:mem-aref c-env :pointer i)))
+                       (cffi:foreign-free c-env))
+                     (when working-directory
+                       (cffi:foreign-string-free cwd))
                      (loop for pipe-or-stream in stdios
                            for in-p = t then nil
                            when pipe-or-stream

@@ -119,3 +119,21 @@
                               :input (list :pipe)))
       ;; send SIGINT
       (as:process-kill process 2))))
+
+(test process-env ; TODO make more portable
+  (with-test-event-loop ()
+    (with-temporary-directory (dir)
+      (test-timeout 3)
+      (let ((env "$HOME/.shinit")
+            (dir-without-final-slash
+              (subseq (namestring dir) 0 (1- (length (namestring dir)))))
+            (bytes (make-array 0 :element-type 'octet)))
+        (as:spawn "bash" '("-c" "echo -n $ENV $PWD")
+                  :output (list :pipe
+                                :read-cb #'(lambda (pipe data)
+                                             (declare (ignore pipe))
+                                             (setf bytes (concatenate '(vector octet) data))))
+                  :env `(("ENV" . ,env))
+                  :working-directory dir)
+        (wait (string= (format nil "$HOME/.shinit ~A" dir-without-final-slash)
+                       (babel:octets-to-string bytes)))))))
