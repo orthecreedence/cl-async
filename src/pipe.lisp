@@ -1,7 +1,5 @@
 (in-package :cl-async)
 
-(defclass pipe (streamish) ())
-
 (defclass pipe-mixin () ())
 (defclass pipe (pipe-mixin socket) ())
 (defclass pipe-server (pipe-mixin socket-server) ())
