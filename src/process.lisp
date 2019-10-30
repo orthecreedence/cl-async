@@ -5,9 +5,7 @@
 ;; TBD: support inheritance of custom fds
 ;; TBD: utf-8 pipe support
 ;; TBD: check process handles during walk using generic function
-;; TBD: custom env
 ;; TBD: custom process name
-;; TBD: custom cwd
 ;; TBD: custom string encoding
 ;; TBD: process flags (detached etc.)
 
