@@ -104,7 +104,7 @@
   (:STREAM [:READ-CB ...] ...) same as PIPE, but uses async
     stream instead of a pipe.
 
- ENV is an alist of (VAR . VALUE) pairs specifying the environment variables
+  ENV is an alist of (VAR . VALUE) pairs specifying the environment variables
   of the spawned process. Note that both VAR and VALUE must be strings.
 
   WORKING-DIRECTORY specifies the current working directory of the spawned

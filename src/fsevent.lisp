@@ -52,7 +52,9 @@
               (uv:uv-fs-event-start
                handle (cffi:callback fs-event-callback)
                (namestring path)
-               4 #++ 0))
+               #+(or darwin windows)
+               (cffi:foreign-enum-value 'uv:uv-fs-event-flags :recursive)
+               #+linux 0))
         (cond ((zerop res)
                fs-monitor)
               (t
