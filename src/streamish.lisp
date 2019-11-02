@@ -137,11 +137,11 @@
     (do-close-streamish uvstream
                        :force force)))
 
-(defun write-to-uvstream (uvstream data &key start end)
+(defun write-to-uvstream (uvstream data &key (start 0) (end (length data)))
   "Util function to write data directly to a uv stream object."
-  (let* ((bufsize (length data))
+  (let* ((bufsize (- end start))
          (buffer (static-vectors:make-static-vector bufsize)))
-    (replace buffer data)
+    (replace buffer data :start2 start :end2 end)
     (let ((req (uv:alloc-req :write))
           (buf (uv:alloc-uv-buf (static-vectors:static-vector-pointer buffer) bufsize)))
       (let ((res (uv:uv-write req uvstream buf 1 (cffi:callback streamish-write-cb))))
