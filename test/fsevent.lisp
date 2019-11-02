@@ -2,11 +2,12 @@
 
 (in-suite cl-async-test-core)
 
-(test fs-monitor
+(test fs-monitor ; no support for recursive flag on linux, but works anyways without
   (with-test-event-loop ()
     (test-timeout 3)
     (with-temporary-directory (dir)
       (let ((got-callback-p nil)
+            (num-events 0)
             fs-monitor)
         (setf fs-monitor
               (as:fs-watch dir
@@ -23,17 +24,19 @@
                      `(progn
                         (setf got-callback-p nil)
                         ,@body
-                        (wait got-callback-p))))
-          (as:with-delay ()
-            (expecting-callback
-             (ensure-directories-exist
-              (uiop:merge-pathnames* #p"42/" dir)))
-            (expecting-callback
-             (alexandria:with-output-to-file (s (uiop:merge-pathnames* "4242" dir))
-               (princ 42 s)))
-            (expecting-callback
-             (uiop:delete-empty-directory
-              (uiop:merge-pathnames* #p"42/" dir)))))))))
+                        (wait (when got-callback-p
+                                (if (= (incf num-events) 3)
+                                    (as:fs-unwatch fs-monitor)
+                                    t))))))
+          (expecting-callback
+           (ensure-directories-exist
+            (uiop:merge-pathnames* #p"42/" dir)))
+          (expecting-callback
+           (alexandria:with-output-to-file (s (uiop:merge-pathnames* "4242" dir))
+             (princ 42 s)))
+          (expecting-callback
+           (uiop:delete-empty-directory
+            (uiop:merge-pathnames* #p"42/" dir))))))))
 
 (test fs-watch-failure ()
   (signals as:filesystem-enoent

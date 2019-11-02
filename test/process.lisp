@@ -120,7 +120,7 @@
       ;; send SIGINT
       (as:process-kill process 2))))
 
-(test process-env ; TODO make more portable
+(test process-env
   (with-test-event-loop ()
     (with-temporary-directory (dir)
       (test-timeout 3)

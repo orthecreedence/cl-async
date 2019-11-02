@@ -84,7 +84,7 @@
             (declare (ignore service))
             (setf host host*))
           :event-cb (lambda (ev) (error ev))))
-    (is (string= host "google-public-dns-a.google.com"))))
+    (is (string= host "dns.google"))))
 
 (test reverse-dns-lookup-ipv6
   "Test IPV6 family"
@@ -98,7 +98,7 @@
               (setf host host*))
             :event-cb (lambda (ev) (error ev))))
         (error (e) (format nil "(~a) ~a" (as:event-errcode e) (as:event-errmsg e))))
-    (is (string= host "google-public-dns-a.google.com"))))
+    (is (string= host "dns.google"))))
 
 (test dns-lookup-mem-leak
   "Test dns-lookup memory leaks"

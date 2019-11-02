@@ -87,9 +87,7 @@
 (defun save-callbacks (pointer callbacks)
   "Save a set of callbacks, keyed by the given pointer."
   (with-lock
-    (let ((callbacks (if (listp callbacks)
-                         callbacks
-                         (list callbacks))))
+    (let ((callbacks (alexandria:ensure-list callbacks)))
       (setf (gethash (make-pointer-eql-able pointer) *function-registry*) callbacks))))
 
 (defun get-callbacks (pointer)
