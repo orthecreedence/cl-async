@@ -46,8 +46,6 @@
            #:with-interval
            #:remove-interval
            #:make-event
-           #:watch-fd
-           #:fd-add
 
            ;; notifier exports
            #:notifier
