@@ -82,6 +82,12 @@
   if THING is a streamish.")
   (:method ((streamish streamish)) streamish))
 
+(defmethod errno-event ((streamish streamish) (errno t))
+  (make-instance 'streamish-error
+                 :streamish streamish
+                 :code errno
+                 :msg (error-str errno)))
+
 (defmethod errno-event ((streamish streamish) (errno (eql (uv:errval :eof))))
   (make-instance 'streamish-eof :streamish streamish))
 
