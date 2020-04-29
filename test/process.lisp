@@ -135,5 +135,13 @@
                                              (setf bytes (concatenate '(vector octet) data))))
                   :env `(("ENV" . ,env))
                   :working-directory dir)
-        (wait (string= (format nil "$HOME/.shinit ~A" dir-without-final-slash)
-                       (babel:octets-to-string bytes)))))))
+
+        ;; the folder on macOS has a '/private' prefixed when it got the data from the process.
+        ;; i.e:
+        ;; /private/var/folders/2z/831jl36d01317d4pz3g2_j100000gn/T/as-tst-rXjQJL
+        ;; /var/folders/2z/831jl36d01317d4pz3g2_j100000gn/T/as-tst-rXjQJL
+        (wait (let* ((actual-string (babel:octets-to-string bytes))
+                     (expected-string (format nil "$HOME/.shinit ~A" dir-without-final-slash))
+                     (mac-expected-string (format nil "$HOME/.shinit /private~A" dir-without-final-slash)))
+                (or (string= expected-string actual-string)
+                    (string= mac-expected-string actual-string))))))))
