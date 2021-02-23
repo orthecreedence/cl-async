@@ -72,7 +72,8 @@
 
   (cffi:use-foreign-library libssl)
 
-  (cffi:define-foreign-library libeay32
-    (:windows "libeay32.dll"))
-
-  (cffi:use-foreign-library libeay32))
+  #+windows
+  (progn
+    (cffi:define-foreign-library libeay32
+      (:windows "libeay32.dll"))
+    (cffi:use-foreign-library libeay32)))
