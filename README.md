@@ -7,36 +7,36 @@ backend library in Node.js).
 
 The main goal is to provide an experience that makes general asynchronous 
 programming in lisp natural, and to also provide a number of
-[drivers](http://orthecreedence.github.com/cl-async/drivers) on top of cl-async.
+[drivers](http://orthecreedence.github.io/cl-async/drivers) on top of cl-async.
 
 __NOTE:__ cl-async uses the v1.x branch of libuv, so make sure to grab that
 version of it (not the v0.10.x branch).
 
-### [Documentation](http://orthecreedence.github.com/cl-async/documentation)
-Please see the [cl-async website](http://orthecreedence.github.com/cl-async) for
+### [Documentation](http://orthecreedence.github.io/cl-async/documentation)
+Please see the [cl-async website](http://orthecreedence.github.io/cl-async) for
 full documentation, examples, etc.
 
 Quick links:
 
-- [Documentation](http://orthecreedence.github.com/cl-async/documentation)
-  - [Base system](http://orthecreedence.github.com/cl-async/base)
-  - [Timers](http://orthecreedence.github.com/cl-async/timers)
-  - [Signal handling](http://orthecreedence.github.com/cl-async/signal-handling)
-  - [DNS](http://orthecreedence.github.com/cl-async/dns)
-  - [TCP](http://orthecreedence.github.com/cl-async/tcp)
-  - [TCP stream](http://orthecreedence.github.com/cl-async/tcp-stream)
-  - [TCP SSL](http://orthecreedence.github.com/cl-async/tcp-ssl)
-  - [Pollers](http://orthecreedence.github.com/cl-async/pollers)
-  - [Idlers](http://orthecreedence.github.com/cl-async/idlers)
-  - [Notifiers](http://orthecreedence.github.com/cl-async/notifiers)
-  - [Futures](http://orthecreedence.github.com/cl-async/future)
-  - [Threading](http://orthecreedence.github.com/cl-async/threading)
-  - [Stats](http://orthecreedence.github.com/cl-async/stats)
-  - [Event callbacks and error handling](http://orthecreedence.github.com/cl-async/event-handling)
-- [Examples](http://orthecreedence.github.com/cl-async/examples)
-- [Benchmarks](http://orthecreedence.github.com/cl-async/benchmarks)
-- [Implementation notes](http://orthecreedence.github.com/cl-async/implementation-notes)
-- [Drivers](http://orthecreedence.github.com/cl-async/drivers)
+- [Documentation](http://orthecreedence.github.io/cl-async/documentation)
+  - [Base system](http://orthecreedence.github.io/cl-async/base)
+  - [Timers](http://orthecreedence.github.io/cl-async/timers)
+  - [Signal handling](http://orthecreedence.github.io/cl-async/signal-handling)
+  - [DNS](http://orthecreedence.github.io/cl-async/dns)
+  - [TCP](http://orthecreedence.github.io/cl-async/tcp)
+  - [TCP stream](http://orthecreedence.github.io/cl-async/tcp-stream)
+  - [TCP SSL](http://orthecreedence.github.io/cl-async/tcp-ssl)
+  - [Pollers](http://orthecreedence.github.io/cl-async/pollers)
+  - [Idlers](http://orthecreedence.github.io/cl-async/idlers)
+  - [Notifiers](http://orthecreedence.github.io/cl-async/notifiers)
+  - [Futures](http://orthecreedence.github.io/cl-async/future)
+  - [Threading](http://orthecreedence.github.io/cl-async/threading)
+  - [Stats](http://orthecreedence.github.io/cl-async/stats)
+  - [Event callbacks and error handling](http://orthecreedence.github.io/cl-async/event-handling)
+- [Examples](http://orthecreedence.github.io/cl-async/examples)
+- [Benchmarks](http://orthecreedence.github.io/cl-async/benchmarks)
+- [Implementation notes](http://orthecreedence.github.io/cl-async/implementation-notes)
+- [Drivers](http://orthecreedence.github.io/cl-async/drivers)
 
 ### Install
 ```lisp
