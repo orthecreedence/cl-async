@@ -61,13 +61,46 @@
     (cffi:use-foreign-library libcrypto))
 
   (cffi:define-foreign-library libssl
-    (:windows "libssl32.dll")
-    (:darwin "libssl.dylib")
-    (:openbsd "libssl.so")
+    (:windows (:or #+(and windows x86-64) "libssl-1_1-x64.dll"
+                   #+(and windows x86) "libssl-1_1.dll"
+                   "libssl32.dll"
+                   "ssleay32.dll"))
+    ;; The default OS-X libssl seems have had insufficient crypto algos
+    ;; (missing TLSv1_[1,2]_XXX methods,
+    ;; see https://github.com/cl-plus-ssl/cl-plus-ssl/issues/56)
+    ;; so first try to load possible custom installations of libssl
+    (:darwin (:or "/opt/local/lib/libssl.dylib" ;; MacPorts
+                  "/sw/lib/libssl.dylib"        ;; Fink
+                  "/usr/local/opt/openssl/lib/libssl.dylib" ;; Homebrew
+                  "/opt/homebrew/opt/openssl/lib/libssl.dylib" ;; Homebrew Arm64
+                  "/usr/local/lib/libssl.dylib" ;; personalized install
+                  "libssl.dylib"                ;; default system libssl, which may have insufficient crypto
+                  "/usr/lib/libssl.dylib"))
     (:solaris (:or "/lib/64/libssl.so"
                    "libssl.so.0.9.8" "libssl.so" "libssl.so.4"))
-    (:unix (:or "libssl.so.1.0.0" "libssl.so.0.9.8" "libssl.so" "libssl.so.4"))
-    (:cygwin "cygssl-1.0.0.dll")
+    ;; Unlike some other systems, OpenBSD linker,
+    ;; when passed library name without versions at the end,
+    ;; will locate the library with highest macro.minor version,
+    ;; so we can just use just "libssl.so".
+    ;; More info at https://github.com/cl-plus-ssl/cl-plus-ssl/pull/2.
+    (:openbsd "libssl.so")
+    ((and :unix (not :cygwin)) (:or "libssl.so.1.1"
+                                    "libssl.so.1.0.2m"
+                                    "libssl.so.1.0.2k"
+                                    "libssl.so.1.0.2"
+                                    "libssl.so.1.0.1l"
+                                    "libssl.so.1.0.1j"
+                                    "libssl.so.1.0.1f"
+                                    "libssl.so.1.0.1e"
+                                    "libssl.so.1.0.1"
+                                    "libssl.so.1.0.0q"
+                                    "libssl.so.1.0.0"
+                                    "libssl.so.0.9.8ze"
+                                    "libssl.so.0.9.8"
+                                    "libssl.so.10"
+                                    "libssl.so.4"
+                                    "libssl.so"))
+    (:cygwin (:or "cygssl-1.1.dll" "cygssl-1.0.0.dll"))
     (t (:default "libssl3")))
 
   (cffi:use-foreign-library libssl)
