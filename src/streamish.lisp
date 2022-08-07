@@ -54,6 +54,9 @@
                (format s "~a: ~a: ~a" (streamish c) (event-errcode c) (event-errmsg c)))))
   (:documentation "Describes a general streamish error."))
 
+(define-condition streamish-enoent (streamish-error) ()
+  (:documentation "Passed to an event callback on Error: no such file or directory."))
+
 (define-condition streamish-eof (streamish-info) ()
   (:documentation "Passed to an event callback when stream EOF is reached."))
 
@@ -87,6 +90,9 @@
                  :streamish streamish
                  :code errno
                  :msg (error-str errno)))
+
+(defmethod errno-event ((streamish streamish) (errno (eql (uv:errval :enoent))))
+  (make-instance 'streamish-enoent :streamish streamish))
 
 (defmethod errno-event ((streamish streamish) (errno (eql (uv:errval :eof))))
   (make-instance 'streamish-eof :streamish streamish))
