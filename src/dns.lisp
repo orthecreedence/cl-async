@@ -3,6 +3,9 @@
 (define-condition dns-error (event-error) ()
   (:documentation "Passed to a failure callback when a DNS error occurs on a connection."))
 
+(defmethod errno-event ((streamish t) (errno (eql (uv:errval :eai-nodata))))
+  (make-instance 'dns-error :code errno :msg (error-str errno)))
+
 (define-c-callback dns-cb :void ((req :pointer) (status :int) (addrinfo :pointer))
   "Callback for DNS lookups."
   (let* ((callbacks (get-callbacks req))
