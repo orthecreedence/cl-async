@@ -34,6 +34,7 @@
                                (unless (as:socket-closed-p sock)
                                  (as:close-socket sock))
                                (setf client-data (concat client-data (babel:octets-to-string data))))
+                             :event-cb
                              (lambda (ev) (error ev))
                              :data "ha")))
                 (as:write-socket-data sock "i "))))

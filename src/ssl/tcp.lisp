@@ -404,7 +404,7 @@
          (server (as:tcp-server bind-address
                                 port
                                 read-cb
-                                event-cb
+                                :event-cb event-cb
                                 :connect-cb wrap-connect-cb
                                 :backlog backlog
                                 :stream stream
