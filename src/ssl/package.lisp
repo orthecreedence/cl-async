@@ -105,6 +105,9 @@
 
   (cffi:use-foreign-library libssl)
 
+  (when (cffi:foreign-symbol-pointer "TLS_method")
+    (pushnew ':tls-method *features*))
+
   #+windows
   (progn
     (cffi:define-foreign-library libeay32
