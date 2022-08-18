@@ -91,6 +91,8 @@
 
 (defconstant +ssl-ctrl-options+ 32)
 
+#+tls-method (defconstant +tls-st-ok+ 1)
+
 (defconstant +bio-ctrl-reset+ 1)
 (defconstant +bio-ctrl-eof+ 2)
 (defconstant +bio-ctrl-info+ 3)
@@ -132,9 +134,14 @@
 (cffi:defcfun ("TLSv1_method" ssl-tlsv1-method) :pointer)
 (cffi:defcfun ("TLSv1_client_method" ssl-tlsv1-client-method) :pointer)
 (cffi:defcfun ("TLSv1_server_method" ssl-tlsv1-server-method) :pointer)
-(cffi:defcfun ("SSLv23_method" ssl-sslv23-method) :pointer)
-(cffi:defcfun ("SSLv23_client_method" ssl-sslv23-client-method) :pointer)
-(cffi:defcfun ("SSLv23_server_method" ssl-sslv23-server-method) :pointer)
+#+:tls-method
+(progn (cffi:defcfun ("TLS_method" ssl-sslv23-method) :pointer)
+       (cffi:defcfun ("TLS_client_method" ssl-sslv23-client-method) :pointer)
+       (cffi:defcfun ("TLS_server_method" ssl-sslv23-server-method) :pointer))
+#-:tls-method
+(progn (cffi:defcfun ("SSLv23_method" ssl-sslv23-method) :pointer)
+       (cffi:defcfun ("SSLv23_client_method" ssl-sslv23-client-method) :pointer)
+       (cffi:defcfun ("SSLv23_server_method" ssl-sslv23-server-method) :pointer))
 (cffi:defcfun ("SSL_CTX_new" ssl-ctx-new) :pointer
   (method :pointer))
 (cffi:defcfun ("SSL_CTX_ctrl" ssl-ctx-ctrl) :long
@@ -214,12 +221,28 @@
   (len :int))
 
 (defun & (&rest vals) (not (zerop (apply 'logand vals))))
-(defun ssl-is-init-finished (ssl) (& (ssl-state ssl) +ssl-st-ok+))
-(defun ssl-in-init (ssl) (& (ssl-state ssl) +ssl-st-init+))
-(defun ssl-in-before (ssl) (& (ssl-state ssl) +ssl-st-before+))
-(defun ssl-in-connect-init (ssl) (& (ssl-state ssl) +ssl-st-connect+))
-(defun ssl-in-accept-init (ssl) (& (ssl-state ssl) +ssl-st-accept+))
-(defun ssl-bio-set-mem-eof-return (bio v) (ssl-bio-ctrl bio +bio-c-set-buf-mem-eof-return+ v (cffi:null-pointer)))
+
+#-tls-method
+(progn
+  (defun ssl-is-init-finished (ssl) (& (ssl-state ssl) +ssl-st-ok+))
+  (defun ssl-in-init (ssl) (& (ssl-state ssl) +ssl-st-init+))
+  (defun ssl-in-before (ssl) (& (ssl-state ssl) +ssl-st-before+))
+  (defun ssl-in-connect-init (ssl) (& (ssl-state ssl) +ssl-st-connect+))
+  (defun ssl-in-accept-init (ssl) (& (ssl-state ssl) +ssl-st-accept+)))
+
+#+tls-method
+(progn
+  (cffi:defcfun ("SSL_get_state" ssl-get-state) :int (ssl :pointer))
+  (cffi:defcfun ("SSL_in_init" ssl-in-init) :int (ssl :pointer))
+  (cffi:defcfun ("SSL_in_before" ssl-in-before) :int (ssl :pointer))
+  (cffi:defcfun ("SSL_is_server" ssl-is-server) :int (ssl :pointer))
+
+  (defun ssl-is-init-finished (ssl) (= (ssl-get-state ssl) +tls-st-ok+))
+  (defun ssl-in-connect-init (ssl) (& (ssl-in-init ssl) (not (ssl-is-server ssl))))
+  (defun ssl-in-accept-init (ssl) (& (ssl-in-init ssl) (ssl-is-server ssl)))
+  (defun ssl-bio-set-mem-eof-return (bio v)
+    (ssl-bio-ctrl
+     bio +bio-c-set-buf-mem-eof-return+ v (cffi:null-pointer))))
 
 (defun ssl-ctx-set-options (ctx options)
   "Function version of the openssl macro."

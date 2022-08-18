@@ -102,6 +102,7 @@
            #:close-streamish
            #:streamish-info
            #:streamish-error
+           #:streamish-enoent
            #:streamish-eof
            #:streamish-broken-pipe
            #:streamish-canceled

@@ -18,7 +18,6 @@
             (incf server-reqs)
             (setf server-data (concat server-data (babel:octets-to-string data)))
             (as:write-socket-data sock "thxlol "))
-          nil
           :certificate (asdf:system-relative-pathname :cl-async #P"test/ssl/certkey")
           :key  (asdf:system-relative-pathname :cl-async #P"test/ssl/certkey")
           :connect-cb (lambda (sock)
@@ -35,6 +34,7 @@
                                (unless (as:socket-closed-p sock)
                                  (as:close-socket sock))
                                (setf client-data (concat client-data (babel:octets-to-string data))))
+                             :event-cb
                              (lambda (ev) (error ev))
                              :data "ha")))
                 (as:write-socket-data sock "i "))))

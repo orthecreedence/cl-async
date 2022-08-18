@@ -45,7 +45,7 @@
 (test pipe-connect-fail
   "Make sure a pipe connection fails"
   (let ((num-err 0))
-    (signals as:filesystem-enoent
+    (signals as:streamish-enoent
       (async-let ()
         (test-timeout 2)
         (with-path-under-tmpdir (path "nosuchpipe")
