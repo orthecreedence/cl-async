@@ -43,12 +43,11 @@
                #:uiop)
   :components
   ((:module src
-    :serial t
     :components
     ((:file "package")
      (:file "event-loop" :depends-on ("package"))
      (:file "event" :depends-on ("package"))
-     (:file "dns" :depends-on ("package"))
+     (:file "dns" :depends-on ("package" "streamish"))
      (:file "streamish" :depends-on ("event-loop" "event"))
      (:file "async-stream" :depends-on ("streamish"))
      (:file "socket" :depends-on ("streamish" "async-stream"))
