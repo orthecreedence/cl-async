@@ -10,14 +10,6 @@
    data into write-socket-data."
   (coerce vector '(vector octet)))
 
-(defun make-buffer (&optional data)
-  "Create an octet buffer, optoinally filled with the given data."
-  (declare (type (or null octet-vector) data))
-  (let ((buffer (fast-io:make-output-buffer)))
-    (when data
-      (write-to-buffer data buffer))
-    buffer))
-
 (declaim (inline buffer-output))
 (defun buffer-output (buffer)
   "Grab the output from a buffer created with (make-buffer)."
@@ -30,6 +22,14 @@
   (declare (type octet-vector seq)
            (type fast-io::output-buffer buffer))
   (fast-io:fast-write-sequence seq buffer (or start 0) end))
+
+(defun make-buffer (&optional data)
+  "Create an octet buffer, optoinally filled with the given data."
+  (declare (type (or null octet-vector) data))
+  (let ((buffer (fast-io:make-output-buffer)))
+    (when data
+      (write-to-buffer data buffer))
+    buffer))
 
 (defun do-chunk-data (data buffer write-cb &key start end new-buffer)
   "Util function that splits data into the (length buffer) chunks and calls
