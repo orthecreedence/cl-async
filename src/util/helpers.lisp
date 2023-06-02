@@ -170,6 +170,9 @@
 
 (defmacro define-condition-alias (alias name)
   "Define an alias for the specified condition."
-  `(progn
-     (deftype ,alias () ',name)
-     (setf (find-class ',alias) (find-class ',name))))
+  `(define-condition ,alias (,name)
+     ())
+  ;; `(progn
+  ;;    (deftype ,alias () ',name)
+  ;;    (setf (find-class ',alias) (find-class ',name)))
+  )
