@@ -63,7 +63,7 @@
 (defun addrinfo-to-string (addrinfo)
   "Given a (horrible) addrinfo C object pointer, grab either an IP4 or IP6
    address and return is as a string."
-  (let* ((type 'uv:addrinfo)
+  (let* (;(type 'uv:addrinfo)
          (family (uv-a:addrinfo-ai-family addrinfo))
          (err nil))
     (cffi:with-foreign-object (buf :unsigned-char 128)
