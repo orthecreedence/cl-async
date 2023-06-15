@@ -1,5 +1,9 @@
 (in-package :cl-async)
 
+(defgeneric streamish (thing)
+  (:documentation "Returned associated streamish for THING or THING itself
+  if THING is a streamish."))
+
 (defgeneric errno-event (streamish errno)
   (:documentation "Make an event based on errno and streamish."))
 
@@ -80,10 +84,8 @@
    (drain-read-buffer :accessor streamish-drain-read-buffer :initarg :drain-read-buffer :initform t))
   (:documentation "Wraps around a streamish."))
 
-(defgeneric streamish (thing)
-  (:documentation "Returned associated streamish for THING or THING itself
-  if THING is a streamish.")
-  (:method ((streamish streamish)) streamish))
+(defmethod streamish ((streamish streamish))
+  streamish)
 
 (defmethod errno-event ((streamish streamish) (errno t))
   (make-instance 'streamish-error
