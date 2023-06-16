@@ -63,7 +63,7 @@
    If event-cbs are called via run-event-cb, make sure the event-cb
    is NOT double-called with the same condition twice."
   (alexandria:once-only (event-cb)
-    (alexandria:with-gensyms (evcb err last-err thunk-fn continue-fn blk)
+    (alexandria:with-gensyms (err last-err thunk-fn continue-fn blk)
       `(let ((*evcb-err* '())
              (,last-err nil))
          (labels ((,continue-fn (error)

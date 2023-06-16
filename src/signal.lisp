@@ -68,9 +68,7 @@
   "All signals come through here."
   (let* ((callbacks (get-callbacks watcher))
          (signal-cb (getf callbacks :signal-cb))
-         (event-cb (getf callbacks :event-cb))
-         (sig-data (deref-data-from-pointer watcher))
-         (ev (getf sig-data :ev)))
+         (event-cb (getf callbacks :event-cb)))
     (catch-app-errors event-cb
       (funcall signal-cb signo))))
 
