@@ -134,6 +134,17 @@
 (cffi:defcfun ("TLSv1_method" ssl-tlsv1-method) :pointer)
 (cffi:defcfun ("TLSv1_client_method" ssl-tlsv1-client-method) :pointer)
 (cffi:defcfun ("TLSv1_server_method" ssl-tlsv1-server-method) :pointer)
+
+;; this is copied virtually verbatim from cl+ssl
+(cffi:defcfun ("SSL_ctrl" ssl-ctrl) :long
+  (ssl :pointer)
+  (cmd :int)
+  (larg :long)
+  (parg :pointer))
+
+(defun ssl-set-tlsext-host-name (ctx hostname)
+  (ssl-ctrl ctx 55 #|SSL_CTRL_SET_TLSEXT_HOSTNAME|# 0 #|TLSEXT_NAMETYPE_host_name|# hostname))
+
 #+:tls-method
 (progn (cffi:defcfun ("TLS_method" ssl-sslv23-method) :pointer)
        (cffi:defcfun ("TLS_client_method" ssl-sslv23-client-method) :pointer)

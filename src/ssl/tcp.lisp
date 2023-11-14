@@ -338,6 +338,11 @@
                                             sock/stream)))
                               (setf (socket-ssl-function sock) 'ssl-connect)
                               (let ((ssl (as-ssl-ssl (socket-as-ssl sock))))
+				(when host
+				  (cffi:with-foreign-string (host-name host)
+				    (if (eql 0 (ssl-set-tlsext-host-name ssl host-name))
+					(vom:debug "TLS SNI host name set.~%")
+					(vom:debug "Failed to set SNI host name, hostname: ~a.~%" host))))
                                 (ssl-connect ssl)
                                 (ssl-run-state ssl))
                               (when connect-cb
